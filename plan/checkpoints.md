@@ -231,10 +231,12 @@ no L2 object references L0 (`tools/gen_ontology.py --check-refs`); all DTs `ACTI
    (D-04-1: workforce = real People Intelligence users + simulated pool, CP-02).
 3. Refresh health:
    ```sql
-   SELECT name, scheduling_state, last_completed_refresh_state, target_lag
-   FROM TABLE(ACOCO_L2.INFORMATION_SCHEMA.DYNAMIC_TABLES()) ORDER BY name;
+   SHOW DYNAMIC TABLES IN DATABASE ACOCO_L2;
+   SELECT "schema_name", "name", "scheduling_state", "target_lag", "refresh_mode", "rows"
+   FROM TABLE(RESULT_SCAN(LAST_QUERY_ID())) ORDER BY 1, 2;
    ```
-   Expected: all `ACTIVE` / `SUCCEEDED`; no table chain entirely on `DOWNSTREAM`.
+   Expected: 21 rows (3 CORE, 12 ENT_*, 7 REL_*), all `ACTIVE`, `target_lag` `1 hour`, none `DOWNSTREAM`
+   (`DYNAMIC_TABLES()` lists the whole account, so `SHOW ... IN DATABASE` is used) (D-04-3).
 
 **Rollback:** `CREATE OR REPLACE DATABASE ACOCO_L2 CLONE ACOCO_BKP_CP04_ACOCO_L2;` or `DROP DATABASE ACOCO_L2;`
 + `git checkout cp-03`.
