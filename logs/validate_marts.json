@@ -1,0 +1,58 @@
+[
+ {
+  "id": "R1",
+  "name": "time mix sums to 100 % of available hours per person-month (+/- 1 %) (OD-11)",
+  "expected": ">= 99.5 % of person-months; overbooked < 0.1 % of available hours",
+  "actual": "99.97 % of 116,595; overbooked 0.001 %",
+  "ok": true
+ },
+ {
+  "id": "R2",
+  "name": "billable hours: Delivery timesheet hours = journal activity quantity on WBS, per month",
+  "expected": "worst month within 0.5 %",
+  "actual": "60 months, worst 0.000 %, totals 13,388,655 / 13,388,655",
+  "ok": true
+ },
+ {
+  "id": "R3",
+  "name": "pursuit hours: Bid timesheets = journal activity quantity on pre-sales internal orders, per month (Learning / Admin stay on the cost centre)",
+  "expected": "worst month within 0.5 %",
+  "actual": "61 months, worst 0.000 %",
+  "ok": true
+ },
+ {
+  "id": "R4",
+  "name": "overhead = 35 % of people activity cost, per project",
+  "expected": "every project 35 % +/- 0.5 pt",
+  "actual": "822 projects, 0 off; firm 35.00 %",
+  "ok": true
+ },
+ {
+  "id": "R5",
+  "name": "every journal document balances (debits = credits)",
+  "expected": "0 unbalanced",
+  "actual": "681,228 documents, 0 unbalanced",
+  "ok": true
+ },
+ {
+  "id": "R6",
+  "name": "revenue: L1 journal = PROJECT_DELIVERY = PORTFOLIO_360 (closed months)",
+  "expected": "all equal (< 1 USD)",
+  "actual": "1,545,736,519 / 1,545,736,519 / 1,545,736,519",
+  "ok": true
+ },
+ {
+  "id": "R7",
+  "name": "available hours: L1 Employee Availability = scorecard = capacity mix (closed months)",
+  "expected": "all equal (< 1 h)",
+  "actual": "18,967,097 / 18,967,097 / 18,967,097",
+  "ok": true
+ },
+ {
+  "id": "R8",
+  "name": "booked hours: L1 timesheets = scorecard (closed months)",
+  "expected": "equal (< 1 h)",
+  "actual": "18,657,590 / 18,657,590",
+  "ok": true
+ }
+]

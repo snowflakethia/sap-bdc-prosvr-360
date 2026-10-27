@@ -252,11 +252,12 @@ no L2 object references L0 (`tools/gen_ontology.py --check-refs`); all DTs `ACTI
 - `validate.py` measures every story anchor in PRD 6.3 and writes `plan/measured_anchors.md`.
 
 **Gate:** reconciliations pass - time mix sums to 100 % per person-month (OD-11, +/- 1 %); billable hours = journal
-activity quantity; overhead = 35 % of activity cost; Large-project revenue share 0.72-0.79.
+activity quantity; overhead = 35 % of activity cost (Large-project revenue share 0.72-0.79 moved to anchor A13, D-05-1).
 
 **Human validation**
-1. Reconciliations: `python tools/validate.py --step marts --report` - expected all `PASS`.
-2. Review the measured story figures against the design targets: `cat plan/measured_anchors.md`. Expected: each
+1. Reconciliations: `.venv/bin/python tools/validate.py --step marts --report` - expected `marts: 8/8 PASS`.
+2. Review the measured story figures against the design targets: `cat plan/measured_anchors.md` (re-measure with
+   `.venv/bin/python tools/validate.py --step anchors --report`). Expected: each
    anchor has a measured value; any that miss their band are flagged `MISS` with a proposed fix (generator
    re-calibration goes back to CP-02, after your decision).
 3. Spot-check the overlay figure the demo opens with:
@@ -265,7 +266,8 @@ activity quantity; overhead = 35 % of activity cost; Large-project revenue share
           delivery_target_pct, bench_target_pct
    FROM ACOCO_L2.SERVING.VW_TIME_MIX_FY WHERE md_group = 'Financial Services' AND fiscal_year = 2026;
    ```
-   Expected: shares sum to 100; bench well above the ~2 % target (the story); admin < 5 %.
+   Expected: shares sum to 100 (+/- 0.1 rounding); bench 1.0-1.4 %, below the 2 % target (bench < 3 %, D-02-12);
+   admin < 5 %; Delivery and Bid fall with level (Analyst ~77 / 11, Principal ~35 / 52).
 
 **Rollback:** restore `ACOCO_BKP_CP05_ACOCO_L2`, or re-run `sql/03_l2/` from `cp-04`.
 
@@ -446,8 +448,8 @@ regression 20/20 re-run on the final build.
 | 01 | approved | cp-01 | Boon Sing Thia, 2026-10-27 | gate 8/8; D-01-1..5; MD = role of 6 Principals (decision 2026-10-27) |
 | 02 | approved | cp-02 | Boon Sing Thia, 2026-10-27 | gate 11/11; D-02-1..13; targets revised (Bid ~15, Learning 10); bench < 3 % |
 | 03 | approved | cp-03 | Boon Sing Thia, 2026-10-27 | gate 9/9; reconcile 47/47; D-03-1..7 |
-| 04 | awaiting validation | cp-04 | | gate 8/8; ontology 19/19; D-04-1..5 |
-| 05 | not started | | | |
+| 04 | approved | cp-04 | Boon Sing Thia, 2026-10-27 | gate 8/8; ontology 19/19; D-04-1..5 |
+| 05 | awaiting validation | cp-05 | | gate 7/7; marts 8/8; anchors 4/13 OK, 9 MISS (decision); D-05-1..10 |
 | 06 | not started | | | |
 | 07 | not started | | | |
 | 08 | not started | | | |

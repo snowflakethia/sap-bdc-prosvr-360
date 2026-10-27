@@ -1,6 +1,6 @@
 {
   "cp": "cp04",
-  "run_at": "2026-10-27T07:44:17+00:00",
+  "run_at": "2026-10-27T09:20:22+00:00",
   "checks": [
     {
       "check_id": "CP04-01",
@@ -20,7 +20,7 @@
       "check_id": "CP04-03",
       "description": "no L2 object references L0 (*_V1 CLDs, ACOCO_SIM)",
       "expected": "0",
-      "actual": "22 scanned, []",
+      "actual": "54 scanned, []",
       "result": "PASS"
     },
     {

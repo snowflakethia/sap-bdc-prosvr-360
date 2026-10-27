@@ -332,9 +332,12 @@ def weekly_availability(ctx: Ctx, people: pd.DataFrame, wk: pd.DataFrame):
     for i in range(P):
         h = hire[i]
         t = term[i]
-        emp = np.array([(h is None or ws + dt.timedelta(days=4) >= h) and (t is None or pd.isna(t) or ws <= t)
-                        for ws in wstart])
-        avail[i] = np.where(emp, work_h, 0)
+        # share of the Mon-Fri week employed (hire / leave mid-week books a part week) (D-05-2)
+        emp = np.array([sum(1 for d in range(5)
+                            if (h is None or ws + dt.timedelta(days=d) >= h)
+                            and (t is None or pd.isna(t) or ws + dt.timedelta(days=d) <= t)) / 5.0
+                        for ws in wstart], dtype=np.float32)
+        avail[i] = emp * work_h
         # ~25 leave days a year in 1-week and 2-day blocks
         n_blocks = int(rng.poisson(len(wk) / 52 * 4))
         for _ in range(n_blocks):
@@ -350,6 +353,9 @@ def weekly_availability(ctx: Ctx, people: pd.DataFrame, wk: pd.DataFrame):
         real_from = wkidx.loc[r.WEEK_START.min()]
         mask_people = np.unique(pi)
         leave[mask_people, real_from:] = 0
+        # from the CLD start, a real person's capacity is exactly what Employee Availability says - weeks with no
+        # CLD rows have no capacity, so nothing is booked there (D-05-2)
+        avail[mask_people, real_from:] = 0
         avail[pi, wi] = r.AVAILABLE_HOURS.values
     avail = np.maximum(avail - leave, 0)
     return avail, leave
@@ -952,8 +958,16 @@ def build_finance(ctx, people, ts, projects, wps, opps, agt):
         rev_lines["AccountingDocument"] = rev_lines.AccountingDocument.map(mp)
         rev_lines["AmountInCompanyCodeCurrency"] = -rev_lines.AmountInCompanyCodeCurrency
         rev_lines["Quantity"] = -rev_lines.Quantity
-        je = pd.concat([je, rev_lines], ignore_index=True)
-        docs = pd.concat([docs, reversals], ignore_index=True)
+        # SAP practice: a reversed posting is re-posted correctly, so totals are unchanged (D-05-4)
+        re_ids = {old: f"{start + len(reversals) + i + 1:010d}" for i, old in enumerate(reversals.ReversalReferenceDocument)}
+        repost = je[je.AccountingDocument.isin(re_ids)].copy()
+        repost["AccountingDocument"] = repost.AccountingDocument.map(re_ids)
+        rp_docs = docs[docs.AccountingDocument.isin(re_ids)].copy()
+        rp_docs["AccountingDocument"] = rp_docs.AccountingDocument.map(re_ids)
+        rp_docs["IsReversal"] = False
+        rp_docs["IsReversed"] = False
+        je = pd.concat([je, rev_lines, repost], ignore_index=True)
+        docs = pd.concat([docs, reversals, rp_docs], ignore_index=True)
     # plan (sold cost) per WBS x fiscal period, flat over planned duration
     plan_rows = []
     lo = ctx.levels.set_index("LEVEL").BILL_CODE_LO.to_dict()

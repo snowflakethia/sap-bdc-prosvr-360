@@ -17,7 +17,7 @@ class SqlError(RuntimeError):
 def query(sql: str) -> list[dict]:
     """Run one statement; return the rows of its result set."""
     proc = subprocess.run(
-        ["snow", "sql", "-c", CONNECTION, "--format", "json", "-q", sql],
+        ["snow", "sql", "-c", CONNECTION, "--enable-templating", "NONE", "--format", "json", "-q", sql],
         capture_output=True, text=True,
     )
     if proc.returncode != 0:
@@ -33,6 +33,6 @@ def query(sql: str) -> list[dict]:
 
 
 def run_file(path: str) -> None:
-    proc = subprocess.run(["snow", "sql", "-c", CONNECTION, "-f", path], capture_output=True, text=True)
+    proc = subprocess.run(["snow", "sql", "-c", CONNECTION, "--enable-templating", "NONE", "-f", path], capture_output=True, text=True)
     if proc.returncode != 0:
         raise SqlError((proc.stdout + proc.stderr).strip()[-2000:])

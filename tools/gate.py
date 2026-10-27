@@ -319,10 +319,11 @@ def gate_cp04():
     n, refs = go.check_refs()
     checks.append(("CP04-03", "no L2 object references L0 (*_V1 CLDs, ACOCO_SIM)", "0", f"{n} scanned, {refs}", not refs))
 
-    dts = q("""SELECT name, state st FROM TABLE(ACOCO_L2.INFORMATION_SCHEMA.DYNAMIC_TABLE_REFRESH_HISTORY())
+    dts = q("""SELECT name, state st FROM TABLE(ACOCO_L2.INFORMATION_SCHEMA.DYNAMIC_TABLE_REFRESH_HISTORY(RESULT_LIMIT => 10000))
                WHERE state IN ('SUCCEEDED', 'FAILED', 'UPSTREAM_FAILED', 'CANCELLED')
-               QUALIFY ROW_NUMBER() OVER (PARTITION BY qualified_name ORDER BY refresh_start_time DESC) = 1""")
-    dts_show = q("SHOW DYNAMIC TABLES IN DATABASE ACOCO_L2")
+                 AND SPLIT_PART(qualified_name, '.', 2) IN ('CORE', 'ONTOLOGY')
+               QUALIFY ROW_NUMBER() OVER (PARTITION BY qualified_name ORDER BY data_timestamp DESC, refresh_start_time DESC NULLS LAST) = 1""")
+    dts_show = [r for r in q("SHOW DYNAMIC TABLES IN DATABASE ACOCO_L2") if r["schema_name"] in ("CORE", "ONTOLOGY")]
     unhealthy = [f"{r['name']}:{r['scheduling_state']}" for r in dts_show if r["scheduling_state"] != "ACTIVE"]
     failed = [r["NAME"] for r in dts if r["ST"] != "SUCCEEDED"] + [r["name"] for r in dts_show if r["name"] not in {d["NAME"] for d in dts}]
     checks.append(("CP04-04", "every L2 dynamic table ACTIVE with a successful last refresh", "21 / 0 / 0",
@@ -359,7 +360,94 @@ def gate_cp04():
     return checks
 
 
-GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03, "cp04": gate_cp04}
+def dt_health(schemas):
+    import sf
+    show = [r for r in sf.query("SHOW DYNAMIC TABLES IN DATABASE ACOCO_L2") if r["schema_name"] in schemas]
+    last = {r["NAME"]: r["ST"] for r in sf.query(f"""SELECT name, state st
+              FROM TABLE(ACOCO_L2.INFORMATION_SCHEMA.DYNAMIC_TABLE_REFRESH_HISTORY(RESULT_LIMIT => 10000))
+              WHERE state IN ('SUCCEEDED', 'FAILED', 'UPSTREAM_FAILED', 'CANCELLED')
+                AND SPLIT_PART(qualified_name, '.', 2) IN ({", ".join("'" + x + "'" for x in schemas)})
+              QUALIFY ROW_NUMBER() OVER (PARTITION BY qualified_name ORDER BY data_timestamp DESC, refresh_start_time DESC NULLS LAST) = 1""")}
+    bad = [f"{r['schema_name']}.{r['name']}:{r['scheduling_state']}/{last.get(r['name'])}" for r in show
+           if r["scheduling_state"] != "ACTIVE" or last.get(r["name"]) != "SUCCEEDED"]
+    lags = sorted({r["target_lag"] for r in show})
+    return show, bad, lags
+
+
+def gate_cp05():
+    import subprocess
+    import sf
+    import gen_ontology as go
+    q = sf.query
+    checks = []
+    py = str(ROOT / ".venv" / "bin" / "python")
+
+    subprocess.run([py, str(ROOT / "tools" / "validate.py"), "--step", "marts", "--report"], capture_output=True)
+    rec = json.loads((ROOT / "logs" / "validate_marts.json").read_text())
+    bad = [f"{r['id']}: {r['actual']}" for r in rec if not r["ok"]]
+    checks.append(("CP05-01", "mart reconciliations (time mix = 100 % OD-11, billable / pursuit hours = journal quantity, "
+                   "overhead 35 %, balanced journal, revenue / available / booked hours tie L1 -> L2)",
+                   "8/8 PASS", f"{len(rec) - len(bad)}/{len(rec)} {bad}", len(rec) == 8 and not bad))
+
+    marts = ["PORTFOLIO_360", "PROJECT_DELIVERY", "PIPELINE_PRESALES", "WORKFORCE_PERFORMANCE", "AI_ADOPTION"]
+    show, bad_dt, lags = dt_health(marts)
+    per = {m: sum(1 for r in show if r["schema_name"] == m) for m in marts}
+    checks.append(("CP05-02", "five marts built; every mart DT ACTIVE with a successful last refresh; explicit 1-hour lag",
+                   "5 marts, 0 unhealthy, ['1 hour']", f"{per} unhealthy {bad_dt} lags {lags}",
+                   all(per.values()) and not bad_dt and lags == ["1 hour"]))
+
+    n, refs = go.check_refs()
+    checks.append(("CP05-03", "no L2 object (marts, serving, quality) references L0", "0", f"{n} scanned, {refs}", not refs))
+
+    srv = q("""SELECT table_name t FROM ACOCO_L2.INFORMATION_SCHEMA.TABLES WHERE table_schema = 'SERVING'""")
+    leak = []
+    for r in srv:
+        ddl = q(f"SELECT GET_DDL('VIEW', 'ACOCO_L2.SERVING.{r['T']}') d")[0]["D"]
+        if "ACOCO_L1" in ddl.upper():
+            leak.append(r["T"])
+    checks.append(("CP05-04", "SERVING views read L2 only (no ACOCO_L1)", ">= 8 views, 0 reading L1",
+                   f"{len(srv)} views, {leak}", len(srv) >= 8 and not leak))
+
+    mix = q("""SELECT MD_GROUP_ID, LEVEL, FISCAL_YEAR,
+                      DELIVERY_PCT + BID_PCT + LEARNING_PCT + ADMIN_PCT + BENCH_PCT tot FROM ACOCO_L2.SERVING.VW_TIME_MIX_FY
+               WHERE FISCAL_YEAR BETWEEN 2022 AND 2026""")
+    off = [r for r in mix if abs(float(r["TOT"]) - 100) > 0.3]
+    checks.append(("CP05-05", "overlay VW_TIME_MIX_FY: five shares sum to 100 for every group x level x FY22-26", "0 off (+/- 0.3 rounding)",
+                   f"{len(mix)} rows, {len(off)} off", len(mix) == 150 and not off))
+
+    qc = {r["T"]: r["N"] for r in q("""SELECT 'LINEAGE' t, COUNT(*) n FROM ACOCO_L2.QUALITY.Q_LINEAGE_COUNTS
+                 UNION ALL SELECT 'FRESHNESS', COUNT(*) FROM ACOCO_L2.QUALITY.Q_FRESHNESS
+                 UNION ALL SELECT 'COMPLETENESS', COUNT(*) FROM ACOCO_L2.QUALITY.Q_COMPLETENESS
+                 UNION ALL SELECT 'ACCESS', COUNT(*) FROM ACOCO_L2.QUALITY.Q_ACCESS_SNAPSHOT""")}
+    checks.append(("CP05-06", "QUALITY snapshots present (lineage counts, freshness, completeness, access)", "all > 0",
+                   str(qc), all(v > 0 for v in qc.values())))
+
+    anc = json.loads((ROOT / "logs" / "validate_anchors.json").read_text())
+    fresh = (ROOT / "plan" / "measured_anchors.md").stat().st_mtime > (ROOT / "sql" / "03_l2").stat().st_mtime - 1
+    unmeasured = [a["id"] for a in anc if not a["measured"] or "nan" in a["measured"]]
+    no_fix = [a["id"] for a in anc if a["status"] == "MISS" and not a["proposed_fix"]]
+    checks.append(("CP05-07", "every PRD 6.3 story anchor measured; each MISS carries a proposed fix (decision is the user's)",
+                   "13 measured, 0 MISS without fix", f"{len(anc)} measured, OK {sum(a['status'] == 'OK' for a in anc)}, "
+                   f"unmeasured {unmeasured}, MISS without fix {no_fix}", len(anc) == 13 and not unmeasured and not no_fix and fresh))
+    return checks
+
+
+GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03, "cp04": gate_cp04,
+         "cp05": gate_cp05}
+
+
+def log_to_quality(cp, run_at, rows):
+    """Append gate results to ACOCO_L2.QUALITY.Q_CHECK_RESULTS once that table exists (CP-05 on)."""
+    import sf
+    try:
+        if not sf.query("SHOW TABLES LIKE 'Q_CHECK_RESULTS' IN SCHEMA ACOCO_L2.QUALITY"):
+            return
+    except sf.SqlError:
+        return
+    lit = lambda v: "'" + str(v).replace("'", "''")[:4000] + "'"
+    vals = ",\n".join(f"({lit(run_at)}::TIMESTAMP_TZ, {lit(cp)}, {lit(r['check_id'])}, {lit(r['description'])}, "
+                       f"{lit(r['expected'])}, {lit(r['actual'])}, {lit(r['result'])})" for r in rows)
+    sf.query(f"INSERT INTO ACOCO_L2.QUALITY.Q_CHECK_RESULTS VALUES {vals}")
 
 
 def main():
@@ -371,6 +459,7 @@ def main():
             for c, d, e, a, p in results]
     out = {"cp": cp, "run_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "checks": rows}
     (ROOT / "logs" / f"gate_{cp}.json").write_text(json.dumps(out, indent=2))
+    log_to_quality(cp, out["run_at"], rows)
     for r in rows:
         print(f"{r['result']}  {r['check_id']}  {r['description']}  ->  {r['actual']}")
     failed = [r for r in rows if r["result"] == "FAIL"]

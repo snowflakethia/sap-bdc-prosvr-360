@@ -1,0 +1,9 @@
+PASS  CP05-01  mart reconciliations (time mix = 100 % OD-11, billable / pursuit hours = journal quantity, overhead 35 %, balanced journal, revenue / available / booked hours tie L1 -> L2)  ->  8/8 []
+PASS  CP05-02  five marts built; every mart DT ACTIVE with a successful last refresh; explicit 1-hour lag  ->  {'PORTFOLIO_360': 3, 'PROJECT_DELIVERY': 5, 'PIPELINE_PRESALES': 3, 'WORKFORCE_PERFORMANCE': 3, 'AI_ADOPTION': 4} unhealthy [] lags ['1 hour']
+PASS  CP05-03  no L2 object (marts, serving, quality) references L0  ->  54 scanned, []
+PASS  CP05-04  SERVING views read L2 only (no ACOCO_L1)  ->  9 views, []
+PASS  CP05-05  overlay VW_TIME_MIX_FY: five shares sum to 100 for every group x level x FY22-26  ->  150 rows, 0 off
+PASS  CP05-06  QUALITY snapshots present (lineage counts, freshness, completeness, access)  ->  {'LINEAGE': 130, 'FRESHNESS': 10, 'COMPLETENESS': 72, 'ACCESS': 1}
+PASS  CP05-07  every PRD 6.3 story anchor measured; each MISS carries a proposed fix (decision is the user's)  ->  13 measured, OK 4, unmeasured [], MISS without fix []
+
+cp05: 7/7 passed

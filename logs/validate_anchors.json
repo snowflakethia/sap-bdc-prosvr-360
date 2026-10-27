@@ -1,0 +1,106 @@
+[
+ {
+  "id": "A1",
+  "anchor": "One Large FS fixed-price project in loss at FY26 close",
+  "design_target": "forecast margin < 0 %, CPI ~0.73 (0.65-0.80), SPI ~0.8 (0.75-0.90)",
+  "measured": "P-0706 (FS, Large, FIXED_PRICE): forecast margin -26.5 %, CPI 0.67, SPI 0.91",
+  "status": "MISS",
+  "proposed_fix": "SPI above band: lower the story project's critical-path productivity (0.58) or lengthen its slip; CP-02 generator"
+ },
+ {
+  "id": "A2",
+  "anchor": "FY26 firm Delivery share / bench",
+  "design_target": "~72 % (70-74) / 1-2 %, bench < 3 % every year",
+  "measured": "Delivery 71.1 %, bench 1.4 %; bench by FY {2022: 1.9, 2023: 1.7, 2024: 1.8, 2025: 1.5, 2026: 1.4}",
+  "status": "OK",
+  "proposed_fix": ""
+ },
+ {
+  "id": "A3",
+  "anchor": "FS roll-off before 30 Dec 2026 without successor",
+  "design_target": "30-40 people; > 75 % below the pipeline's required AI-skill level",
+  "measured": "175 people; 70 % below pipeline AI level",
+  "status": "MISS",
+  "proposed_fix": "Too many FS assignments end in Q1 FY27: shorten the forward staffing horizon or extend FS assignments to the project end in the generator; raise the share of low-AI-skill people among roll-offs (CP-02)"
+ },
+ {
+  "id": "A4",
+  "anchor": "Voluntary attrition trend",
+  "design_target": "FY22 peak ~18 % (16-20) -> FY26 ~13 % (11-15)",
+  "measured": "by FY {2022: 21.7, 2023: 16.6, 2024: 16.2, 2025: 14.6, 2026: 14.3}",
+  "status": "MISS",
+  "proposed_fix": "Attrition is measured on the whole firm, but only the simulated pool leaves (real SF records carry ~20 terminations); either measure on the simulated pool only or raise simulated leavers (CP-02 ATTRITION)"
+ },
+ {
+  "id": "A5",
+  "anchor": "AI return (FY26, FS): People+Agents vs People-only",
+  "design_target": "margin ~+10 pts (7-13); CPI > 1.1 vs ~1.0",
+  "measured": "margin 36.5 % vs 29.3 % (+7.2 pts); median CPI 1.10 vs 1.06 (n 12 / 15)",
+  "status": "MISS",
+  "proposed_fix": "Agent hours are billed as cost but not priced into the contract: raise HUMAN_AGENT / AGENT_LED sold margin (contract value) or their productivity in the generator (CP-02)"
+ },
+ {
+  "id": "A6",
+  "anchor": "Pre-sales intensity and win-rate (within size class)",
+  "design_target": "above-median ~50 % vs below ~30 % (gap 15-25 pts)",
+  "measured": "above 66.3 % vs below 47.8 % (gap 18.4 pts; firm win-rate 57 %)",
+  "status": "MISS",
+  "proposed_fix": "Effect direction right but the base win-rate is ~58 % (design ~40 %): lower the generator's base win probability (CP-02)"
+ },
+ {
+  "id": "A7",
+  "anchor": "Pursuit-team skill fit and win-rate",
+  "design_target": "fit >= 0.8 ~55 % vs < 0.5 ~30 % (gap >= 15 pts)",
+  "measured": "high 60.6 % (n 897) vs low 58.8 % (n 148)",
+  "status": "MISS",
+  "proposed_fix": "The generator draws the win outcome without reference to team skill fit: make win probability depend on the assigned team's coverage of the required skills (CP-02)"
+ },
+ {
+  "id": "A8",
+  "anchor": "Asset harvest and reuse",
+  "design_target": "harvest FY22 ~15 % -> FY26 ~40 %; reuse CPI ~1.05 vs ~0.95; story project reused none of 2-3 matching assets",
+  "measured": "harvest by FY {2022: 13.0, 2023: 13.0, 2024: 30.0, 2025: 28.0, 2026: 41.0}; median CPI reuse 1.084 vs none 1.002; story project uses 0, matching assets available at its start 20",
+  "status": "OK",
+  "proposed_fix": ""
+ },
+ {
+  "id": "A9",
+  "anchor": "Time mix (FS, FY26)",
+  "design_target": "Delivery ~72 (70-74) / Bid ~16 (14-18) / Learning ~10 (8-12) / Admin ~1.5 (< 5) / Bench ~1.7 (< 3) %",
+  "measured": "Delivery 72.4 / Bid 15.4 / Learning 9.5 / Admin 1.3 / Bench 1.4 %",
+  "status": "OK",
+  "proposed_fix": ""
+ },
+ {
+  "id": "A10",
+  "anchor": "AI productivity uplift (FS, FY26), within level x work type",
+  "design_target": "~+0.08 (0.05-0.11), 90 % CI excluding zero; skilled-but-inactive ~0",
+  "measured": "uplift +0.072, 90 % CI [+0.056, +0.087] (381 people); skilled-inactive PI 1.042 vs other non-active 1.051",
+  "status": "OK",
+  "proposed_fix": ""
+ },
+ {
+  "id": "A11",
+  "anchor": "Learning payback (6 months after vs before, vs matched comparison)",
+  "design_target": "AI curriculum ~+4 % (+0.03-0.05), significant; non-AI smaller, not significant",
+  "measured": "AI -0.0057 (se 0.0003, n 76,467); non-AI -0.0257 (se 0.0002)",
+  "status": "MISS",
+  "proposed_fix": "The generator books learning but never raises a learner's productivity afterwards (learn_boost is unused): apply ~+4 % productivity for 6 months after an AI-curriculum completion (CP-02)"
+ },
+ {
+  "id": "A12",
+  "anchor": "AI skilled but inactive (FS, Jul-Sep 2026)",
+  "design_target": "~20 % (15-25) of FS people with AI-skill >= 3 have no AI-tool use",
+  "measured": "46 of 174 (26 %)",
+  "status": "MISS",
+  "proposed_fix": "Adjust the share of AI-skilled people with zero telemetry in the generator (CP-02)"
+ },
+ {
+  "id": "A13",
+  "anchor": "Large-project revenue share (portfolio shape)",
+  "design_target": "0.72-0.79 of revenue",
+  "measured": "FY22-26 68.8 %; by FY {2022: 71.4, 2023: 72.6, 2024: 66.3, 2025: 65.9, 2026: 68.1}",
+  "status": "MISS",
+  "proposed_fix": "Raise the share of Large projects / their contract value in the generator's size mix (CP-02)"
+ }
+]
