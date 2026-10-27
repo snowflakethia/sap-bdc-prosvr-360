@@ -91,7 +91,7 @@ def generate(inputs) -> dict:
     ctx.out["_wp_plan"] = wp_plan
     g.allocate_bid_time(ctx, st, people, wk)
     comps = g.schedule_learning(ctx, st, people, learning, ps, wk)
-    ts = g.build_timesheets(ctx, st, people, wk)
+    ts = g.build_timesheets(ctx, st, people, wk, projects)
     telem, agt, ident = g.build_telemetry_and_agt(ctx, st, people, ts, wk)
     je, docs, plan, io = g.build_finance(ctx, people, ts, projects, wps, opps, agt)
     notes = g.build_notes(ctx, projects, wps)
@@ -159,15 +159,19 @@ def generate(inputs) -> dict:
 def story_stats(people, ts, avail, st, wk, opps, projects, wps, assets):
     fy = wk.fiscal_year.values
     out = {}
-    for f in (2022, 2024, 2026):
+    for f in (2022, 2023, 2024, 2025, 2026):
         m = fy == f
         a = avail[:, m].sum()
         fs = (people.md_group == "FS").values
         out[f"FY{f % 100}_firm"] = {k: round(100 * v[:, m].sum() / a, 1) for k, v in
-                                    (("delivery", st.deliv), ("bid", st.bid), ("learning", st.learn))}
+                                    (("delivery", st.deliv), ("bid", st.bid), ("learning", st.learn),
+                                     ("admin", st.admin))}
+        out[f"FY{f % 100}_firm"]["bench"] = round(100 - sum(out[f"FY{f % 100}_firm"].values()), 1)
         af = avail[fs][:, m].sum()
         out[f"FY{f % 100}_FS"] = {k: round(100 * v[fs][:, m].sum() / af, 1) for k, v in
-                                  (("delivery", st.deliv), ("bid", st.bid), ("learning", st.learn))}
+                                  (("delivery", st.deliv), ("bid", st.bid), ("learning", st.learn),
+                                   ("admin", st.admin))}
+        out[f"FY{f % 100}_FS"]["bench"] = round(100 - sum(out[f"FY{f % 100}_FS"].values()), 1)
     o = pd.DataFrame(opps)
     closed = o[o.OUTCOME.notna()]
     out["opportunities"] = len(o)

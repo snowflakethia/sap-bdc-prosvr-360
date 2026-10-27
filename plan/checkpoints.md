@@ -441,7 +441,7 @@ regression 20/20 re-run on the final build.
 |---|---|---|---|---|
 | 00 | approved | cp-00 | Boon Sing Thia, 2026-10-27 | gate 8/8; deviations D-00-1..8 |
 | 01 | approved | cp-01 | Boon Sing Thia, 2026-10-27 | gate 8/8; D-01-1..5; MD = role of 6 Principals (decision 2026-10-27) |
-| 02 | awaiting validation | cp-02 | | gate 10/10; D-02-1..10; 5.7 M rows; targets revised (Bid ~15, Learning 10) |
+| 02 | awaiting validation | cp-02 | | gate 11/11; D-02-1..13; targets revised (Bid ~15, Learning 10); bench < 3 % |
 | 03 | not started | | | |
 | 04 | not started | | | |
 | 05 | not started | | | |

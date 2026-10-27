@@ -1,7 +1,7 @@
 # PRD - ACoCo ProServe360: Partner MD Decision Support on SAP BDC + Snowflake (v2.1, SPCS edition)
 
 **Document type:** Product Requirements Document - **master document for the demo**
-**Version:** 2.4 - 27 October 2026 (v2.3 + revised time targets: Learning 10 % at every level, group Bid ~15 %; mix measured on the generated data)
+**Version:** 2.5 - 27 October 2026 (v2.4 + bench held below 3 % overall; Delivery ~71-72 %)
 **Supersedes:** `docs/references/acoco_prd/acoco_oldref/ACoCo_Agentic_AI_Decision_Support_Demo_PRD.md` v1.1 (Streamlit edition, three personas, four roles)
 **Target account:** `SFSEAPAC.SNOWFLAKE_SAP_APJ` (AWS, connector `SNOWFLAKE_APJ`, status `CONNECTED`)
 **Demo "today":** **1 October 2026** - data window **1 Oct 2021 to 30 Sep 2026** (five fiscal years, FY22-FY26)
@@ -131,8 +131,9 @@ things at once: delivery discipline, a bid machine that wins, and people with th
 pillars.**
 
 **Priya Nair, Partner MD Financial Services, on 1 October 2026** (FY26 has just closed; figures are design targets,
-section 6.3): her people spend ~65 % of their time in delivery against a ~70 % target, ~15 % bidding and ~10 % learning,
-and **~7 % on the bench against ~2 %**; one Large fixed-price banking migration is forecast to lose money; bids with above-median pursuit effort
+section 6.3): her people spend ~72 % of their time in delivery against a ~70 % target, ~16 % bidding and ~10 % learning,
+and **under 2 % on the bench** - capacity is fully used, so the question is no longer how much is used but whether it
+is used well: one Large fixed-price banking migration is forecast to lose money; bids with above-median pursuit effort
 win far more often than the rest, but pursuit hours are spread thinly across every deal; 30-40 of her people roll off
 before 30 December with no next assignment, most below the AI-skill level her pipeline needs; she has funded AI
 learning for two years without knowing whether it made anyone faster; and attrition, though
@@ -720,14 +721,14 @@ Volume estimate (design): ~6-7 M rows in `ACOCO_SIM` (timesheet dominates); L2 r
 | Anchor | Design target |
 |---|---|
 | One Large FS fixed-price project in loss at FY26 close | forecast margin < 0 %, CPI ~0.73, SPI ~0.8 |
-| FY26 firm Delivery share (billability) / bench | ~65 % / ~7 % against targets ~70 % / ~2 % |
+| FY26 firm Delivery share (billability) / bench | ~72 % / ~1-2 % against targets ~70 % / ~2 % (bench < 3 % in every year) |
 | Roll-off before 30 Dec 2026 without successor | 30-40 people in FS; > 75 % below the pipeline's required AI-skill level |
 | Attrition trend | FY22 peak ~18 % -> FY26 ~13 % |
 | AI return (FY26, FS) | People+Agents margin ~10 pts above People-only; CPI > 1.1 vs ~1.0 |
 | Pre-sales | above-median intensity win-rate ~50 % vs ~30 % within size class |
 | Pursuit-team fit | bids with skill fit >= 0.8 win ~55 % vs ~30 % below 0.5, within size class |
 | Asset reuse | harvest rate FY22 ~15 % -> FY26 ~40 %; projects with reuse CPI ~1.05 vs ~0.95 without; the FS loss-making project reused none of the 2-3 matching assets |
-| Time mix (FS, FY26) | Delivery ~65 %, Bid ~15 %, Learning ~10 %, Admin ~3 %, Bench ~7 % - vs target ~70 / ~15 / ~10 / ~3 / ~2 %; excess bench ~5 pts |
+| Time mix (FS, FY26) | Delivery ~72 %, Bid ~16 %, Learning ~10 %, Admin ~1.5 %, Bench ~1.7 % - vs target ~70 / ~15 / ~10 / ~3 / ~2 % |
 | AI productivity uplift (FS, FY26) | AI-active vs rest within level x work type: productivity index ~+0.08, 90 % CI excluding zero; skilled-but-inactive ~0 |
 | Learning payback | AI-curriculum completers ~+4 % productivity in the following 6 months vs matched non-learners; non-AI curricula smaller and not significant |
 | AI skilled but inactive | ~20 % of FS people with AI-skill level >= 3 have no AI-tool use in Jul-Sep 2026 |

@@ -68,7 +68,8 @@ BID_HOURS = {"XX-Small": 900, "X-Small": 1800, "Small": 4000, "Medium": 9000, "L
 LEARNING_SHARE = 0.106          # target Learning share of available hours per person-year (D-02-11)
 
 # Firm-level target Delivery share of available hours by fiscal year (story: falls to ~66 % in FY26).
-TARGET_DELIVERY = {2022: 0.72, 2023: 0.71, 2024: 0.70, 2025: 0.68, 2026: 0.66, 2027: 0.60}
+# Firm-level target Delivery share by fiscal year: bench must stay < 3 % overall (user, 2026-10-27; D-02-12)
+TARGET_DELIVERY = {2022: 0.735, 2023: 0.73, 2024: 0.725, 2025: 0.73, 2026: 0.735, 2027: 0.66}
 GROUP_DEMAND = {"FS": 1.0, "PRD": 1.0, "HPS": 1.0, "CMT": 1.0, "RES": 1.0, "XAI": 1.06}
 ATTRITION = {2022: 0.18, 2023: 0.16, 2024: 0.15, 2025: 0.14, 2026: 0.13, 2027: 0.13}
 AI_ADOPTION = {2022: 0.04, 2023: 0.14, 2024: 0.33, 2025: 0.52, 2026: 0.68, 2027: 0.70}   # S-curve, active share
@@ -760,8 +761,10 @@ def schedule_learning(ctx, st, people, learning, ps, wk):
     return pd.DataFrame(comps)
 
 
-def build_timesheets(ctx, st, people, wk):
-    """Weekly rows per person x category x object. Bench = available - booked (no row)."""
+def build_timesheets(ctx, st, people, wk, projects):
+    """Weekly rows per person x category x object. Bench = available - booked (no row).
+    After bid, learning and admin, residual free time above the ~2 % transition allowance is deployed onto a running
+    work package of the person's group that week (bench backfill, D-02-12)."""
     rng = ctx.rng
     rows = []
     uid = people.user_id.values
@@ -792,15 +795,47 @@ def build_timesheets(ctx, st, people, wk):
     for pi, w in zip(l_i, l_w):
         rows.append((uid[pi], cc[pi], wstart[w], int(fy[w]), "LEARNING", None, "IO-LEARNING",
                      round(float(st.learn[pi, w]), 1), None, 0.0, 0.0))
-    admin = np.round(st.avail * np.clip(rng.normal(0.025, 0.006, st.avail.shape), 0.01, 0.045), 1)
+    admin = np.round(st.avail * np.clip(rng.normal(0.03, 0.005, st.avail.shape), 0.02, 0.045), 1)
     admin = np.minimum(admin, np.maximum(st.avail - st.deliv - st.bid - st.learn, 0))
     a_i, a_w = np.nonzero(admin > 0.05)
     for pi, w in zip(a_i, a_w):
         rows.append((uid[pi], cc[pi], wstart[w], int(fy[w]), "ADMIN", None, "IO-ADMIN", float(admin[pi, w]), None,
                      0.0, 0.0))
+    st.admin = admin
+    # bench backfill: running work packages per (group, week)
+    pgroup = {p["PROJECT_ID"]: p["MD_GROUP_ID"] for p in projects}
+    live = {}
+    for (pi_, wp, w0, w1, alloc, eff, ai_proj) in st.ts_rows:
+        g_ = pgroup[wp[:6]]
+        for w in range(w0, w1):
+            live.setdefault((g_, w), set()).add(wp)
+    live = {k: sorted(v) for k, v in live.items()}
+    allowance = st.avail * np.clip(rng.normal(0.02, 0.006, st.avail.shape), 0.005, 0.035)
+    resid = st.avail - st.deliv - st.bid - st.learn - admin - allowance
+    f_i, f_w = np.nonzero(resid > 2.0)
+    grp = people.md_group.values
+    for pi, w in zip(f_i, f_w):
+        wps_ = live.get((grp[pi], w))
+        if not wps_:
+            continue
+        wp = wps_[int(rng.integers(0, len(wps_)))]
+        h = round(float(resid[pi, w]), 1)
+        st.deliv[pi, w] += h
+        rows.append((uid[pi], cc[pi], wstart[w], int(fy[w]), "DELIVERY", wp, None, h, h, 0.0, 0.0))
     ts = pd.DataFrame(rows, columns=["USER_ID", "COST_CENTER", "WEEK_START", "FISCAL_YEAR", "CATEGORY",
                                      "WBS_ELEMENT", "INTERNAL_ORDER", "HOURS", "ZZ_EARNED_HOURS", "ZZ_AI_ASSISTED_HOURS",
                                      "ZZ_AI_HOURS_SAVED"])
+    # Clamp: no user-week may book more than its available hours (rounding / stacked rows); scale rows down.
+    pidx = dict(zip(uid, range(len(uid))))
+    widx = dict(zip(wstart, range(len(wstart))))
+    ts["_P"] = ts.USER_ID.map(pidx).values
+    ts["_W"] = ts.WEEK_START.map(widx).values
+    tot = ts.groupby(["_P", "_W"]).HOURS.transform("sum").values
+    cap = st.avail[ts["_P"].values, ts["_W"].values]
+    f = np.where(tot > cap, cap / np.maximum(tot, 1e-6), 1.0)
+    ts["HOURS"] = np.floor(ts.HOURS.values * f * 10) / 10
+    ts["ZZ_EARNED_HOURS"] = np.where(ts.ZZ_EARNED_HOURS.notna(), np.round(ts.ZZ_EARNED_HOURS.astype(float) * f, 1), np.nan)
+    ts = ts[ts.HOURS > 0].drop(columns=["_P", "_W"]).reset_index(drop=True)
     ts.insert(0, "TIMESHEET_RECORD", [f"TS{i + 1:09d}" for i in range(len(ts))])
     ts["BILLABLE_CONTROL"] = np.where(ts.CATEGORY == "DELIVERY", "BILLABLE", "NON_BILLABLE")
     ts["SOURCE_SYSTEM"] = "SIMULATED"

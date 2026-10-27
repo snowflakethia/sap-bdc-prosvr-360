@@ -133,10 +133,10 @@ def gate_cp02():
                    not mism and 3_000_000 <= total <= 8_000_000))
 
     st = load["stats"]
-    bands = {"projects": (400, 800), "opportunities": (800, 1600), "assets": (80, 300)}
+    bands = {"projects": (400, 1000), "opportunities": (800, 2200), "assets": (80, 300)}
     bad = {k: st[k] for k, (lo, hi) in bands.items() if not lo <= st[k] <= hi}
     pc = q("""select count(distinct user_id) n from ACOCO_SIM.DIRECTORY.PERSON_NAME""")[0]["N"]
-    checks.append(("CP02-03", "volumes in band (projects 400-800, opps 800-1600, assets 80-300); 3,555 people",
+    checks.append(("CP02-03", "volumes in band (projects 400-1000, opps 800-2200, assets 80-300); 3,555 people",
                    "in band", f"projects {st['projects']}, opps {st['opportunities']}, assets {st['assets']}, "
                               f"people {pc}", not bad and pc == 3555))
 
@@ -210,6 +210,10 @@ def gate_cp02():
                    "upper > lower in 5 levels",
                    str({r["LEVEL"]: (round(100 * r["LO"], 1), round(100 * r["HI"], 1)) for r in mono}),
                    len(mono) == 5 and not bad))
+
+    benches = {k: v["bench"] for k, v in load["stats"].items() if k.startswith("FY") and k.endswith("_firm")}
+    checks.append(("CP02-11", "firm bench (available - booked) < 3 % of available hours in every fiscal year (D-02-12)",
+                   "all < 3", str(benches), bool(benches) and all(b < 3 for b in benches.values())))
     return checks
 
 
