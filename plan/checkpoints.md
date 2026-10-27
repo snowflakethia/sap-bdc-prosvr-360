@@ -173,7 +173,7 @@ total); determinism hashes equal; 100 % of foreign keys to CLD master data resol
    SELECT category, ROUND(100*SUM(hours)/SUM(SUM(hours)) OVER (),1) AS pct
    FROM ACOCO_SIM.TIMESHEET.TIMESHEET WHERE fiscal_year = 2026 GROUP BY 1 ORDER BY 2 DESC;
    ```
-   Expected: Delivery is the largest category; Admin < 5 % (bench is derived later, so it does not appear here).
+   Expected: Delivery is the largest category (~70 % of booked), Bid ~17 %, Learning ~11 %, Admin < 5 % (bench is derived later, so it does not appear here).
 
 **Rollback:** `CREATE OR REPLACE DATABASE ACOCO_SIM CLONE ACOCO_BKP_CP02_ACOCO_SIM;` (to redo from CP-02) or
 `DROP DATABASE ACOCO_SIM;` + `git checkout cp-01` (to undo CP-02).
@@ -441,7 +441,7 @@ regression 20/20 re-run on the final build.
 |---|---|---|---|---|
 | 00 | approved | cp-00 | Boon Sing Thia, 2026-10-27 | gate 8/8; deviations D-00-1..8 |
 | 01 | approved | cp-01 | Boon Sing Thia, 2026-10-27 | gate 8/8; D-01-1..5; MD = role of 6 Principals (decision 2026-10-27) |
-| 02 | awaiting validation | cp-02 | | gate 8/8; D-02-1..10; 3.79 M rows |
+| 02 | awaiting validation | cp-02 | | gate 10/10; D-02-1..10; 5.7 M rows; targets revised (Bid ~15, Learning 10) |
 | 03 | not started | | | |
 | 04 | not started | | | |
 | 05 | not started | | | |

@@ -1,7 +1,7 @@
 # PRD - ACoCo ProServe360: Partner MD Decision Support on SAP BDC + Snowflake (v2.1, SPCS edition)
 
 **Document type:** Product Requirements Document - **master document for the demo**
-**Version:** 2.3 - 27 October 2026 (v2.2 + strict medallion: L0 CLDs, L1 data domains, L2 data assets incl. ontology and Semantic Views; SC360 review in Appendix D)
+**Version:** 2.4 - 27 October 2026 (v2.3 + revised time targets: Learning 10 % at every level, group Bid ~15 %; mix measured on the generated data)
 **Supersedes:** `docs/references/acoco_prd/acoco_oldref/ACoCo_Agentic_AI_Decision_Support_Demo_PRD.md` v1.1 (Streamlit edition, three personas, four roles)
 **Target account:** `SFSEAPAC.SNOWFLAKE_SAP_APJ` (AWS, connector `SNOWFLAKE_APJ`, status `CONNECTED`)
 **Demo "today":** **1 October 2026** - data window **1 Oct 2021 to 30 Sep 2026** (five fiscal years, FY22-FY26)
@@ -102,25 +102,25 @@ its own objective, which is never "more hours":
 
 | Category | What it is | Objective | Who carries it |
 |---|---|---|---|
-| **Delivery** | Billable hours on a customer project WBS | **Maximise** - it is the revenue | Mostly the lower bill codes: Analysts and Consultants spend ~80 % of their time here |
-| **Bid** | Hours on an opportunity's pre-sales internal order | **Raise the win-rate**, not the bid hours. Fewer, better-staffed pursuits beat many thin ones; success = win-rate and pursuit cost per won USD | Mostly Senior Managers and Principals |
-| **Learning** | Training and certification hours | **Shorten future delivery time** - learning pays back when the same scope is later delivered in fewer hours (higher margin on fixed price) | Everyone, ~5 % |
+| **Delivery** | Billable hours on a customer project WBS | **Maximise** - it is the revenue | Mostly the lower bill codes: Analysts and Consultants spend ~70-75 % of their time here |
+| **Bid** | Hours on an opportunity's pre-sales internal order | **Raise the win-rate**, not the bid hours. Fewer, better-staffed pursuits beat many thin ones; success = win-rate and pursuit cost per won USD | Everyone contributes (~10 % for Analysts); Senior Managers and Principals carry 40-50 % |
+| **Learning** | Training and certification hours | **Shorten future delivery time** - learning pays back when the same scope is later delivered in fewer hours (higher margin on fixed price) | Everyone, ~10 % |
 | **Admin** | Internal, non-client work | **Keep below 5 %** | Everyone |
 | **Bench** | Available hours with no booking (derived, not booked) | **Drive to almost zero.** A residual ~2 % is structural - people transiting between projects and bids - and is accepted | Nobody by design |
 
-Target time allocation by level (share of available hours; sums to 100 %):
+Target time allocation by level (share of available hours; sums to 100 %; revised 27 Oct 2026 - plan D-02-11):
 
 | Level | Delivery (= target billability) | Bid | Learning | Admin | Bench (transition) |
 |---|---|---|---|---|---|
-| Analyst | **80 %** | 8 % | 7 % | 3 % | 2 % |
-| Consultant | **78 %** | 12 % | 5 % | 3 % | 2 % |
-| Manager | **70 %** | 20 % | 5 % | 3 % | 2 % |
-| Senior Manager | **55 %** | 35 % | 5 % | 3 % | 2 % |
-| Principal | 45 % | **45 %** | 5 % | 3 % | 2 % |
-| *Group (FS headcount mix)* | *~75 %* | *~13 %* | *~6 %* | *~3 %* | *~2 %* |
+| Analyst | **75 %** | 10 % | 10 % | 3 % | 2 % |
+| Consultant | **71 %** | 14 % | 10 % | 3 % | 2 % |
+| Manager | **60 %** | 25 % | 10 % | 3 % | 2 % |
+| Senior Manager | 45 % | **40 %** | 10 % | 3 % | 2 % |
+| Principal | 35 % | **50 %** | 10 % | 3 % | 2 % |
+| *Group (ACoCo headcount mix)* | *~70 %* | *~15 %* | *~10 %* | *~3 %* | *~2 %* |
 
-The MD's job is to move her group's actual mix towards this target across ~167 people and ~70 concurrent projects
-and bids - above all, to convert bench into delivery.
+The MD's job is to move her group's actual mix towards this target across ~330 people and ~90 concurrent projects
+and bids - above all, to convert the remaining bench into delivery and to make the bid hours win.
 
 **Agentic AI changes the arithmetic - if it raises productivity.** AI-skilled consultants using AI tools and AI assets
 should deliver the same scope in fewer hours: margin up on fixed price, and capacity freed for more wins and new
@@ -131,8 +131,8 @@ things at once: delivery discipline, a bid machine that wins, and people with th
 pillars.**
 
 **Priya Nair, Partner MD Financial Services, on 1 October 2026** (FY26 has just closed; figures are design targets,
-section 6.3): her people spend ~66 % of their time in delivery against a ~75 % target and **~26 % on the bench against
-~2 %**; one Large fixed-price banking migration is forecast to lose money; bids with above-median pursuit effort
+section 6.3): her people spend ~65 % of their time in delivery against a ~70 % target, ~15 % bidding and ~10 % learning,
+and **~7 % on the bench against ~2 %**; one Large fixed-price banking migration is forecast to lose money; bids with above-median pursuit effort
 win far more often than the rest, but pursuit hours are spread thinly across every deal; 30-40 of her people roll off
 before 30 December with no next assignment, most below the AI-skill level her pipeline needs; she has funded AI
 learning for two years without knowing whether it made anyone faster; and attrition, though
@@ -162,11 +162,11 @@ person).
 
 ```
      ProServe360 overlay - one hour, five uses, one P&L - Delivery first
-     Delivery ##################################### ~75 %   (maximise)
-     Bid      ######                                ~13 %   (raise win-rate)
-     Learning ##                                    ~6 %    (shorten future delivery)
-     Admin    #                                     < 5 %   (minimise)
-     Bench    #                                     ~2 %    (transition only)
+     Delivery ##################################   ~70 %   (maximise)
+     Bid      ########                             ~15 %   (raise win-rate)
+     Learning #####                                ~10 %   (shorten future delivery)
+     Admin    #                                    < 5 %   (minimise)
+     Bench    #                                    ~2 %    (transition only)
      +-----------------------+-----------------------+-----------------------+
      | 1 OPERATIONAL         | 2 VALUE CREATION      | 3 PEOPLE DEVELOPMENT  |
      |   EXCELLENCE          |                       |                       |
@@ -720,14 +720,14 @@ Volume estimate (design): ~6-7 M rows in `ACOCO_SIM` (timesheet dominates); L2 r
 | Anchor | Design target |
 |---|---|
 | One Large FS fixed-price project in loss at FY26 close | forecast margin < 0 %, CPI ~0.73, SPI ~0.8 |
-| FY26 firm Delivery share (billability) / bench | ~66 % / ~26 % against targets ~75 % / ~2 % |
+| FY26 firm Delivery share (billability) / bench | ~65 % / ~7 % against targets ~70 % / ~2 % |
 | Roll-off before 30 Dec 2026 without successor | 30-40 people in FS; > 75 % below the pipeline's required AI-skill level |
 | Attrition trend | FY22 peak ~18 % -> FY26 ~13 % |
 | AI return (FY26, FS) | People+Agents margin ~10 pts above People-only; CPI > 1.1 vs ~1.0 |
 | Pre-sales | above-median intensity win-rate ~50 % vs ~30 % within size class |
 | Pursuit-team fit | bids with skill fit >= 0.8 win ~55 % vs ~30 % below 0.5, within size class |
 | Asset reuse | harvest rate FY22 ~15 % -> FY26 ~40 %; projects with reuse CPI ~1.05 vs ~0.95 without; the FS loss-making project reused none of the 2-3 matching assets |
-| Time mix (FS, FY26) | Delivery ~66 %, Bid ~5 %, Learning ~1 %, Admin ~2 %, Bench ~26 % - vs target ~75 / ~13 / ~6 / ~3 / ~2 %; excess bench ~24 pts |
+| Time mix (FS, FY26) | Delivery ~65 %, Bid ~15 %, Learning ~10 %, Admin ~3 %, Bench ~7 % - vs target ~70 / ~15 / ~10 / ~3 / ~2 %; excess bench ~5 pts |
 | AI productivity uplift (FS, FY26) | AI-active vs rest within level x work type: productivity index ~+0.08, 90 % CI excluding zero; skilled-but-inactive ~0 |
 | Learning payback | AI-curriculum completers ~+4 % productivity in the following 6 months vs matched non-learners; non-AI curricula smaller and not significant |
 | AI skilled but inactive | ~20 % of FS people with AI-skill level >= 3 have no AI-tool use in Jul-Sep 2026 |

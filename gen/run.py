@@ -89,6 +89,7 @@ def generate(inputs) -> dict:
     st, opps, projects, wps, wp_skills, wp_plan, opp_team, opp_skills, accounts = g.run_demand(
         ctx, people, wk, avail, ai_level, skill, learning, assets)
     ctx.out["_wp_plan"] = wp_plan
+    g.allocate_bid_time(ctx, st, people, wk)
     comps = g.schedule_learning(ctx, st, people, learning, ps, wk)
     ts = g.build_timesheets(ctx, st, people, wk)
     telem, agt, ident = g.build_telemetry_and_agt(ctx, st, people, ts, wk)

@@ -1,6 +1,6 @@
 {
   "cp": "cp01",
-  "run_at": "2026-10-27T03:02:23+00:00",
+  "run_at": "2026-10-27T04:24:30+00:00",
   "checks": [
     {
       "check_id": "CP01-01",
@@ -34,7 +34,7 @@
       "check_id": "CP01-05",
       "description": "time targets match PRD 2.1 and sum to 100",
       "expected": "5 levels, PRD values",
-      "actual": "{'Analyst': (80.0, 8.0, 7.0, 3.0, 2.0), 'Consultant': (78.0, 12.0, 5.0, 3.0, 2.0), 'Manager': (70.0, 20.0, 5.0, 3.0, 2.0), 'Senior Manager': (55.0, 35.0, 5.0, 3.0, 2.0), 'Principal': (45.0, 45.0, 5.0, 3.0, 2.0)}",
+      "actual": "{'Analyst': (75.0, 10.0, 10.0, 3.0, 2.0), 'Consultant': (71.0, 14.0, 10.0, 3.0, 2.0), 'Manager': (60.0, 25.0, 10.0, 3.0, 2.0), 'Senior Manager': (45.0, 40.0, 10.0, 3.0, 2.0), 'Principal': (35.0, 50.0, 10.0, 3.0, 2.0)}",
       "result": "PASS"
     },
     {

@@ -61,7 +61,11 @@ SIZES = {
     "Large": dict(team={"Principal": 1, "Senior Manager": 4, "Manager": 10, "Consultant": 22, "Analyst": 45},
                   weeks=(26, 39), wps=(4, 6), mix=0.20),
 }
-ALLOC = {"Analyst": 0.95, "Consultant": 0.95, "Manager": 0.85, "Senior Manager": 0.65, "Principal": 0.5}
+# Delivery allocation of an assignment, close to the level Delivery target so Bid and Learning have room (D-02-11)
+ALLOC = {"Analyst": 0.80, "Consultant": 0.76, "Manager": 0.65, "Senior Manager": 0.50, "Principal": 0.40}
+# Pursuit hours per bid at intensity 1, by size class (calibrated so firm Bid ~15 % of available hours, D-02-11)
+BID_HOURS = {"XX-Small": 900, "X-Small": 1800, "Small": 4000, "Medium": 9000, "Large": 19000}
+LEARNING_SHARE = 0.106          # target Learning share of available hours per person-year (D-02-11)
 
 # Firm-level target Delivery share of available hours by fiscal year (story: falls to ~66 % in FY26).
 TARGET_DELIVERY = {2022: 0.72, 2023: 0.71, 2024: 0.70, 2025: 0.68, 2026: 0.66, 2027: 0.60}
@@ -363,10 +367,17 @@ class Staffing:
         self.group = people.md_group.values
         self.risk = people.latent_risk.values
         self.skill_index = people.skill_index.values
+        lo = people.level.map({l: LEVEL_IDX[l] * 10 + 30 for l in LEVELS}).values
+        self.bill_pos = np.clip((people.bill_code.values - lo) / 9.0, 0, 1)   # position of bill code within level
+        # delivery ceiling per person: 1 - bid target (scaled by bill code) - learning - admin
+        bid_t = ctx.targets.set_index("LEVEL").BID.astype(float).div(100)
+        self.deliv_cap = (1.0 - people.level.map(bid_t).values * (0.75 + 0.5 * self.bill_pos)
+                          - LEARNING_SHARE - 0.03).astype(np.float32)
         self.week_of = {d: i for d, i in zip(wk.week_start, wk.week_idx)}
         self.fy = wk.fiscal_year.values
         self.usage = self._usage_bands()
         self.assignments, self.ts_rows, self.bid_rows = [], [], []
+        self.pursuits = []                               # (group, w0, w1, internal order, weight)
 
     def _usage_bands(self):
         """AI usage intensity per person-week (0..1). ~20 % of AI-skilled (>=3) people are inactive in FY26."""
@@ -394,7 +405,9 @@ class Staffing:
             return []
         win = slice(w0, w1)
         avail_ok = (self.avail[cand, win] > 0).mean(axis=1) >= 0.85
-        free_ok = (self.frac[cand, win] + alloc <= 1.0001).all(axis=1)
+        # delivery may not stack beyond max(one assignment, person cap); bids only need free capacity
+        ceiling = np.where(alloc <= 0.2, 1.0, np.maximum(self.deliv_cap[cand], alloc * 1.06))
+        free_ok = (self.frac[cand, win] + alloc <= ceiling[:, None] + 1e-4).all(axis=1)
         ok = cand[avail_ok & free_ok]
         ok = np.array([c for c in ok if c not in exclude])
         if not len(ok):
@@ -403,8 +416,14 @@ class Staffing:
                  - 0.6 * (self.risk[ok] - 1) + rng.normal(0, 0.8, len(ok)))
         if prefer_ai:
             score += 0.5 * (self.ai_level[ok, min(max(self.fy[w0] - 2022, 0), 5)] - 1)
+        # higher bill code -> more likely on a bid than on delivery (within the level)
+        score += np.where(alloc <= 0.2, 1.2, -0.4) * self.bill_pos[ok]
         order = ok[np.argsort(-score, kind="stable")]
         return list(order[:n])
+
+    def alloc_for(self, pi, level):
+        """Delivery allocation falls as the bill code rises within the level (+6 % lowest .. -6 % highest)."""
+        return ALLOC[level] * (1.06 - 0.12 * float(self.bill_pos[pi]))
 
     def commit(self, pi, w0, w1, alloc, proj, wp, role):
         hrs = self.avail[pi, w0:w1] * alloc
@@ -460,7 +479,7 @@ def run_demand(ctx, people, wk, avail, ai_level, skill_df, learning, assets_stat
                 target *= 0.95
             gap = target - dv
             tries = 0
-            story_due = (g == "FS" and tgt_m == dt.date(2026, 2, 1) and not seeded_loss["done"])
+            story_due = (g == "FS" and tgt_m == dt.date(2025, 12, 1) and not seeded_loss["done"])
             while (gap > 0.04 * av or story_due) and tries < 12:
                 story_due = False
                 tries += 1
@@ -468,7 +487,7 @@ def run_demand(ctx, people, wk, avail, ai_level, skill_df, learning, assets_stat
                 size = sizes[int(rng.choice(len(sizes), p=size_p))]
                 wt = WORK_TYPES[int(rng.integers(0, len(WORK_TYPES)))]
                 fixed = rng.random() < 0.62
-                force_story = (not seeded_loss["done"] and g == "FS" and tgt_m == dt.date(2026, 2, 1))
+                force_story = (not seeded_loss["done"] and g == "FS" and tgt_m == dt.date(2025, 12, 1))
                 if force_story:
                     size, wt, fixed = "Large", "Data Migration", True
                 spec = SIZES[size]
@@ -482,21 +501,21 @@ def run_demand(ctx, people, wk, avail, ai_level, skill_df, learning, assets_stat
                 value = sum(planned_hours[l] * rates[l][1] for l in team) * float(rng.uniform(0.84, 0.90))
                 # pursuit
                 lead_level = "Principal" if size in ("Medium", "Large") or rng.random() < 0.3 else "Senior Manager"
-                pw0 = st.week_of.get(close_date - dt.timedelta(days=close_date.weekday()), 0) - 8
+                pw0 = st.week_of.get(close_date - dt.timedelta(days=close_date.weekday()), 0) - 10
                 pw0 = max(pw0, 0)
-                pw1 = min(pw0 + 8, W)
+                pw1 = min(pw0 + 10, W)
                 principal = lead_level == "Principal" and rng.random() < 0.85
-                members_n = {"XX-Small": 2, "X-Small": 2, "Small": 3, "Medium": 4, "Large": 5}[size]
+                members_n = {"XX-Small": 2, "X-Small": 3, "Small": 4, "Medium": 6, "Large": 8}[size]
                 opp_id = f"OPP-{n_opp:05d}"
                 io = f"IO{700000 + n_opp}"
                 intensity = float(rng.lognormal(0, 0.55))
-                lead = st.pick(lead_level, g, pw0, pw1, 0.35, 1, req_skills)
+                lead = st.pick(lead_level, g, pw0, pw1, 0.15, 1, req_skills)
                 mem = []
-                for l in ["Manager", "Consultant", "Senior Manager", "Consultant", "Analyst"][: members_n]:
-                    mem += st.pick(l, g, pw0, pw1, 0.5, 1, req_skills, exclude=set(lead + mem))
+                for l in ["Manager", "Consultant", "Senior Manager", "Consultant", "Analyst", "Analyst", "Manager",
+                          "Consultant"][: members_n]:
+                    mem += st.pick(l, g, pw0, pw1, 0.15, 1, req_skills, exclude=set(lead + mem))
                 team_p = (lead + mem)[: members_n + 1]
-                hours_total = intensity * {"XX-Small": 320, "X-Small": 640, "Small": 1400, "Medium": 3200,
-                                           "Large": 6800}[size]
+                hours_total = intensity * BID_HOURS[size]
                 booked = 0.0
                 for pi in team_p:
                     per_w = hours_total / max(len(team_p), 1) / max(pw1 - pw0, 1)
@@ -516,6 +535,7 @@ def run_demand(ctx, people, wk, avail, ai_level, skill_df, learning, assets_stat
                     fit = len(set(req_skills) & have) / len(req_skills)
                 logit = -0.6 + 1.3 * np.log(max(intensity, 0.05)) + 1.6 * (fit - 0.5) + 0.45 * principal
                 p_win = 1 / (1 + np.exp(-logit))
+                st.pursuits.append((g, pw0, pw1, io, intensity * BID_HOURS[size] / BID_HOURS["Small"]))
                 if not known:
                     stage = "Proposal" if close_date < AS_OF + dt.timedelta(days=60) else "Qualify"
                     opps.append(dict(OPPORTUNITY_ID=opp_id, CUSTOMER=cust, MD_GROUP_ID=g, SIZE_CLASS=size,
@@ -569,7 +589,8 @@ def run_demand(ctx, people, wk, avail, ai_level, skill_df, learning, assets_stat
                 lead_pi = st.pick("Principal", g, start_w, min(start_w + weeks_n, W), ALLOC["Principal"], 1,
                                   req_skills) if "Principal" in team else []
                 for pi in lead_pi:
-                    st.commit(pi, start_w, min(start_w + weeks_n, W), ALLOC["Principal"], pid, None, "PROJECT_LEAD")
+                    st.commit(pi, start_w, min(start_w + weeks_n, W), st.alloc_for(pi, "Principal"), pid, None,
+                              "PROJECT_LEAD")
                 reuse_asset = assets_state.try_reuse(wt, fy, rng) if not seeded else None
                 for k in range(n_wp):
                     wp_id = f"{pid}-WP{k + 1:02d}"
@@ -592,7 +613,7 @@ def run_demand(ctx, people, wk, avail, ai_level, skill_df, learning, assets_stat
                     if delivery_model != "HUMAN":
                         wp_prod *= 1.03
                     if seeded:
-                        wp_prod = 0.64 if k == 1 else 0.76
+                        wp_prod = 0.58 if k == 1 else 0.68
                     wp_prod = float(np.clip(wp_prod, 0.55, 1.35))
                     weekly_team_h = sum(ALLOC[l] * 38.0 for _, l in members) or 38.0
                     actual_hours = plan_total / wp_prod
@@ -612,9 +633,10 @@ def run_demand(ctx, people, wk, avail, ai_level, skill_df, learning, assets_stat
                     for s in req_skills:
                         wp_skills.append((wp_id, s, 3))
                     for pi, l in members:
-                        hrs = st.commit(pi, start_w, end_w, ALLOC[l], pid, wp_id, "TEAM_MEMBER")
+                        a_pi = st.alloc_for(pi, l)
+                        hrs = st.commit(pi, start_w, end_w, a_pi, pid, wp_id, "TEAM_MEMBER")
                         pprod = st.person_prod(pi, start_w)
-                        st.ts_rows.append((pi, wp_id, start_w, end_w, ALLOC[l], pprod * wp_prod / max(pp, 0.5),
+                        st.ts_rows.append((pi, wp_id, start_w, end_w, a_pi, pprod * wp_prod / max(pp, 0.5),
                                            ai_enabled))
                     if reuse_asset:
                         assets_state.record_use(reuse_asset, pid, wp_id, wk.week_start.iloc[start_w],
@@ -666,31 +688,75 @@ class Assets:
 
 
 # ----------------------------------------------------------------------------------------------- 8 learning, timesheets
-def schedule_learning(ctx, st, people, learning, ps, wk):
+def allocate_bid_time(ctx, st, people, wk):
+    """Every person spends part of the week on live pursuits in their group, up to the level Bid target
+    (OPS.GEN_PARAMS_TIME_TARGET), limited by free capacity. Hours go to the pursuits active that week in proportion to
+    their intensity weight, so high-intensity bids (higher win probability) receive more hours."""
     rng = ctx.rng
-    W = len(wk)
+    target = ctx.targets.set_index("LEVEL").BID.astype(float).div(100).to_dict()
+    lvl = people.level.values
+    grp = people.group if hasattr(people, "group") else people.md_group.values
+    W = st.avail.shape[1]
+    by_gw = {}
+    for (g, w0, w1, io, wt) in st.pursuits:
+        for w in range(w0, min(w1, W)):
+            by_gw.setdefault((g, w), []).append((io, wt))
+    for g in GROUPS:
+        idx = np.where(grp == g)[0]
+        # higher bill code within the level -> larger share of the week on bids (x0.75 .. x1.25 of level target)
+        frac_t = np.array([target[l] for l in lvl[idx]], dtype=np.float32) * (0.69 + 0.46 * st.bill_pos[idx]).astype(np.float32)
+        for w in range(W):
+            live = by_gw.get((g, w))
+            if not live:
+                continue
+            ios = [x[0] for x in live]
+            wts = np.array([x[1] for x in live], dtype=float)
+            wts = wts / wts.sum()
+            free = np.maximum(st.avail[idx, w] * (1 - st.frac[idx, w]) - st.bid[idx, w], 0)
+            want = np.maximum(st.avail[idx, w] * frac_t * rng.uniform(0.85, 1.15, len(idx)) - st.bid[idx, w], 0)
+            h = np.minimum(free, want)
+            pick = rng.choice(len(ios), size=len(idx), p=wts)
+            for k, pi in enumerate(idx):
+                if h[k] > 0.5:
+                    st.bid[pi, w] += h[k]
+                    st.bid_rows.append((pi, w, ios[pick[k]], float(h[k])))
+
+
+def schedule_learning(ctx, st, people, learning, ps, wk):
+    """Per person and fiscal year, book learning items up to ~LEARNING_SHARE of available hours, in the weeks with
+    the most free capacity. AI-curriculum share follows the adoption curve."""
+    rng = ctx.rng
     li = learning.reset_index(drop=True)
+    ai_items = li[li.IS_AI_CURRICULUM].reset_index(drop=True)
+    core_items = li[~li.IS_AI_CURRICULUM].reset_index(drop=True)
+    ai_share = {2022: 0.10, 2023: 0.20, 2024: 0.35, 2025: 0.45, 2026: 0.55, 2027: 0.55}
     comps = []
+    uid = people.user_id.values
     for pi in range(len(people)):
-        for fy in range(2022, 2027):
+        for fy in range(2022, 2028):
             ws = np.where(wk.fiscal_year.values == fy)[0]
             ws = ws[st.avail[pi, ws] > 0]
             if not len(ws):
                 continue
-            n = int(rng.poisson(1.4))
-            for _ in range(n):
-                ai_share = {2022: 0.1, 2023: 0.2, 2024: 0.35, 2025: 0.45, 2026: 0.55}[fy]
-                pool = li[li.IS_AI_CURRICULUM == (rng.random() < ai_share)]
+            target = float(st.avail[pi, ws].sum()) * LEARNING_SHARE * float(np.clip(rng.normal(1.0, 0.2), 0.5, 1.5))
+            booked = 0.0
+            guard = 0
+            while booked < target and guard < 40:
+                guard += 1
+                pool = ai_items if rng.random() < ai_share[fy] else core_items
                 item = pool.iloc[int(rng.integers(0, len(pool)))]
                 free = st.avail[pi, ws] * (1 - st.frac[pi, ws]) - st.bid[pi, ws] - st.learn[pi, ws]
+                if free.max() <= 1:
+                    break
                 w = ws[int(np.argmax(free + rng.random(len(ws))))]
-                h = float(min(item.LEARNING_HOURS, max(free.max(), 0)))
-                if h <= 0:
-                    continue
+                h = float(min(item.LEARNING_HOURS, free.max(), target - booked + 4))
+                if h <= 0.5:
+                    break
                 st.learn[pi, w] += h
-                comps.append(dict(USER_ID=people.user_id.iloc[pi], LEARNING_ITEM_ID=item.LEARNING_ITEM_ID,
+                booked += h
+                comps.append(dict(USER_ID=uid[pi], LEARNING_ITEM_ID=item.LEARNING_ITEM_ID,
                                   COMPLETION_DATE=wk.week_start.iloc[w] + dt.timedelta(days=4),
-                                  COMPLETION_STATUS="COMPLETED", LEARNING_HOURS=h, SOURCE_SYSTEM="SIMULATED"))
+                                  COMPLETION_STATUS="COMPLETED", LEARNING_HOURS=round(h, 1), SOURCE_SYSTEM="SIMULATED"))
     return pd.DataFrame(comps)
 
 

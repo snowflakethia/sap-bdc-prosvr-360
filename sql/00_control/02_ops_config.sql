@@ -65,9 +65,10 @@ CREATE OR REPLACE TABLE ACOCO_DB.OPS.GEN_PARAMS_TIME_TARGET (
   BENCH    NUMBER(5,1) NOT NULL,
   CONSTRAINT FK_TT_LEVEL FOREIGN KEY (LEVEL) REFERENCES ACOCO_DB.OPS.LEVEL (LEVEL)
 ) COMMENT = 'Target share of available hours by time category and level (PRD 2.1). Delivery = target billability';
+-- Revised 2026-10-27 (CP-02 review): Learning 10 % at every level, group Bid ~15 % (decision D-02-11).
 INSERT INTO ACOCO_DB.OPS.GEN_PARAMS_TIME_TARGET VALUES
-  ('Analyst',        80,  8, 7, 3, 2),
-  ('Consultant',     78, 12, 5, 3, 2),
-  ('Manager',        70, 20, 5, 3, 2),
-  ('Senior Manager', 55, 35, 5, 3, 2),
-  ('Principal',      45, 45, 5, 3, 2);
+  ('Analyst',        75, 10, 10, 3, 2),
+  ('Consultant',     71, 14, 10, 3, 2),
+  ('Manager',        60, 25, 10, 3, 2),
+  ('Senior Manager', 45, 40, 10, 3, 2),
+  ('Principal',      35, 50, 10, 3, 2);

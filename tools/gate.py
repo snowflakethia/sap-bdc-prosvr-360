@@ -87,8 +87,8 @@ def gate_cp01():
                    str(sfcc), sfcc == 0))
 
     tt = q("select level, delivery, bid, learning, admin, bench from ACOCO_DB.OPS.GEN_PARAMS_TIME_TARGET")
-    expected = {"Analyst": (80, 8, 7, 3, 2), "Consultant": (78, 12, 5, 3, 2), "Manager": (70, 20, 5, 3, 2),
-                "Senior Manager": (55, 35, 5, 3, 2), "Principal": (45, 45, 5, 3, 2)}
+    expected = {"Analyst": (75, 10, 10, 3, 2), "Consultant": (71, 14, 10, 3, 2), "Manager": (60, 25, 10, 3, 2),
+                "Senior Manager": (45, 40, 10, 3, 2), "Principal": (35, 50, 10, 3, 2)}
     got = {r["LEVEL"]: tuple(float(r[k]) for k in ("DELIVERY", "BID", "LEARNING", "ADMIN", "BENCH")) for r in tt}
     ok = got == {k: tuple(float(x) for x in v) for k, v in expected.items()}
     checks.append(("CP01-05", "time targets match PRD 2.1 and sum to 100", "5 levels, PRD values",
@@ -189,6 +189,27 @@ def gate_cp02():
                     and ah.user_name = current_user()""")[0]["N"]
     checks.append(("CP02-08", "no write by this user to any CLD or the connector (ACCESS_HISTORY, 2 days)", "0",
                    str(writes), writes == 0))
+
+    fy26 = load["stats"]["FY26_firm"]
+    bid, learn = float(fy26["bid"]), float(fy26["learning"])
+    checks.append(("CP02-09", "FY26 firm share of available hours: Bid 12-18 %, Learning 8-12 % (D-02-11)",
+                   "Bid 12-18, Learning 8-12", f"Bid {bid}, Learning {learn}, Delivery {fy26['delivery']}",
+                   12 <= bid <= 18 and 8 <= learn <= 12))
+
+    mono = q("""with w as (select "userId" u, max_by("payGrade", "startDate") pg from COREWORKFORCEDATA_V1."coreworkforcedata"."coreworkforce_standardfields" group by 1
+                           union all select "userId", max_by("payGrade", "startDate") from ACOCO_SIM.COREWORKFORCE.COREWORKFORCE_STANDARDFIELDS where "userId" like 'S%' group by 1),
+                b as (select l.level, iff(mod(l.bill_code, 10) >= 5, 'U', 'L') band,
+                             sum(iff(t.category = 'BID', t.hours, 0)) / sum(t.hours) bid_share
+                      from ACOCO_SIM.TIMESHEET.TIMESHEET t join w on w.u = t.user_id
+                      join ACOCO_DB.OPS.MAP_PAYGRADE_LEVEL l on l.pay_grade = w.pg
+                      where t.fiscal_year = 2026 group by 1, 2)
+             select level, max(iff(band = 'L', bid_share, null)) lo, max(iff(band = 'U', bid_share, null)) hi
+             from b group by 1""")
+    bad = [r["LEVEL"] for r in mono if r["HI"] is None or r["LO"] is None or r["HI"] <= r["LO"]]
+    checks.append(("CP02-10", "within every level, higher bill codes spend a larger share on Bid (FY26)",
+                   "upper > lower in 5 levels",
+                   str({r["LEVEL"]: (round(100 * r["LO"], 1), round(100 * r["HI"], 1)) for r in mono}),
+                   len(mono) == 5 and not bad))
     return checks
 
 
