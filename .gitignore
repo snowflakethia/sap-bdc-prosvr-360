@@ -1,2 +1,10 @@
 .DS_Store
 docs/references/
+.venv/
+node_modules/
+dist/
+__pycache__/
+*.p8
+*.pem
+.env
+logs/*.tmp

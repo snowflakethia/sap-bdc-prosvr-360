@@ -12,7 +12,7 @@ step 4 runs only after the human says "CP-nn approved".
 1. **Gate** - automated checks run (`python tools/gate.py cp<nn>`); results are logged to
    `ACOCO_L2.QUALITY.Q_CHECK_RESULTS` (or to `logs/gate_cp<nn>.json` before that table exists). A failed gate stops
    the checkpoint; it is not presented for validation.
-2. **Backup** - `tools/checkpoint.sh <nn>`:
+2. **Backup** - `bash tools/checkpoint.sh <nn> "<title>" [DB ...]` (scripts run via `bash`; see `plan/deviations.md` D-00-4):
    - zero-copy clones of the **data-bearing** ACoCo databases changed in this CP:
      `CREATE DATABASE ACOCO_BKP_CP<nn>_<DB> CLONE <DB>;` (exact names only; CLDs and the connector are never cloned,
      altered or dropped - PRD 4.2);
@@ -22,7 +22,7 @@ step 4 runs only after the human says "CP-nn approved".
 3. **Human validation** - at most 3 checks, listed per CP below, each with the exact command and the expected result.
 4. **Approve** - the human replies "CP-nn approved" (or "CP-nn rejected: <reason>"). Only then does the next CP start.
 
-**Rollback to CP-nn** (`tools/rollback.sh <nn>`, run only on the human's instruction):
+**Rollback to CP-nn** (`bash tools/rollback.sh <nn>`, run only on the human's instruction):
 
 ```bash
 git checkout cp-<nn>                                   # code, SQL, generator, app at that checkpoint
@@ -439,7 +439,7 @@ regression 20/20 re-run on the final build.
 
 | CP | Status | Tag | Approved by / date | Notes |
 |---|---|---|---|---|
-| 00 | not started | | | |
+| 00 | awaiting validation | cp-00 | | gate 8/8; deviations D-00-1..8 |
 | 01 | not started | | | |
 | 02 | not started | | | |
 | 03 | not started | | | |
