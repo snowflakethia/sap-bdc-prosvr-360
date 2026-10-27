@@ -136,9 +136,9 @@ def gate_cp02():
     bands = {"projects": (400, 1000), "opportunities": (800, 2600), "assets": (80, 300)}
     bad = {k: st[k] for k, (lo, hi) in bands.items() if not lo <= st[k] <= hi}
     pc = q("""select count(distinct user_id) n from ACOCO_SIM.DIRECTORY.PERSON_NAME""")[0]["N"]
-    checks.append(("CP02-03", "volumes in band (projects 400-1000, opps 800-2600 (D-06-4), assets 80-300); 3,555 people",
+    checks.append(("CP02-03", "volumes in band (projects 400-1000, opps 800-2600 (D-06-4), assets 80-300); people 3,300-3,700 (D-06-7)",
                    "in band", f"projects {st['projects']}, opps {st['opportunities']}, assets {st['assets']}, "
-                              f"people {pc}", not bad and pc == 3555))
+                              f"people {pc}", not bad and 3300 <= pc <= 3700))
 
     fk = q("""select
         (select count(*) from ACOCO_SIM.TIMESHEET.TIMESHEET t left join ACOCO_DB.OPS.MAP_MD_GROUP m
@@ -432,8 +432,30 @@ def gate_cp05():
     return checks
 
 
+def gate_cp06():
+    import subprocess
+    import gen_ontology as go
+    checks = []
+    py = str(ROOT / ".venv" / "bin" / "python")
+    subprocess.run([py, str(ROOT / "tools" / "validate.py"), "--step", "reasoning", "--report"], capture_output=True)
+    rec = json.loads((ROOT / "logs" / "validate_reasoning.json").read_text())
+    for r in rec:
+        checks.append((f"CP06-{r['id']}", r["name"], r["expected"], r["actual"], r["ok"]))
+    show, bad, lags = dt_health(["REASONING"])
+    checks.append(("CP06-DT", "REASONING dynamic tables ACTIVE with a successful last refresh, 1-hour lag",
+                   "0 unhealthy", f"{len(show)} DTs, unhealthy {bad}, lags {lags}", bool(show) and not bad))
+    n, refs = go.check_refs()
+    checks.append(("CP06-REF", "no L2 object references L0", "0", f"{n} scanned, {refs}", not refs))
+    subprocess.run([py, str(ROOT / "tools" / "validate.py"), "--step", "marts", "--report"], capture_output=True)
+    m = json.loads((ROOT / "logs" / "validate_marts.json").read_text())
+    bad_m = [r["id"] for r in m if not r["ok"]]
+    checks.append(("CP06-MARTS", "mart reconciliations still pass after the recalibrated reload", "8/8",
+                   f"{len(m) - len(bad_m)}/{len(m)} {bad_m}", len(m) == 8 and not bad_m))
+    return checks
+
+
 GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03, "cp04": gate_cp04,
-         "cp05": gate_cp05}
+         "cp05": gate_cp05, "cp06": gate_cp06}
 
 
 def log_to_quality(cp, run_at, rows):

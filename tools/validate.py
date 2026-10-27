@@ -268,6 +268,54 @@ def measure_anchors():
     return a
 
 
+# ------------------------------------------------------------------------------------------------ reasoning (CP-06)
+def reasoning_checks():
+    rb = json.loads((ROOT / "logs" / "reasoning_build.json").read_text())
+    out = []
+    a = rb["attrition"]
+    out.append(dict(id="Q1", name="attrition model: hold-out AUC (FY25 snapshots, left in FY26)", expected="> 0.70",
+                    actual=f"{a['holdout_auc']:.3f} overall on {a['holdout_rows']:,}; {a['holdout_auc_simulated_pool']:.3f} "
+                           f"within the simulated pool ({a['holdout_rows_simulated']}); scored {a['scored_people']:,}",
+                    ok=a["holdout_auc"] > 0.70))
+    fam = set(rb["forecast"]["families"])
+    got = {x["skill_family"]: x["n"] for x in rb["forecast"]["series"]}
+    out.append(dict(id="Q2", name="demand forecast for every skill family, 12 months", expected=f"{len(fam)} families x 12",
+                    actual=str(got), ok=set(got) == fam and all(v == 12 for v in got.values())))
+    for svc, query, flt in [("CSS_PROJECT_COMMENTARY", "why is the project behind schedule",
+                             {"@and": [{"@eq": {"MD_GROUP_ID": "FS"}}, {"@eq": {"RAG_STATUS": "RED"}}]}),
+                            ("CSS_ASSET_LIBRARY", "data migration accelerator", None)]:
+        st = q(f"SHOW CORTEX SEARCH SERVICES LIKE '{svc}' IN SCHEMA ACOCO_L2.REASONING")
+        state = (st[0].get("indexing_state"), st[0].get("serving_state")) if st else (None, None)
+        body = {"query": query, "limit": 3, "columns": ["SEARCH_TEXT"]}
+        if flt:
+            body["filter"] = flt
+        res = json.loads(q(f"SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW('ACOCO_L2.REASONING.{svc}', '{json.dumps(body)}') r")[0]["R"])["results"]
+        out.append(dict(id=f"Q3-{svc}", name=f"search service {svc} active and answering", expected="ACTIVE, 3 results",
+                        actual=f"state {state}, {len(res)} results; top: {res[0]['SEARCH_TEXT'][:90] if res else '-'}",
+                        ok=state[1] == "ACTIVE" and len(res) == 3))
+    r13 = {x["AI_BAND"]: x for x in rb["r13"]}
+    act, ina = r13["AI_ACTIVE"], r13["SKILLED_INACTIVE"]
+    out.append(dict(id="Q4", name="R13 (FS FY26): AI-active uplift significant; skilled-but-inactive NOT significant",
+                    expected="active CI > 0; inactive CI spans 0",
+                    actual=f"active {act['UPLIFT']:+.3f} [{act['CI_LOW']:+.3f}, {act['CI_HIGH']:+.3f}]; "
+                           f"inactive {ina['UPLIFT']:+.3f} [{ina['CI_LOW']:+.3f}, {ina['CI_HIGH']:+.3f}]",
+                    ok=act["CI_LOW"] > 0 and not ina["SIGNIFICANT"]))
+    r14 = {(x["SCOPE"], x["CURRICULUM"]): x for x in rb["r14"]}
+    ai = r14[("FIRM", "AGENTIC_AI")]
+    out.append(dict(id="Q5", name="R14: AI-curriculum learning payback positive and significant", expected="CI > 0",
+                    actual=f"{ai['PAYBACK']:+.4f} [{ai['CI_LOW']:+.4f}, {ai['CI_HIGH']:+.4f}], {ai['EPISODES']:,} episodes",
+                    ok=ai["CI_LOW"] > 0))
+    r = one("""SELECT COUNT(DISTINCT PERSON_ID) p, COUNT(*) n, AVG(MATCH_SCORE) s FROM ACOCO_L2.SERVING.VW_BENCH_TO_PIPELINE""")
+    fs = one("""SELECT COUNT(DISTINCT PERSON_ID) p FROM ACOCO_L2.SERVING.VW_BENCH_TO_PIPELINE WHERE MD_GROUP_ID = 'FS'""")
+    out.append(dict(id="Q6", name="R1 bench-to-pipeline: every roll-off with skills gets matches", expected="> 0 people, FS included",
+                    actual=f"{r['P']} people, {r['N']} matches, mean score {f(r['S']):.3f}; FS {fs['P']}", ok=r["P"] > 0 and fs["P"] > 0))
+    m = one("""SELECT COUNT(DISTINCT ASSET_ID) a, COUNT_IF(REUSE_STATUS = 'MISSED') missed FROM ACOCO_L2.SERVING.VW_ASSET_MATCH
+               WHERE IS_STORY_PROJECT AND SAME_WORK_TYPE""")
+    out.append(dict(id="Q7", name="R12 asset match: story project had matching assets it did not reuse", expected=">= 2 MISSED",
+                    actual=f"{m['MISSED']} missed matches over {m['A']} assets", ok=m["MISSED"] >= 2))
+    return out
+
+
 def write_anchor_md(anchors):
     lines = ["# Measured story anchors (PRD 6.3)", "",
              f"Measured {dt.date.today().isoformat()} against ACOCO_L2 as of 2026-10-01 by `tools/validate.py --step anchors`.",
@@ -283,16 +331,16 @@ def write_anchor_md(anchors):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--step", choices=["marts", "anchors"], required=True)
+    ap.add_argument("--step", choices=["marts", "anchors", "reasoning"], required=True)
     ap.add_argument("--report", action="store_true")
     a = ap.parse_args()
-    if a.step == "marts":
-        rows = reconcile_marts()
-        (ROOT / "logs" / "validate_marts.json").write_text(json.dumps(rows, indent=1, default=str))
+    if a.step in ("marts", "reasoning"):
+        rows = reconcile_marts() if a.step == "marts" else reasoning_checks()
+        (ROOT / "logs" / f"validate_{a.step}.json").write_text(json.dumps(rows, indent=1, default=str))
         for r in rows:
             print(f"{'PASS' if r['ok'] else 'FAIL'}  {r['id']}  {r['name']}  ->  {r['actual']}")
         bad = [r for r in rows if not r["ok"]]
-        print(f"marts: {len(rows) - len(bad)}/{len(rows)} PASS")
+        print(f"{a.step}: {len(rows) - len(bad)}/{len(rows)} PASS")
         sys.exit(1 if bad else 0)
     anchors = measure_anchors()
     (ROOT / "logs" / "validate_anchors.json").write_text(json.dumps(anchors, indent=1, default=str))

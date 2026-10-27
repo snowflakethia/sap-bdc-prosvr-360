@@ -1,6 +1,6 @@
 {
   "cp": "cp02",
-  "run_at": "2026-10-27T12:32:49+00:00",
+  "run_at": "2026-10-27T14:05:18+00:00",
   "checks": [
     {
       "check_id": "CP02-01",
@@ -13,14 +13,14 @@
       "check_id": "CP02-02",
       "description": "every generated table loaded with its exact row count; total 3-8 M rows",
       "expected": "0 mismatches, 3-8 M",
-      "actual": "0 mismatches {}; total 6,532,081",
+      "actual": "0 mismatches {}; total 6,546,080",
       "result": "PASS"
     },
     {
       "check_id": "CP02-03",
-      "description": "volumes in band (projects 400-1000, opps 800-2600 (D-06-4), assets 80-300); 3,555 people",
+      "description": "volumes in band (projects 400-1000, opps 800-2600 (D-06-4), assets 80-300); people 3,300-3,700 (D-06-7)",
       "expected": "in band",
-      "actual": "projects 799, opps 2243, assets 188, people 3555",
+      "actual": "projects 774, opps 2143, assets 167, people 3476",
       "result": "PASS"
     },
     {
@@ -34,7 +34,7 @@
       "check_id": "CP02-05",
       "description": "FY26 booked time: Delivery largest, Admin < 5 % of booked hours",
       "expected": "Delivery max, Admin < 5",
-      "actual": "{'ADMIN': 1.4, 'DELIVERY': 71.5, 'BID': 17.6, 'LEARNING': 9.5}",
+      "actual": "{'LEARNING': 9.5, 'BID': 17.2, 'ADMIN': 1.3, 'DELIVERY': 72.0}",
       "result": "PASS"
     },
     {
@@ -48,7 +48,7 @@
       "check_id": "CP02-07",
       "description": "story project: one FS Large fixed-price project with total cost > revenue",
       "expected": "1 project, cost > revenue",
-      "actual": "[{'PROJECT_ID': 'P-0635', 'REV': 8598193.69, 'COST': 9636422.11}]",
+      "actual": "[{'PROJECT_ID': 'P-0615', 'REV': 8366676.49, 'COST': 9858918.46}]",
       "result": "PASS"
     },
     {
@@ -62,21 +62,21 @@
       "check_id": "CP02-09",
       "description": "FY26 firm share of available hours: Bid 12-18 %, Learning 8-12 % (D-02-11)",
       "expected": "Bid 12-18, Learning 8-12",
-      "actual": "Bid 17.4, Learning 9.5, Delivery 70.6",
+      "actual": "Bid 17.0, Learning 9.5, Delivery 71.1",
       "result": "PASS"
     },
     {
       "check_id": "CP02-10",
       "description": "within every level, higher bill codes spend a larger share on Bid (FY26)",
       "expected": "upper > lower in 5 levels",
-      "actual": "{'Consultant': (11.8, 21.4), 'Analyst': (8.7, 11.7), 'Manager': (24.1, 36.6), 'Principal': (42.9, 70.8), 'Senior Manager': (34.4, 52.2)}",
+      "actual": "{'Consultant': (11.6, 20.3), 'Manager': (23.5, 37.1), 'Analyst': (8.6, 11.4), 'Principal': (41.7, 70.9), 'Senior Manager': (32.6, 51.8)}",
       "result": "PASS"
     },
     {
       "check_id": "CP02-11",
       "description": "firm bench (available - booked) < 3 % of available hours in every fiscal year (D-02-12)",
       "expected": "all < 3",
-      "actual": "{'FY22_firm': 1.0, 'FY23_firm': 1.1, 'FY24_firm': 1.2, 'FY25_firm': 1.2, 'FY26_firm': 1.1}",
+      "actual": "{'FY22_firm': 0.2, 'FY23_firm': 1.2, 'FY24_firm': 1.2, 'FY25_firm': 1.1, 'FY26_firm': 1.1}",
       "result": "PASS"
     }
   ]

@@ -36,3 +36,8 @@ def run_file(path: str) -> None:
     proc = subprocess.run(["snow", "sql", "-c", CONNECTION, "--enable-templating", "NONE", "-f", path], capture_output=True, text=True)
     if proc.returncode != 0:
         raise SqlError((proc.stdout + proc.stderr).strip()[-2000:])
+
+
+def run_sql_block(sql: str) -> list[dict]:
+    """Run several statements in one session (e.g. USE WAREHOUSE before ML training); return the last result set."""
+    return query(sql)

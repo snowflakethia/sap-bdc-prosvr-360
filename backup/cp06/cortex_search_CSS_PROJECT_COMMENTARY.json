@@ -1,0 +1,29 @@
+[
+  {
+    "name": "CSS_PROJECT_COMMENTARY",
+    "database_name": "ACOCO_L2",
+    "schema_name": "REASONING",
+    "target_lag": "1 day",
+    "warehouse": "WH_ACOCO_BUILD",
+    "search_column": "SEARCH_TEXT",
+    "attribute_columns": "PROJECT_ID,RAG_STATUS,MD_GROUP_ID,WORK_TYPE,CONTRACT_TYPE,STATUS_AS_OF",
+    "columns": "SEARCH_TEXT,NOTE_ID,PROJECT_ID,NOTE_DATE,RAG_STATUS,MD_GROUP_ID,WORK_TYPE,CONTRACT_TYPE,STATUS_AS_OF,IS_STORY_PROJECT",
+    "definition": "SELECT SEARCH_TEXT, NOTE_ID, PROJECT_ID, NOTE_DATE::VARCHAR AS NOTE_DATE, RAG_STATUS, MD_GROUP_ID, WORK_TYPE, CONTRACT_TYPE,\n       STATUS_AS_OF, IS_STORY_PROJECT::VARCHAR AS IS_STORY_PROJECT\nFROM ACOCO_L2.REASONING.CSS_DOC_PROJECT_NOTE",
+    "comment": "Why questions over PM status notes (PRD section 9); filter by PROJECT_ID / MD_GROUP_ID / RAG_STATUS",
+    "service_query_url": "sfseapac-snowflake-sap-apj.ap-southeast-1.snowflakecomputing.com/api/v2/databases/acoco_l2/schemas/reasoning/cortex-search-services/css_project_commentary:query",
+    "source_data_num_rows": 3702,
+    "indexing_state": "ACTIVE",
+    "indexing_error": "",
+    "serving_state": "ACTIVE",
+    "created_on": "2026-10-27T06:59:04.190000-07:00",
+    "data_timestamp": "2026-10-27T06:59:04.784000-07:00",
+    "embedding_model": "snowflake-arctic-embed-m-v1.5",
+    "primary_key_columns": "",
+    "scoring_profile_count": 0,
+    "auto_suspend": null,
+    "refresh_mode": "INCREMENTAL",
+    "vector_indexes": "[{\"auto_embedded\":true,\"column\":\"SEARCH_TEXT\",\"model\":\"snowflake-arctic-embed-m-v1.5\"}]",
+    "full_index_build_interval_days": null,
+    "request_logging": null
+  }
+]

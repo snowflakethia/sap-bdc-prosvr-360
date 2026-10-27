@@ -286,20 +286,23 @@ search services `ACTIVE` and return results; R13 shows a non-significant effect 
 stratum.
 
 **Human validation**
-1. Model and forecast quality: `python tools/validate.py --step reasoning --report` - expected AUC, forecast
-   coverage and CSS status all `PASS`.
+1. Model and forecast quality: `.venv/bin/python tools/validate.py --step reasoning --report` - expected
+   `reasoning: 8/8 PASS` (AUC, forecast coverage, both search services, R13, R14, R1, R12).
 2. Ask the search service a "why" question:
    ```sql
    SELECT PARSE_JSON(SNOWFLAKE.CORTEX.SEARCH_PREVIEW('ACOCO_L2.REASONING.CSS_PROJECT_COMMENTARY',
-     '{"query":"why is the project behind schedule","limit":3}'))['results'];
+     '{"query":"why is the project behind schedule","columns":["PROJECT_ID","NOTE_DATE","SEARCH_TEXT"],
+       "filter":{"@and":[{"@eq":{"MD_GROUP_ID":"FS"}},{"@eq":{"RAG_STATUS":"RED"}}]},"limit":3}'))['results'];
    ```
-   Expected: three PM notes about the at-risk FS fixed-price project.
+   Expected: three RED notes on `P-0615` (FS Large Data Migration, fixed price) - migration scripting behind plan,
+   late client data / staffing gap. Unfiltered, the firm-wide top hits are other projects' slip notes (D-06-8).
 3. The AI-productivity test is honest:
    ```sql
    SELECT stratum, ai_band, uplift, ci_low, ci_high, significant
-   FROM ACOCO_L2.SERVING.VW_AI_PRODUCTIVITY_TEST WHERE fiscal_year = 2026 ORDER BY stratum, ai_band;
+   FROM ACOCO_L2.SERVING.VW_AI_PRODUCTIVITY_TEST WHERE fiscal_year = 2026 AND scope = 'FS' ORDER BY stratum, ai_band;
    ```
-   Expected: AI-active uplift positive with CI above zero; skilled-but-inactive `significant = FALSE`.
+   Expected: `ALL LEVELS` AI_ACTIVE uplift ~+0.12, CI ~[+0.10, +0.14], `TRUE`; `ALL LEVELS` SKILLED_INACTIVE ~+0.03,
+   CI spans zero, `FALSE`. Small level strata (Principal n 6, Consultant skilled-inactive n 6) are noisy.
 
 **Rollback:** restore `ACOCO_BKP_CP06_ACOCO_L2` (or `DROP` the `REASONING` objects and re-run from `cp-05`).
 
@@ -450,7 +453,7 @@ regression 20/20 re-run on the final build.
 | 03 | approved | cp-03 | Boon Sing Thia, 2026-10-27 | gate 9/9; reconcile 47/47; D-03-1..7 |
 | 04 | approved | cp-04 | Boon Sing Thia, 2026-10-27 | gate 8/8; ontology 19/19; D-04-1..5 |
 | 05 | approved | cp-05 | Boon Sing Thia, 2026-10-27 | gate 7/7; marts 8/8; anchors 4/13 OK, 9 MISS (decision); D-05-1..10 |
-| 06 | not started | | | |
+| 06 | awaiting validation | cp-06 | | gate 11/11; reasoning 8/8; anchors 9/13; D-06-1..10 |
 | 07 | not started | | | |
 | 08 | not started | | | |
 | 09 | not started | | | |

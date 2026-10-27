@@ -191,7 +191,8 @@ def build_people(ctx: Ctx) -> pd.DataFrame:
             active.append(new_sim(h + dt.timedelta(days=int(rng.integers(0, 20))), nxt))
         pending = [p for p in pending if p > m]
         leavers_target = ATTRITION[fy] * (real_hc + pool_target) / 12.0
-        risk = np.array([a["latent_risk"] for a in active])
+        # leaving hazard rises steeply with the hidden risk, so the attrition model has signal (D-06-7)
+        risk = np.array([a["latent_risk"] for a in active]) ** 2.5
         hazard = np.clip(leavers_target * risk / risk.sum(), 0, 0.9)
         leave = rng.random(len(active)) < hazard
         stay = []
@@ -308,9 +309,9 @@ def build_hr_extras(ctx: Ctx, people: pd.DataFrame):
             d = dt.date(fy, 9, 30)
             if (p.hire_date and p.hire_date > d) or (p.term_date and p.term_date < d):
                 continue
-            score = np.clip(3.2 - 0.6 * (p.latent_risk - 1) + rng.normal(0, 0.6), 1, 5)
+            score = np.clip(3.3 - 0.9 * (p.latent_risk - 1) + rng.normal(0, 0.55), 1, 5)
             perf.append((p.user_id, fy, d, int(round(score))))
-        compa = float(np.clip(1.0 - 0.08 * (p.latent_risk - 1) + rng.normal(0, 0.06), 0.75, 1.25))
+        compa = float(np.clip(1.0 - 0.12 * (p.latent_risk - 1) + rng.normal(0, 0.05), 0.75, 1.25))
         comp.append((p.user_id, p.level, ["B1", "B2", "B3", "B4", "B5"][LEVEL_IDX[p.level]], round(compa, 3)))
     perf = pd.DataFrame(perf, columns=["USER_ID", "FISCAL_YEAR", "RATING_DATE", "PERFORMANCE_RATING"])
     comp = pd.DataFrame(comp, columns=["USER_ID", "LEVEL", "PAY_BAND", "COMPA_RATIO"])
@@ -423,7 +424,7 @@ class Staffing:
         ai = self.ai_level[pi, min(max(self.fy[w] - 2022, 0), 5)]
         use = self.usage[pi, w]
         active = (ai >= 3) & (use >= 0.5)
-        return 1 + 0.05 * (self.skill_index[pi] - 3) + np.where(active, 0.09, np.where(use > 0, 0.02, 0.0))
+        return 1 + 0.05 * (self.skill_index[pi] - 3) + np.where(active, 0.11, np.where(use > 0, 0.02, 0.0))
 
     def pick(self, level, group, w0, w1, alloc, n, skills, prefer_ai=False, exclude=()):
         rng = self.ctx.rng

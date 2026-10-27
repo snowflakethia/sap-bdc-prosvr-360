@@ -1,0 +1,83 @@
+{
+  "cp": "cp06",
+  "run_at": "2026-10-27T14:26:28+00:00",
+  "checks": [
+    {
+      "check_id": "CP06-Q1",
+      "description": "attrition model: hold-out AUC (FY25 snapshots, left in FY26)",
+      "expected": "> 0.70",
+      "actual": "0.904 overall on 1,889; 0.569 within the simulated pool (220); scored 1,872",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP06-Q2",
+      "description": "demand forecast for every skill family, 12 months",
+      "expected": "3 families x 12",
+      "actual": "{'AGENTIC_AI': 12, 'INDUSTRY': 12, 'TECHNICAL': 12}",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP06-Q3-CSS_PROJECT_COMMENTARY",
+      "description": "search service CSS_PROJECT_COMMENTARY active and answering",
+      "expected": "ACTIVE, 3 results",
+      "actual": "state ('ACTIVE', 'ACTIVE'), 3 results; top: P-0615 (Large Data Migration, FIXED_PRICE, FS) 2026-06-30 RED: P-0615 month 7: migration s",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP06-Q3-CSS_ASSET_LIBRARY",
+      "description": "search service CSS_ASSET_LIBRARY active and answering",
+      "expected": "ACTIVE, 3 results",
+      "actual": "state ('ACTIVE', 'ACTIVE'), 3 results; top: Data Migration Accelerator 60. Reusable accelerator for data migration work: covers sap s4",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP06-Q4",
+      "description": "R13 (FS FY26): AI-active uplift significant; skilled-but-inactive NOT significant",
+      "expected": "active CI > 0; inactive CI spans 0",
+      "actual": "active +0.119 [+0.098, +0.138]; inactive +0.026 [-0.005, +0.058]",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP06-Q5",
+      "description": "R14: AI-curriculum learning payback positive and significant",
+      "expected": "CI > 0",
+      "actual": "+0.0488 [+0.0463, +0.0512], 3,431 episodes",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP06-Q6",
+      "description": "R1 bench-to-pipeline: every roll-off with skills gets matches",
+      "expected": "> 0 people, FS included",
+      "actual": "206 people, 1030 matches, mean score 0.720; FS 35",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP06-Q7",
+      "description": "R12 asset match: story project had matching assets it did not reuse",
+      "expected": ">= 2 MISSED",
+      "actual": "12 missed matches over 3 assets",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP06-DT",
+      "description": "REASONING dynamic tables ACTIVE with a successful last refresh, 1-hour lag",
+      "expected": "0 unhealthy",
+      "actual": "7 DTs, unhealthy [], lags ['1 hour']",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP06-REF",
+      "description": "no L2 object references L0",
+      "expected": "0",
+      "actual": "77 scanned, []",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP06-MARTS",
+      "description": "mart reconciliations still pass after the recalibrated reload",
+      "expected": "8/8",
+      "actual": "8/8 []",
+      "result": "PASS"
+    }
+  ]
+}

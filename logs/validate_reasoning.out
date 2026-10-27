@@ -1,0 +1,9 @@
+PASS  Q1  attrition model: hold-out AUC (FY25 snapshots, left in FY26)  ->  0.904 overall on 1,889; 0.569 within the simulated pool (220); scored 1,872
+PASS  Q2  demand forecast for every skill family, 12 months  ->  {'AGENTIC_AI': 12, 'INDUSTRY': 12, 'TECHNICAL': 12}
+PASS  Q3-CSS_PROJECT_COMMENTARY  search service CSS_PROJECT_COMMENTARY active and answering  ->  state ('ACTIVE', 'ACTIVE'), 3 results; top: P-0615 (Large Data Migration, FIXED_PRICE, FS) 2026-06-30 RED: P-0615 month 7: migration s
+PASS  Q3-CSS_ASSET_LIBRARY  search service CSS_ASSET_LIBRARY active and answering  ->  state ('ACTIVE', 'ACTIVE'), 3 results; top: Data Migration Accelerator 60. Reusable accelerator for data migration work: covers sap s4
+PASS  Q4  R13 (FS FY26): AI-active uplift significant; skilled-but-inactive NOT significant  ->  active +0.119 [+0.098, +0.138]; inactive +0.026 [-0.005, +0.058]
+PASS  Q5  R14: AI-curriculum learning payback positive and significant  ->  +0.0488 [+0.0463, +0.0512], 3,431 episodes
+PASS  Q6  R1 bench-to-pipeline: every roll-off with skills gets matches  ->  206 people, 1030 matches, mean score 0.720; FS 35
+PASS  Q7  R12 asset match: story project had matching assets it did not reuse  ->  12 missed matches over 3 assets
+reasoning: 8/8 PASS

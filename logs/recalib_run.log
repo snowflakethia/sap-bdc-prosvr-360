@@ -1,269 +1,274 @@
-generated 6,379,425 rows in 34s
+generated 6,393,424 rows in 33s
 {
  "FY22_firm": {
-  "delivery": "66.5",
-  "bid": "20.7",
-  "learning": "9.9",
+  "delivery": "67.7",
+  "bid": "20.6",
+  "learning": "9.8",
+  "admin": 1.7,
+  "bench": 0.2
+ },
+ "FY22_FS": {
+  "delivery": "67.3",
+  "bid": "19.8",
+  "learning": "10.0",
   "admin": 1.9,
   "bench": 1.0
  },
- "FY22_FS": {
-  "delivery": "66.2",
-  "bid": "20.8",
-  "learning": "9.8",
-  "admin": 1.9,
-  "bench": 1.3
- },
  "FY23_firm": {
-  "delivery": "71.2",
-  "bid": "16.7",
+  "delivery": "70.8",
+  "bid": "17.0",
   "learning": "9.7",
   "admin": 1.3,
-  "bench": 1.1
+  "bench": 1.2
  },
  "FY23_FS": {
-  "delivery": "71.5",
-  "bid": "16.3",
-  "learning": "9.8",
-  "admin": 1.3,
-  "bench": 1.1
+  "delivery": "71.8",
+  "bid": "16.6",
+  "learning": "9.4",
+  "admin": 1.2,
+  "bench": 1.0
  },
  "FY24_firm": {
-  "delivery": "71.0",
-  "bid": "16.9",
-  "learning": "9.6",
+  "delivery": "70.9",
+  "bid": "16.8",
+  "learning": "9.8",
   "admin": 1.3,
   "bench": 1.2
  },
  "FY24_FS": {
-  "delivery": "71.3",
-  "bid": "16.5",
-  "learning": "9.6",
-  "admin": 1.4,
-  "bench": 1.2
+  "delivery": "70.7",
+  "bid": "16.1",
+  "learning": "10.1",
+  "admin": 1.6,
+  "bench": 1.5
  },
  "FY25_firm": {
-  "delivery": "70.8",
+  "delivery": "71.3",
   "bid": "16.7",
-  "learning": "9.8",
-  "admin": 1.5,
-  "bench": 1.2
+  "learning": "9.6",
+  "admin": 1.3,
+  "bench": 1.1
  },
  "FY25_FS": {
-  "delivery": "71.4",
+  "delivery": "72.2",
   "bid": "16.0",
-  "learning": "9.7",
-  "admin": 1.5,
-  "bench": 1.4
+  "learning": "9.6",
+  "admin": 1.2,
+  "bench": 1.0
  },
  "FY26_firm": {
-  "delivery": "70.6",
-  "bid": "17.4",
+  "delivery": "71.1",
+  "bid": "17.0",
+  "learning": "9.5",
+  "admin": 1.3,
+  "bench": 1.1
+ },
+ "FY26_FS": {
+  "delivery": "71.5",
+  "bid": "16.5",
   "learning": "9.5",
   "admin": 1.4,
   "bench": 1.1
  },
- "FY26_FS": {
-  "delivery": "72.1",
-  "bid": "15.7",
-  "learning": "9.6",
-  "admin": 1.4,
-  "bench": 1.2
- },
- "opportunities": 2243,
- "win_rate_pct": 38.2,
- "open_pipeline": 150,
- "projects": 799,
+ "opportunities": 2143,
+ "win_rate_pct": 39.1,
+ "open_pipeline": 164,
+ "projects": 774,
  "size_mix": {
-  "Small": 377,
-  "Large": 185,
-  "Medium": 87,
-  "X-Small": 84,
-  "XX-Small": 66
+  "Small": 389,
+  "Large": 172,
+  "Medium": 84,
+  "X-Small": 74,
+  "XX-Small": 55
  },
  "seeded_loss": [
-  "P-0635"
+  "P-0615"
  ],
- "assets": 188,
- "asset_uses": 805,
- "people": 3555,
- "sim_people": 1871
+ "assets": 167,
+ "asset_uses": 702,
+ "people": 3476,
+ "sim_people": 1792
 }
-  loaded COREWORKFORCE.COREWORKFORCE_STANDARDFIELDS: 45,764
-  loaded EMPLOYEEAVAILABILITY.EMPLOYEEAVAILABILITY: 1,565,563
-  loaded DIRECTORY.PERSON_NAME: 3,555
+  loaded COREWORKFORCE.COREWORKFORCE_STANDARDFIELDS: 45,849
+  loaded EMPLOYEEAVAILABILITY.EMPLOYEEAVAILABILITY: 1,570,558
+  loaded DIRECTORY.PERSON_NAME: 3,476
   loaded DIRECTORY.MD_ROLE: 6
   loaded SKILLS.SKILL: 37
-  loaded SKILLS.PERSON_SKILL: 120,566
+  loaded SKILLS.PERSON_SKILL: 120,379
   loaded LEARNING.LEARNING_ITEM: 111
-  loaded LEARNING.LEARNING_COMPLETION: 285,797
-  loaded PERFORMANCE.PERFORMANCE_RATING: 9,613
-  loaded COMPENSATION.COMPENSATION_SUMMARY: 3,555
-  loaded SUCCESSION.NOMINATION: 79
+  loaded LEARNING.LEARNING_COMPLETION: 286,000
+  loaded PERFORMANCE.PERFORMANCE_RATING: 9,644
+  loaded COMPENSATION.COMPENSATION_SUMMARY: 3,476
+  loaded SUCCESSION.NOMINATION: 73
   loaded CRM.ACCOUNT: 120
-  loaded CRM.OPPORTUNITY: 2,243
-  loaded CRM.OPPORTUNITY_SKILL: 8,926
-  loaded CRM.OPPORTUNITY_TEAM: 12,836
-  loaded CUSTOMERPROJECT.CUSTOMER_PROJECT: 799
-  loaded CUSTOMERPROJECT.WORK_PACKAGE: 1,662
-  loaded CUSTOMERPROJECT.WORK_PACKAGE_SKILL: 6,630
-  loaded CUSTOMERPROJECT.WORK_PACKAGE_LEVEL_PLAN: 6,432
-  loaded RESOURCEASSIGNMENT.RESOURCE_ASSIGNMENT: 17,485
-  loaded TIMESHEET.TIMESHEET: 1,667,959
-  loaded INTERNALORDER.INTERNAL_ORDER: 2,245
-  loaded FINANCE_ACOCO.OPERATIONALACCTGDOCITEM: 1,363,878
-  loaded FINANCE_ACOCO.JOURNALENTRY: 681,939
-  loaded FINANCE_ACOCO.FINANCIALPLANNINGENTRYITEM: 10,995
+  loaded CRM.OPPORTUNITY: 2,143
+  loaded CRM.OPPORTUNITY_SKILL: 8,528
+  loaded CRM.OPPORTUNITY_TEAM: 12,075
+  loaded CUSTOMERPROJECT.CUSTOMER_PROJECT: 774
+  loaded CUSTOMERPROJECT.WORK_PACKAGE: 1,564
+  loaded CUSTOMERPROJECT.WORK_PACKAGE_SKILL: 6,247
+  loaded CUSTOMERPROJECT.WORK_PACKAGE_LEVEL_PLAN: 6,072
+  loaded RESOURCEASSIGNMENT.RESOURCE_ASSIGNMENT: 17,785
+  loaded TIMESHEET.TIMESHEET: 1,655,754
+  loaded INTERNALORDER.INTERNAL_ORDER: 2,145
+  loaded FINANCE_ACOCO.OPERATIONALACCTGDOCITEM: 1,367,008
+  loaded FINANCE_ACOCO.JOURNALENTRY: 683,504
+  loaded FINANCE_ACOCO.FINANCIALPLANNINGENTRYITEM: 10,261
   loaded FINANCE_ACOCO.ACTIVITYTYPE_EXT: 3
-  loaded ASSETS.ASSET: 188
-  loaded ASSETS.ASSET_HARVEST: 188
-  loaded ASSETS.ASSET_USAGE: 805
-  loaded TELEMETRY.OPENAI_USAGE: 207,831
-  loaded TELEMETRY.ANTHROPIC_USAGE: 196,126
-  loaded TELEMETRY.CORTEX_USAGE: 148,113
-  loaded TELEMETRY.AI_IDENTITY_MAP: 3,555
-  loaded PROJECTCOMMENTARY.STATUS_NOTE: 3,821
-generated 6,379,425 rows in 35s
+  loaded ASSETS.ASSET: 167
+  loaded ASSETS.ASSET_HARVEST: 167
+  loaded ASSETS.ASSET_USAGE: 702
+  loaded TELEMETRY.OPENAI_USAGE: 217,803
+  loaded TELEMETRY.ANTHROPIC_USAGE: 202,049
+  loaded TELEMETRY.CORTEX_USAGE: 151,766
+  loaded TELEMETRY.AI_IDENTITY_MAP: 3,476
+  loaded PROJECTCOMMENTARY.STATUS_NOTE: 3,702
+generated 6,393,424 rows in 35s
 {
  "FY22_firm": {
-  "delivery": "66.5",
-  "bid": "20.7",
-  "learning": "9.9",
+  "delivery": "67.7",
+  "bid": "20.6",
+  "learning": "9.8",
+  "admin": 1.7,
+  "bench": 0.2
+ },
+ "FY22_FS": {
+  "delivery": "67.3",
+  "bid": "19.8",
+  "learning": "10.0",
   "admin": 1.9,
   "bench": 1.0
  },
- "FY22_FS": {
-  "delivery": "66.2",
-  "bid": "20.8",
-  "learning": "9.8",
-  "admin": 1.9,
-  "bench": 1.3
- },
  "FY23_firm": {
-  "delivery": "71.2",
-  "bid": "16.7",
+  "delivery": "70.8",
+  "bid": "17.0",
   "learning": "9.7",
   "admin": 1.3,
-  "bench": 1.1
+  "bench": 1.2
  },
  "FY23_FS": {
-  "delivery": "71.5",
-  "bid": "16.3",
-  "learning": "9.8",
-  "admin": 1.3,
-  "bench": 1.1
+  "delivery": "71.8",
+  "bid": "16.6",
+  "learning": "9.4",
+  "admin": 1.2,
+  "bench": 1.0
  },
  "FY24_firm": {
-  "delivery": "71.0",
-  "bid": "16.9",
-  "learning": "9.6",
+  "delivery": "70.9",
+  "bid": "16.8",
+  "learning": "9.8",
   "admin": 1.3,
   "bench": 1.2
  },
  "FY24_FS": {
-  "delivery": "71.3",
-  "bid": "16.5",
-  "learning": "9.6",
-  "admin": 1.4,
-  "bench": 1.2
+  "delivery": "70.7",
+  "bid": "16.1",
+  "learning": "10.1",
+  "admin": 1.6,
+  "bench": 1.5
  },
  "FY25_firm": {
-  "delivery": "70.8",
+  "delivery": "71.3",
   "bid": "16.7",
-  "learning": "9.8",
-  "admin": 1.5,
-  "bench": 1.2
+  "learning": "9.6",
+  "admin": 1.3,
+  "bench": 1.1
  },
  "FY25_FS": {
-  "delivery": "71.4",
+  "delivery": "72.2",
   "bid": "16.0",
-  "learning": "9.7",
-  "admin": 1.5,
-  "bench": 1.4
+  "learning": "9.6",
+  "admin": 1.2,
+  "bench": 1.0
  },
  "FY26_firm": {
-  "delivery": "70.6",
-  "bid": "17.4",
+  "delivery": "71.1",
+  "bid": "17.0",
+  "learning": "9.5",
+  "admin": 1.3,
+  "bench": 1.1
+ },
+ "FY26_FS": {
+  "delivery": "71.5",
+  "bid": "16.5",
   "learning": "9.5",
   "admin": 1.4,
   "bench": 1.1
  },
- "FY26_FS": {
-  "delivery": "72.1",
-  "bid": "15.7",
-  "learning": "9.6",
-  "admin": 1.4,
-  "bench": 1.2
- },
- "opportunities": 2243,
- "win_rate_pct": 38.2,
- "open_pipeline": 150,
- "projects": 799,
+ "opportunities": 2143,
+ "win_rate_pct": 39.1,
+ "open_pipeline": 164,
+ "projects": 774,
  "size_mix": {
-  "Small": 377,
-  "Large": 185,
-  "Medium": 87,
-  "X-Small": 84,
-  "XX-Small": 66
+  "Small": 389,
+  "Large": 172,
+  "Medium": 84,
+  "X-Small": 74,
+  "XX-Small": 55
  },
  "seeded_loss": [
-  "P-0635"
+  "P-0615"
  ],
- "assets": 188,
- "asset_uses": 805,
- "people": 3555,
- "sim_people": 1871
+ "assets": 167,
+ "asset_uses": 702,
+ "people": 3476,
+ "sim_people": 1792
 }
-generated 6,379,425 rows in 35s
+generated 6,393,424 rows in 35s
 determinism: PASS
-built 01_core.sql (24s)
-built 02_ontology_entities.sql (66s)
-built 03_ontology_relationships.sql (21s)
-built 10_mart_workforce_performance.sql (37s)
-built 11_mart_project_delivery.sql (97s)
-built 12_mart_pipeline_presales.sql (54s)
-built 13_mart_ai_adoption.sql (43s)
-built 14_mart_portfolio_360.sql (31s)
-built 20_serving.sql (30s)
-built 30_quality.sql (11s)
+built 01_core.sql (22s)
+built 02_ontology_entities.sql (65s)
+built 03_ontology_relationships.sql (24s)
+built 10_mart_workforce_performance.sql (34s)
+built 11_mart_project_delivery.sql (61s)
+built 12_mart_pipeline_presales.sql (41s)
+built 13_mart_ai_adoption.sql (38s)
+built 14_mart_portfolio_360.sql (26s)
+built 20_serving.sql (13s)
+built 30_quality.sql (9s)
+built 40_reasoning.sql (64s)
+attrition: hold-out AUC 0.904 on 1889 FY25 snapshots (base rate 0.048), 0.569 within the simulated pool (220); scored 1872 active people; top drivers TENURE_MONTHS, PRODUCTIVITY_INDEX, COMPA_RATIO
+forecast: 3 of 3 skill families, 12 months each
+r13 FS FY26 AI_ACTIVE: uplift +0.119 CI [+0.098, +0.138] significant=True (n 146)
+r13 FS FY26 SKILLED_INACTIVE: uplift +0.026 CI [-0.005, +0.058] significant=False (n 37)
+r14 FIRM AGENTIC_AI: payback +0.0488 CI [+0.0463, +0.0512] significant=True
+r14 FIRM CORE: payback -0.0369 CI [-0.0387, -0.0353] significant=True
+r14 FS AGENTIC_AI: payback +0.0366 CI [+0.0296, +0.0439] significant=True
+r14 FS CORE: payback -0.0424 CI [-0.0477, -0.0375] significant=True
 PASS  CP02-01  generator determinism (two runs, identical table hashes)  ->  PASS
-PASS  CP02-02  every generated table loaded with its exact row count; total 3-8 M rows  ->  0 mismatches {}; total 6,532,081
-FAIL  CP02-03  volumes in band (projects 400-1000, opps 800-2200, assets 80-300); 3,555 people  ->  projects 799, opps 2243, assets 188, people 3555
+PASS  CP02-02  every generated table loaded with its exact row count; total 3-8 M rows  ->  0 mismatches {}; total 6,546,080
+PASS  CP02-03  volumes in band (projects 400-1000, opps 800-2600 (D-06-4), assets 80-300); people 3,300-3,700 (D-06-7)  ->  projects 774, opps 2143, assets 167, people 3476
 PASS  CP02-04  every key resolves to real SAP / OPS master data (cost centre, GL, activity type, SF cost centre, pay grade)  ->  {'CC': 0, 'GL': 0, 'ACT': 0, 'SFCC': 0, 'PG': 0}
-PASS  CP02-05  FY26 booked time: Delivery largest, Admin < 5 % of booked hours  ->  {'ADMIN': 1.4, 'DELIVERY': 71.5, 'BID': 17.6, 'LEARNING': 9.5}
+PASS  CP02-05  FY26 booked time: Delivery largest, Admin < 5 % of booked hours  ->  {'LEARNING': 9.5, 'BID': 17.2, 'ADMIN': 1.3, 'DELIVERY': 72.0}
 PASS  CP02-06  exactly one MD per group, each a real Principal  ->  6 / 6 / 6
-PASS  CP02-07  story project: one FS Large fixed-price project with total cost > revenue  ->  [{'PROJECT_ID': 'P-0635', 'REV': 8598193.69, 'COST': 9636422.11}]
+PASS  CP02-07  story project: one FS Large fixed-price project with total cost > revenue  ->  [{'PROJECT_ID': 'P-0615', 'REV': 8366676.49, 'COST': 9858918.46}]
 PASS  CP02-08  no write by this user to any CLD or the connector (ACCESS_HISTORY, 2 days)  ->  0
-PASS  CP02-09  FY26 firm share of available hours: Bid 12-18 %, Learning 8-12 % (D-02-11)  ->  Bid 17.4, Learning 9.5, Delivery 70.6
-PASS  CP02-10  within every level, higher bill codes spend a larger share on Bid (FY26)  ->  {'Analyst': (8.7, 11.7), 'Manager': (24.1, 36.6), 'Senior Manager': (34.4, 52.2), 'Principal': (42.9, 70.8), 'Consultant': (11.8, 21.4)}
-PASS  CP02-11  firm bench (available - booked) < 3 % of available hours in every fiscal year (D-02-12)  ->  {'FY22_firm': 1.0, 'FY23_firm': 1.1, 'FY24_firm': 1.2, 'FY25_firm': 1.2, 'FY26_firm': 1.1}
+PASS  CP02-09  FY26 firm share of available hours: Bid 12-18 %, Learning 8-12 % (D-02-11)  ->  Bid 17.0, Learning 9.5, Delivery 71.1
+PASS  CP02-10  within every level, higher bill codes spend a larger share on Bid (FY26)  ->  {'Consultant': (11.6, 20.3), 'Manager': (23.5, 37.1), 'Analyst': (8.6, 11.4), 'Principal': (41.7, 70.9), 'Senior Manager': (32.6, 51.8)}
+PASS  CP02-11  firm bench (available - booked) < 3 % of available hours in every fiscal year (D-02-12)  ->  {'FY22_firm': 0.2, 'FY23_firm': 1.2, 'FY24_firm': 1.2, 'FY25_firm': 1.1, 'FY26_firm': 1.1}
 
-cp02: 10/11 passed
-PASS  R1  time mix sums to 100 % of available hours per person-month (+/- 1 %) (OD-11)  ->  99.97 % of 116,595; overbooked 0.001 %
-PASS  R2  billable hours: Delivery timesheet hours = journal activity quantity on WBS, per month  ->  60 months, worst 0.000 %, totals 13,232,485 / 13,232,485
+cp02: 11/11 passed
+PASS  R1  time mix sums to 100 % of available hours per person-month (+/- 1 %) (OD-11)  ->  99.98 % of 116,684; overbooked 0.000 %
+PASS  R2  billable hours: Delivery timesheet hours = journal activity quantity on WBS, per month  ->  60 months, worst 0.000 %, totals 13,313,717 / 13,313,717
 PASS  R3  pursuit hours: Bid timesheets = journal activity quantity on pre-sales internal orders, per month (Learning / Admin stay on the cost centre)  ->  61 months, worst 0.000 %
-PASS  R4  overhead = 35 % of people activity cost, per project  ->  733 projects, 0 off; firm 35.00 %
-PASS  R5  every journal document balances (debits = credits)  ->  681,939 documents, 0 unbalanced
-PASS  R6  revenue: L1 journal = PROJECT_DELIVERY = PORTFOLIO_360 (closed months)  ->  1,521,614,664 / 1,521,614,664 / 1,521,614,664
-PASS  R7  available hours: L1 Employee Availability = scorecard = capacity mix (closed months)  ->  18,967,097 / 18,967,097 / 18,967,097
-PASS  R8  booked hours: L1 timesheets = scorecard (closed months)  ->  18,639,241 / 18,639,241
+PASS  R4  overhead = 35 % of people activity cost, per project  ->  732 projects, 0 off; firm 35.00 %
+PASS  R5  every journal document balances (debits = credits)  ->  683,504 documents, 0 unbalanced
+PASS  R6  revenue: L1 journal = PROJECT_DELIVERY = PORTFOLIO_360 (closed months)  ->  1,538,111,745 / 1,538,111,745 / 1,538,111,745
+PASS  R7  available hours: L1 Employee Availability = scorecard = capacity mix (closed months)  ->  18,998,417 / 18,998,417 / 18,998,417
+PASS  R8  booked hours: L1 timesheets = scorecard (closed months)  ->  18,686,633 / 18,686,633
 marts: 8/8 PASS
-Traceback (most recent call last):
-  File "/Users/bthia/Development/sap-bdc-prosvr-360/tools/validate.py", line 306, in <module>
-    main()
-    ~~~~^^
-  File "/Users/bthia/Development/sap-bdc-prosvr-360/tools/validate.py", line 297, in main
-    anchors = measure_anchors()
-  File "/Users/bthia/Development/sap-bdc-prosvr-360/tools/validate.py", line 209, in measure_anchors
-    r = q("""SELECT YEAR(DATEADD(month, 3, h.FORECAST_END)) fy, COUNT(*) closed, COUNT(a.ASSET_ID) harvested
-             FROM ACOCO_L2.ONTOLOGY.ENT_PROJECT h
-             LEFT JOIN (SELECT DISTINCT SOURCE_PROJECT_ID, MIN(ASSET_ID) ASSET_ID FROM ACOCO_L2.ONTOLOGY.ENT_ASSET GROUP BY 1) a
-               ON a.SOURCE_PROJECT_ID = h.PROJECT_ID
-             WHERE h.STATUS_AS_OF = 'CLOSED' GROUP BY 1 ORDER BY 1""")
-  File "/Users/bthia/Development/sap-bdc-prosvr-360/tools/sf.py", line 24, in query
-    raise SqlError((proc.stdout + proc.stderr).strip()[-2000:])
-sf.SqlError: ╭─ Error ──────────────────────────────────────────────────────────────────╮
-│ Invalid connection configuration. 250001: Could not connect to Snowflake │
-│ backend after 11 attempt(s).Aborting                                     │
-╰──────────────────────────────────────────────────────────────────────────╯
+MISS  A1   One Large FS fixed-price project in loss at FY26 close  ->  P-0615 (FS, Large, FIXED_PRICE): forecast margin -16.9 %, CPI 0.70, SPI 0.96
+OK    A2   FY26 firm Delivery share / bench  ->  Delivery 70.9 %, bench 1.4 %; bench by FY {2022: 1.9, 2023: 1.7, 2024: 1.8, 2025: 1.5, 2026: 1.4}
+OK    A3   FS roll-off before 30 Dec 2026 without successor  ->  36 people; 89 % below pipeline AI level
+OK    A4   Voluntary attrition trend  ->  by FY {2022: 19.6, 2023: 17.2, 2024: 15.2, 2025: 13.7, 2026: 12.9}
+OK    A5   AI return (FY26, FS): People+Agents vs People-only  ->  margin 40.8 % vs 29.0 % (+11.8 pts); median CPI 1.20 vs 1.12 (n 21 / 13)
+MISS  A6   Pre-sales intensity and win-rate (within size class)  ->  above 54.6 % vs below 23.7 % (gap 30.8 pts; firm win-rate 39 %)
+OK    A7   Pursuit-team skill fit and win-rate  ->  high 53.3 % (n 971) vs low 10.3 % (n 494)
+MISS  A8   Asset harvest and reuse  ->  harvest by FY {2022: 11.0, 2023: 17.0, 2024: 20.0, 2025: 32.0, 2026: 30.0}; median CPI reuse 1.122 vs none 1.029; story project uses 0, matching assets available at its start 18
+OK    A9   Time mix (FS, FY26)  ->  Delivery 71.3 / Bid 16.4 / Learning 9.5 / Admin 1.4 / Bench 1.4 %
+MISS  A10  AI productivity uplift (FS, FY26), within level x work type  ->  uplift +0.119, 90 % CI [+0.097, +0.137] (375 people); skilled-inactive PI 1.073 vs other non-active 1.037
+OK    A11  Learning payback (6 months after vs before, vs matched comparison)  ->  AI +0.0488 (se 0.0017, n 3,431); non-AI -0.0369 (se 0.0011)
+OK    A12  AI skilled but inactive (FS, Jul-Sep 2026)  ->  34 of 170 (20 %)
+OK    A13  Large-project revenue share (portfolio shape)  ->  FY22-26 72.9 %; by FY {2022: 69.5, 2023: 78.5, 2024: 75.6, 2025: 70.2, 2026: 70.7}
+anchors: 9/13 OK (written plan/measured_anchors.md)
 DONE
