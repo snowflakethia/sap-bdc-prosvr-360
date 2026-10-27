@@ -440,8 +440,8 @@ regression 20/20 re-run on the final build.
 | CP | Status | Tag | Approved by / date | Notes |
 |---|---|---|---|---|
 | 00 | approved | cp-00 | Boon Sing Thia, 2026-10-27 | gate 8/8; deviations D-00-1..8 |
-| 01 | awaiting validation | cp-01 | | gate 8/8; deviations D-01-1..5 |
-| 02 | not started | | | |
+| 01 | approved | cp-01 | Boon Sing Thia, 2026-10-27 | gate 8/8; D-01-1..5; MD = role of 6 Principals (decision 2026-10-27) |
+| 02 | awaiting validation | cp-02 | | gate 8/8; D-02-1..10; 3.79 M rows |
 | 03 | not started | | | |
 | 04 | not started | | | |
 | 05 | not started | | | |

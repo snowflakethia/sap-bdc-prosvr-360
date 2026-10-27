@@ -113,7 +113,86 @@ def gate_cp01():
     return checks
 
 
-GATES = {"cp00": gate_cp00, "cp01": gate_cp01}
+def gate_cp02():
+    import sf
+    q = sf.query
+    checks = []
+    det = json.loads((ROOT / "logs" / "gen_determinism.json").read_text()) \
+        if (ROOT / "logs" / "gen_determinism.json").exists() else {}
+    checks.append(("CP02-01", "generator determinism (two runs, identical table hashes)", "PASS",
+                   "PASS" if det.get("pass") else f"FAIL {det.get('differences')}", bool(det.get("pass"))))
+
+    load = json.loads((ROOT / "logs" / "gen_load.json").read_text())
+    rows = q("""select table_schema || '.' || table_name t, row_count n from ACOCO_SIM.INFORMATION_SCHEMA.TABLES
+                where table_schema not in ('INFORMATION_SCHEMA', '_META')""")
+    sfc = {r["T"]: r["N"] for r in rows}
+    mism = {k: (v, sfc.get(k)) for k, v in load["counts"].items() if sfc.get(k) != v}
+    total = sum(sfc.values())
+    checks.append(("CP02-02", "every generated table loaded with its exact row count; total 3-8 M rows",
+                   "0 mismatches, 3-8 M", f"{len(mism)} mismatches {mism}; total {total:,}",
+                   not mism and 3_000_000 <= total <= 8_000_000))
+
+    st = load["stats"]
+    bands = {"projects": (400, 800), "opportunities": (800, 1600), "assets": (80, 300)}
+    bad = {k: st[k] for k, (lo, hi) in bands.items() if not lo <= st[k] <= hi}
+    pc = q("""select count(distinct user_id) n from ACOCO_SIM.DIRECTORY.PERSON_NAME""")[0]["N"]
+    checks.append(("CP02-03", "volumes in band (projects 400-800, opps 800-1600, assets 80-300); 3,555 people",
+                   "in band", f"projects {st['projects']}, opps {st['opportunities']}, assets {st['assets']}, "
+                              f"people {pc}", not bad and pc == 3555))
+
+    fk = q("""select
+        (select count(*) from ACOCO_SIM.TIMESHEET.TIMESHEET t left join ACOCO_DB.OPS.MAP_MD_GROUP m
+            on m.cost_center = t.cost_center where m.cost_center is null) cc,
+        (select count(*) from ACOCO_SIM.FINANCE_ACOCO.OPERATIONALACCTGDOCITEM j
+            left join (select distinct "GLAccount" g from GENERALLEDGERACCOUNT_V1."generalledgeraccount"."generalledgeraccounttext"
+                       where "ChartOfAccounts" = 'YCOA') a on a.g = j."GLAccount" where a.g is null) gl,
+        (select count(*) from ACOCO_SIM.FINANCE_ACOCO.OPERATIONALACCTGDOCITEM j
+            left join (select "CostCtrActivityType" t from COSTCENTERACTIVITYTYPE_V1."costcenteractivitytype"."costcenteractivitytype"
+                       where "ControllingArea" = 'A000' union select "CostCtrActivityType" from ACOCO_SIM.FINANCE_ACOCO.ACTIVITYTYPE_EXT) a
+            on a.t = j."CostCtrActivityType" where j."CostCtrActivityType" is not null and a.t is null) act,
+        (select count(*) from ACOCO_SIM.COREWORKFORCE.COREWORKFORCE_STANDARDFIELDS c
+            left join ACOCO_DB.OPS.MAP_SF_COSTCENTER m on m.sf_cost_center = c."costCenter" where m.sf_cost_center is null) sfcc,
+        (select count(*) from ACOCO_SIM.COREWORKFORCE.COREWORKFORCE_STANDARDFIELDS c
+            left join ACOCO_DB.OPS.MAP_PAYGRADE_LEVEL m on m.pay_grade = c."payGrade" where m.pay_grade is null) pg""")[0]
+    checks.append(("CP02-04", "every key resolves to real SAP / OPS master data (cost centre, GL, activity type, "
+                              "SF cost centre, pay grade)", "0 orphans", str(fk), all(v == 0 for v in fk.values())))
+
+    mix = {r["CATEGORY"]: float(r["PCT"]) for r in q(
+        """select category, 100 * sum(hours) / sum(sum(hours)) over () pct from ACOCO_SIM.TIMESHEET.TIMESHEET
+           where fiscal_year = 2026 group by 1""")}
+    checks.append(("CP02-05", "FY26 booked time: Delivery largest, Admin < 5 % of booked hours", "Delivery max, Admin < 5",
+                   str({k: round(v, 1) for k, v in mix.items()}),
+                   max(mix, key=mix.get) == "DELIVERY" and mix.get("ADMIN", 99) < 5))
+
+    md = q("""select count(*) n, count(distinct md_group_id) g,
+                     count_if(l.level = 'Principal') principals
+              from ACOCO_SIM.DIRECTORY.MD_ROLE r
+              join (select "userId" u, max_by("payGrade", "startDate") pg from COREWORKFORCEDATA_V1."coreworkforcedata"."coreworkforce_standardfields" group by 1) w on w.u = r.user_id
+              join ACOCO_DB.OPS.MAP_PAYGRADE_LEVEL l on l.pay_grade = w.pg""")[0]
+    checks.append(("CP02-06", "exactly one MD per group, each a real Principal", "6 / 6 groups / 6 Principals",
+                   f"{md['N']} / {md['G']} / {md['PRINCIPALS']}", md["N"] == 6 and md["G"] == 6 and md["PRINCIPALS"] == 6))
+
+    loss = q("""select p.project_id,
+                  sum(iff(j."GLAccount" = '0041000000', -j."AmountInCompanyCodeCurrency", 0)) rev,
+                  sum(iff(j."GLAccount" <> '0041000000' and j."WBSElement" is not null, j."AmountInCompanyCodeCurrency", 0)) cost
+                from ACOCO_SIM.CUSTOMERPROJECT.CUSTOMER_PROJECT p
+                join ACOCO_SIM.FINANCE_ACOCO.OPERATIONALACCTGDOCITEM j on left(j."WBSElement", 6) = p.project_id
+                where p.seeded_story = 'FS_LOSS' and p.md_group_id = 'FS' and p.contract_type = 'FIXED_PRICE'
+                group by 1""")
+    ok = len(loss) == 1 and loss[0]["COST"] > loss[0]["REV"]
+    checks.append(("CP02-07", "story project: one FS Large fixed-price project with total cost > revenue",
+                   "1 project, cost > revenue", str(loss), ok))
+
+    writes = q("""select count(*) n from SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY ah, lateral flatten(ah.objects_modified) f
+                  where ah.query_start_time > dateadd(day, -2, current_timestamp())
+                    and f.value:"objectName"::string ilike any ('%\\_V1.%', 'SAP\\_BDC\\_CONNECTOR\\_APJ.%')
+                    and ah.user_name = current_user()""")[0]["N"]
+    checks.append(("CP02-08", "no write by this user to any CLD or the connector (ACCESS_HISTORY, 2 days)", "0",
+                   str(writes), writes == 0))
+    return checks
+
+
+GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02}
 
 
 def main():
