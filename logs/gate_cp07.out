@@ -1,0 +1,9 @@
+PASS  CP07-01  gen_ontology.py --check: registered relationships only, shared ENT_* dims, keys unique, no L0 refs  ->  0 []; 13 entities, 18 relationships, 64 metrics {'Value Creation': 25, 'People Development': 19, 'Operational Excellence': 18, 'ProServe360': 2}
+PASS  CP07-02  five Semantic Views deployed  ->  ['SV_AI_ADOPTION', 'SV_PIPELINE_PRESALES', 'SV_PORTFOLIO_360', 'SV_PROJECT_DELIVERY', 'SV_WORKFORCE_PERFORMANCE']
+PASS  CP07-03  every verified query in each Semantic View executes and returns rows  ->  10/10 []
+PASS  CP07-04  Cortex Analyst answers one question per Semantic View with SQL that runs  ->  5/5 []
+PASS  CP07-05  Semantic View metric ties to the SERVING overlay (FS FY26 bench % by level)  ->  {'Principal': 1.3, 'Senior Manager': 0.8, 'Analyst': 1.5, 'Consultant': 1.4, 'Manager': 1.1} mismatches {}
+PASS  CP07-06  ONT_RELATIONSHIP: every PRD 5.3 relationship implemented by >= 1 Semantic View  ->  18 relationships, 0 unimplemented
+
+cp07: 6/6 passed
+EXIT 0

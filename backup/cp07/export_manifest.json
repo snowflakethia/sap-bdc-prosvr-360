@@ -1,0 +1,12 @@
+{
+  "cp": "cp07",
+  "files": [
+    "semantic_view_SV_AI_ADOPTION.sql",
+    "semantic_view_SV_PIPELINE_PRESALES.sql",
+    "semantic_view_SV_PORTFOLIO_360.sql",
+    "semantic_view_SV_PROJECT_DELIVERY.sql",
+    "semantic_view_SV_WORKFORCE_PERFORMANCE.sql",
+    "cortex_search_CSS_ASSET_LIBRARY.json",
+    "cortex_search_CSS_PROJECT_COMMENTARY.json"
+  ]
+}

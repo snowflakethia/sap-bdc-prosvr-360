@@ -1,0 +1,377 @@
+name: SV_PORTFOLIO_360
+description: 'ProServe360 overlay for the Managing Director: group P&L, capacity mix by time category vs target, headcount
+  and attrition, win-rate and the cross-pillar risk register.'
+tables:
+- name: md_group
+  description: Shared ontology entity MD_GROUP (ACOCO_L2.ONTOLOGY.ENT_MD_GROUP)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_MD_GROUP
+  primary_key:
+    columns:
+    - MD_GROUP_ID
+  dimensions:
+  - name: md_group_id
+    expr: MD_GROUP_ID
+    data_type: VARCHAR
+    description: MD group code (FS, CMT, HPS, PRD, RES, XAI)
+    synonyms:
+    - group code
+  - name: md_group
+    expr: MD_GROUP_NAME
+    data_type: VARCHAR
+    description: MD group name, e.g. Financial Services
+    synonyms:
+    - group
+    - industry group
+    - practice
+  - name: managing_director
+    expr: MANAGING_DIRECTOR_NAME
+    data_type: VARCHAR
+    description: Managing Director of the group
+    synonyms:
+    - MD name
+    - partner
+- name: fiscal_month
+  description: Shared ontology entity FISCAL_MONTH (ACOCO_L2.CORE.DT_FISCAL_MONTH)
+  base_table:
+    database: ACOCO_L2
+    schema: CORE
+    table: DT_FISCAL_MONTH
+  primary_key:
+    columns:
+    - MONTH_START
+  dimensions:
+  - name: fiscal_year
+    expr: FISCAL_YEAR
+    data_type: NUMBER
+    description: ACoCo fiscal year (Oct-Sep, V9); FY26 = Oct 2025 - Sep 2026
+    synonyms:
+    - FY
+    - year
+  - name: fiscal_period
+    expr: FISCAL_PERIOD
+    data_type: NUMBER
+    description: Fiscal period 1-12 (1 = October)
+    synonyms:
+    - period
+  - name: fiscal_quarter
+    expr: FISCAL_QUARTER
+    data_type: NUMBER
+    description: Fiscal quarter 1-4 (1 = Oct-Dec)
+    synonyms:
+    - quarter
+  - name: month_label
+    expr: MONTH_LABEL
+    data_type: VARCHAR
+    description: Calendar month label, e.g. SEP 2026
+    synonyms:
+    - month
+  time_dimensions:
+  - name: month_start
+    expr: MONTH_START
+    data_type: DATE
+    description: First day of the fiscal month (join key)
+- name: level
+  description: Shared ontology entity LEVEL (ACOCO_L2.ONTOLOGY.ENT_LEVEL)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_LEVEL
+  primary_key:
+    columns:
+    - LEVEL
+  dimensions:
+  - name: level
+    expr: LEVEL
+    data_type: VARCHAR
+    description: Career level
+    synonyms:
+    - grade
+  - name: level_sort
+    expr: LEVEL_SORT
+    data_type: NUMBER
+    description: 1 = Analyst .. 5 = Principal
+  - name: activity_type
+    expr: ACTIVITY_TYPE
+    data_type: VARCHAR
+    description: S/4 activity type that prices the level (ML-100 .. ML-105)
+- name: time_category
+  description: Shared ontology entity TIME_CATEGORY (ACOCO_L2.ONTOLOGY.ENT_TIME_CATEGORY)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_TIME_CATEGORY
+  primary_key:
+    columns:
+    - TIME_CATEGORY
+  dimensions:
+  - name: time_category
+    expr: TIME_CATEGORY
+    data_type: VARCHAR
+    description: DELIVERY, BID, LEARNING, ADMIN or BENCH
+    synonyms:
+    - use of time
+    - category
+  - name: time_category_objective
+    expr: OBJECTIVE
+    data_type: VARCHAR
+    description: What the category is judged on
+- name: portfolio_month
+  description: Fact PORTFOLIO_360.DT_PORTFOLIO_MONTH
+  base_table:
+    database: ACOCO_L2
+    schema: PORTFOLIO_360
+    table: DT_PORTFOLIO_MONTH
+  facts:
+  - name: revenue
+    expr: REVENUE
+    data_type: NUMBER
+    description: Revenue USD
+  - name: total_cost
+    expr: TOTAL_COST
+    data_type: NUMBER
+    description: Total cost USD
+  - name: margin
+    expr: MARGIN
+    data_type: NUMBER
+    description: Margin USD
+  - name: available_hours
+    expr: AVAILABLE_HOURS
+    data_type: NUMBER
+    description: Available hours
+  - name: delivery_hours
+    expr: DELIVERY_HOURS
+    data_type: NUMBER
+    description: Delivery hours
+  - name: bid_hours
+    expr: BID_HOURS
+    data_type: NUMBER
+    description: Bid hours
+  - name: learning_hours
+    expr: LEARNING_HOURS
+    data_type: NUMBER
+    description: Learning hours
+  - name: admin_hours
+    expr: ADMIN_HOURS
+    data_type: NUMBER
+    description: Admin hours
+  - name: bench_hours
+    expr: BENCH_HOURS
+    data_type: NUMBER
+    description: Bench hours
+  - name: bench_cost
+    expr: BENCH_COST
+    data_type: NUMBER
+    description: Bench cost USD
+  - name: closing_headcount
+    expr: CLOSING_HEADCOUNT
+    data_type: NUMBER
+    description: Month-end headcount
+  - name: voluntary_leavers
+    expr: VOLUNTARY_LEAVERS
+    data_type: NUMBER
+    description: Voluntary leavers
+  metrics:
+  - name: total_revenue
+    expr: SUM(revenue)
+    description: Recognised revenue (USD, S/4 journal GL 0041000000)
+    synonyms:
+    - sales
+    - fees
+  - name: total_total_cost
+    expr: SUM(total_cost)
+    description: People + AI-agent + 35 % overhead cost (USD)
+    synonyms:
+    - cost
+  - name: total_margin
+    expr: SUM(margin)
+    description: Revenue minus total cost (USD)
+    synonyms:
+    - profit
+  - name: margin_pct
+    expr: 100 * SUM(margin) / NULLIF(SUM(revenue), 0)
+    description: Margin as % of revenue
+    synonyms:
+    - profit margin
+  - name: delivery_pct
+    expr: 100 * SUM(delivery_hours) / NULLIF(SUM(available_hours), 0)
+    description: 'Billability: Delivery hours as % of available hours (Employee Availability)'
+    synonyms:
+    - billability
+    - utilisation of delivery
+  - name: bid_pct
+    expr: 100 * SUM(bid_hours) / NULLIF(SUM(available_hours), 0)
+    description: Bid (pre-sales) hours as % of available hours
+    synonyms:
+    - presales share
+  - name: learning_pct
+    expr: 100 * SUM(learning_hours) / NULLIF(SUM(available_hours), 0)
+    description: Learning hours as % of available hours
+  - name: admin_pct
+    expr: 100 * SUM(admin_hours) / NULLIF(SUM(available_hours), 0)
+    description: Admin hours as % of available hours (ceiling 5 %)
+  - name: bench_pct
+    expr: 100 * SUM(bench_hours) / NULLIF(SUM(available_hours), 0)
+    description: Bench = available minus booked hours, % of available (target ~2 %, < 3 %)
+    synonyms:
+    - idle time
+    - unutilised
+  - name: total_bench_cost
+    expr: SUM(bench_cost)
+    description: Bench hours x level cost rate (USD)
+  - name: voluntary_attrition_pct
+    expr: 100 * SUM(voluntary_leavers) / NULLIF(AVG(closing_headcount), 0)
+    description: Voluntary leavers / average headcount (annual when over one fiscal year)
+    synonyms:
+    - attrition rate
+    - turnover
+- name: capacity_mix
+  description: Fact PORTFOLIO_360.DT_CAPACITY_MIX_LONG
+  base_table:
+    database: ACOCO_L2
+    schema: PORTFOLIO_360
+    table: DT_CAPACITY_MIX_LONG
+  facts:
+  - name: hours
+    expr: HOURS
+    data_type: NUMBER
+    description: Hours in the category
+  - name: available_hours
+    expr: AVAILABLE_HOURS
+    data_type: NUMBER
+    description: Available hours
+  - name: target_pct
+    expr: TARGET_PCT
+    data_type: NUMBER
+    description: Level target %
+  metrics:
+  - name: category_share_pct
+    expr: 100 * SUM(hours) / NULLIF(SUM(available_hours), 0)
+    description: Hours of the time category as % of available hours
+    synonyms:
+    - time mix
+- name: risk_item
+  description: Fact PORTFOLIO_360.DT_RISK_REGISTER
+  base_table:
+    database: ACOCO_L2
+    schema: PORTFOLIO_360
+    table: DT_RISK_REGISTER
+  primary_key:
+    columns:
+    - RISK_ID
+  dimensions:
+  - name: pillar
+    expr: PILLAR
+    data_type: VARCHAR
+    description: OPERATIONAL / PEOPLE / VALUE
+  - name: risk_type
+    expr: RISK_TYPE
+    data_type: VARCHAR
+    description: Risk type
+  - name: risk_object_id
+    expr: OBJECT_ID
+    data_type: VARCHAR
+    description: Project / person / opportunity the risk is about
+  - name: risk_detail
+    expr: DETAIL
+    data_type: VARCHAR
+    description: Short explanation
+  facts:
+  - name: risk_key
+    expr: RISK_ID
+    data_type: VARCHAR
+    description: Risk item
+  - name: usd_at_stake
+    expr: USD_AT_STAKE
+    data_type: NUMBER
+    description: USD at stake
+  metrics:
+  - name: risk_usd_at_stake
+    expr: SUM(usd_at_stake)
+    description: Money at stake on cross-pillar risk items (USD)
+  - name: risk_items
+    expr: COUNT(risk_key)
+    description: Number of risk items
+relationships:
+- name: portfolio_month_to_md_group
+  left_table: portfolio_month
+  right_table: md_group
+  relationship_columns:
+  - left_column: MD_GROUP_ID
+    right_column: MD_GROUP_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: portfolio_month_to_fiscal_month
+  left_table: portfolio_month
+  right_table: fiscal_month
+  relationship_columns:
+  - left_column: MONTH_START
+    right_column: MONTH_START
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: capacity_mix_to_md_group
+  left_table: capacity_mix
+  right_table: md_group
+  relationship_columns:
+  - left_column: MD_GROUP_ID
+    right_column: MD_GROUP_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: capacity_mix_to_level
+  left_table: capacity_mix
+  right_table: level
+  relationship_columns:
+  - left_column: LEVEL
+    right_column: LEVEL
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: capacity_mix_to_fiscal_month
+  left_table: capacity_mix
+  right_table: fiscal_month
+  relationship_columns:
+  - left_column: MONTH_START
+    right_column: MONTH_START
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: capacity_mix_to_time_category
+  left_table: capacity_mix
+  right_table: time_category
+  relationship_columns:
+  - left_column: TIME_CATEGORY
+    right_column: TIME_CATEGORY
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: risk_item_to_md_group
+  left_table: risk_item
+  right_table: md_group
+  relationship_columns:
+  - left_column: MD_GROUP_ID
+    right_column: MD_GROUP_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+verified_queries:
+- name: vq_1
+  question: What were FY26 revenue, margin % and bench % for Financial Services?
+  sql: "SELECT ROUND(SUM(p.REVENUE), 0) AS REVENUE, ROUND(100 * SUM(p.MARGIN) / SUM(p.REVENUE), 1) AS MARGIN_PCT,\n      \
+    \ ROUND(100 * SUM(p.BENCH_HOURS) / SUM(p.AVAILABLE_HOURS), 1) AS BENCH_PCT\nFROM ACOCO_L2.PORTFOLIO_360.DT_PORTFOLIO_MONTH\
+    \ p\nJOIN ACOCO_L2.ONTOLOGY.ENT_MD_GROUP g ON g.MD_GROUP_ID = p.MD_GROUP_ID\nWHERE g.MD_GROUP_NAME = 'Financial Services'\
+    \ AND p.FISCAL_YEAR = 2026"
+  verified_by: ACoCo build (CP-07)
+  verified_at: 1793059200
+  use_as_onboarding_question: true
+- name: vq_2
+  question: What are the top 5 risks for Financial Services by USD at stake?
+  sql: 'SELECT r.PILLAR, r.RISK_TYPE, r.OBJECT_ID, r.DETAIL, ROUND(r.USD_AT_STAKE, 0) AS USD_AT_STAKE
+
+    FROM ACOCO_L2.PORTFOLIO_360.DT_RISK_REGISTER r
+
+    JOIN ACOCO_L2.ONTOLOGY.ENT_MD_GROUP g ON g.MD_GROUP_ID = r.MD_GROUP_ID
+
+    WHERE g.MD_GROUP_NAME = ''Financial Services'' ORDER BY r.USD_AT_STAKE DESC LIMIT 5'
+  verified_by: ACoCo build (CP-07)
+  verified_at: 1793059200
+  use_as_onboarding_question: false
+custom_instructions: Fiscal years run October to September (FY26 = Oct 2025 - Sep 2026); the as-of date is 1 Oct 2026, so
+  FY26 is the last closed year. Percentages are 0-100. Filter MD groups by md_group name (e.g. 'Financial Services').

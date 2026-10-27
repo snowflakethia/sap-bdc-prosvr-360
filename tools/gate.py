@@ -454,8 +454,53 @@ def gate_cp06():
     return checks
 
 
+def gate_cp07():
+    import subprocess
+    import sf
+    import yaml
+    checks = []
+    py = str(ROOT / ".venv" / "bin" / "python")
+    subprocess.run([py, str(ROOT / "tools" / "gen_ontology.py"), "--registry", "--check"], capture_output=True)
+    oc = json.loads((ROOT / "logs" / "ontology_check.json").read_text())
+    checks.append(("CP07-01", "gen_ontology.py --check: registered relationships only, shared ENT_* dims, keys unique, no L0 refs",
+                   "0 errors", f"{len(oc['errors'])} {oc['errors'][:3]}; {oc['entities']} entities, {oc['relationships']} "
+                   f"relationships, {oc['metrics']} metrics {oc['metrics_by_pillar']}", not oc["errors"]))
+    svs = [r["name"] for r in sf.query("SHOW SEMANTIC VIEWS IN SCHEMA ACOCO_L2.SEMANTIC")]
+    want = ["SV_AI_ADOPTION", "SV_PIPELINE_PRESALES", "SV_PORTFOLIO_360", "SV_PROJECT_DELIVERY", "SV_WORKFORCE_PERFORMANCE"]
+    checks.append(("CP07-02", "five Semantic Views deployed", str(want), str(sorted(svs)), sorted(svs) == want))
+    bad, n = [], 0
+    for f in sorted((ROOT / "sql" / "03_l2" / "semantic").glob("*.yaml")):
+        for vq in yaml.safe_load(f.read_text()).get("verified_queries", []):
+            n += 1
+            try:
+                if not sf.query(vq["sql"]):
+                    bad.append(f"{f.stem}:{vq['name']} (0 rows)")
+            except sf.SqlError as e:
+                bad.append(f"{f.stem}:{vq['name']} {str(e)[-120:]}")
+    checks.append(("CP07-03", "every verified query in each Semantic View executes and returns rows", f"{n} / 0 failing",
+                   f"{n - len(bad)}/{n} {bad}", n >= 10 and not bad))
+    subprocess.run([py, "-W", "ignore", str(ROOT / "tools" / "analyst_probe.py")], capture_output=True)
+    ap = json.loads((ROOT / "logs" / "analyst_probe.json").read_text())
+    fails = [f"{r['semantic_view']}: {r.get('error')}" for r in ap if not r.get("executed")]
+    checks.append(("CP07-04", "Cortex Analyst answers one question per Semantic View with SQL that runs", "5/5",
+                   f"{len(ap) - len(fails)}/{len(ap)} {fails}", len(ap) == 5 and not fails))
+    sv = {r["PERSON_LEVEL"]: round(float(r["BENCH_PCT"]), 1) for r in sf.query(
+        """SELECT * FROM SEMANTIC_VIEW(ACOCO_L2.SEMANTIC.SV_WORKFORCE_PERFORMANCE DIMENSIONS person.person_level
+           METRICS scorecard.bench_pct WHERE md_group.md_group = 'Financial Services' AND fiscal_month.fiscal_year = 2026)""")}
+    srv = {r["LEVEL"]: float(r["BENCH_PCT"]) for r in sf.query(
+        "SELECT LEVEL, BENCH_PCT FROM ACOCO_L2.SERVING.VW_TIME_MIX_FY WHERE MD_GROUP_ID = 'FS' AND FISCAL_YEAR = 2026")}
+    diff = {k: (sv.get(k), srv.get(k)) for k in srv if sv.get(k) is None or abs(sv[k] - srv[k]) > 0.15}
+    checks.append(("CP07-05", "Semantic View metric ties to the SERVING overlay (FS FY26 bench % by level)", "5 levels equal (+/- 0.15)",
+                   f"{sv} mismatches {diff}", len(sv) == 5 and not diff))
+    rel = sf.query("SELECT COUNT(*) n, COUNT_IF(SEMANTIC_VIEWS = '') unimpl FROM ACOCO_L2.ONTOLOGY.ONT_RELATIONSHIP")[0]
+    checks.append(("CP07-06", "ONT_RELATIONSHIP: every PRD 5.3 relationship implemented by >= 1 Semantic View", ">= 16, 0 unimplemented",
+                   f"{rel['N']} relationships, {rel['UNIMPL']} unimplemented", rel["N"] >= 16 and rel["UNIMPL"] == 0))
+    return checks
+
+
 GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03, "cp04": gate_cp04,
-         "cp05": gate_cp05, "cp06": gate_cp06}
+         "cp05": gate_cp05, "cp06": gate_cp06,
+         "cp07": gate_cp07}
 
 
 def log_to_quality(cp, run_at, rows):

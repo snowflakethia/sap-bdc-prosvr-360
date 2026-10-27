@@ -1,0 +1,27 @@
+version: 1
+artifacts:
+  - path: ../sql/03_l2/semantic/sv_workforce_performance.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: ACOCO_L2.SEMANTIC.SV_WORKFORCE_PERFORMANCE
+  - path: ../sql/03_l2/semantic/sv_project_delivery.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: ACOCO_L2.SEMANTIC.SV_PROJECT_DELIVERY
+  - path: ../sql/03_l2/semantic/sv_pipeline_presales.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: ACOCO_L2.SEMANTIC.SV_PIPELINE_PRESALES
+  - path: ../sql/03_l2/semantic/sv_ai_adoption.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: ACOCO_L2.SEMANTIC.SV_AI_ADOPTION
+  - path: ../sql/03_l2/semantic/sv_portfolio_360.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: ACOCO_L2.SEMANTIC.SV_PORTFOLIO_360

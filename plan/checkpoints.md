@@ -321,20 +321,22 @@ stratum.
 question per SV with SQL that runs.
 
 **Human validation**
-1. Ontology check: `python tools/gen_ontology.py --check` - expected `0 errors`, with a summary of 12 entities, 16
-   relationships and N metrics, each mapped to a pillar.
+1. Ontology check: `.venv/bin/python tools/gen_ontology.py --check` - expected `check: 0 errors`, with a summary of
+   13 entities (12 + fiscal month), 18 relationships and 64 metrics, each mapped to a pillar (D-07-2).
 2. Ask Cortex Analyst a cross-entity question through one Semantic View (Snowsight > AI & ML > Cortex Analyst, or):
    ```sql
    SELECT * FROM SEMANTIC_VIEW(ACOCO_L2.SEMANTIC.SV_WORKFORCE_PERFORMANCE
-     DIMENSIONS person.level METRICS scorecard.bench_pct, scorecard.delivery_pct
-     WHERE person.md_group = 'Financial Services' AND fiscal_month.fiscal_year = 2026);
+     DIMENSIONS person.person_level METRICS scorecard.bench_pct, scorecard.delivery_pct
+     WHERE md_group.md_group = 'Financial Services' AND fiscal_month.fiscal_year = 2026);
    ```
-   Expected: five rows (one per level), the same figures as CP-05 check 3.
+   Expected: five rows (one per level), the same figures as `SERVING.VW_TIME_MIX_FY` (e.g. Analyst Delivery ~76 %,
+   bench ~1.5 %; Principal Delivery ~35 %).
 3. Review the registry the dashboard will draw:
    ```sql
    SELECT from_entity, verb, to_entity, semantic_views FROM ACOCO_L2.ONTOLOGY.ONT_RELATIONSHIP ORDER BY 1;
    ```
-   Expected: the 16 relationships in PRD 5.3, each implemented by >= 1 Semantic View.
+   Expected: 18 relationships (PRD 5.3's 16, with "books time to category on project / opportunity" split into three),
+   each with a non-empty `semantic_views`.
 
 **Rollback:** re-create the SVs from `backup/cp06/` (none) or `backup/cp07/*.sql` of the previous approved state;
 `git checkout cp-06`.
@@ -453,8 +455,8 @@ regression 20/20 re-run on the final build.
 | 03 | approved | cp-03 | Boon Sing Thia, 2026-10-27 | gate 9/9; reconcile 47/47; D-03-1..7 |
 | 04 | approved | cp-04 | Boon Sing Thia, 2026-10-27 | gate 8/8; ontology 19/19; D-04-1..5 |
 | 05 | approved | cp-05 | Boon Sing Thia, 2026-10-27 | gate 7/7; marts 8/8; anchors 4/13 OK, 9 MISS (decision); D-05-1..10 |
-| 06 | awaiting validation | cp-06 | | gate 11/11; reasoning 8/8; anchors 9/13; D-06-1..10 |
-| 07 | not started | | | |
+| 06 | approved | cp-06 | Boon Sing Thia, 2026-10-27 | gate 11/11; reasoning 8/8; anchors 9/13; D-06-1..10 |
+| 07 | awaiting validation | cp-07 | | gate 6/6; ontology check 0 errors; D-07-1..5 |
 | 08 | not started | | | |
 | 09 | not started | | | |
 | 10 | not started | | | |

@@ -1,0 +1,508 @@
+name: SV_AI_ADOPTION
+description: 'People Development pillar (AI): AI tool use and spend, agent cost on projects, AI-active vs other productivity,
+  and learning payback. The stratified, confidence-tested results are in SERVING.VW_AI_PRODUCTIVITY_TEST.'
+tables:
+- name: person
+  description: Shared ontology entity PERSON (ACOCO_L2.ONTOLOGY.ENT_PERSON)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_PERSON
+  primary_key:
+    columns:
+    - PERSON_ID
+  dimensions:
+  - name: person_id
+    expr: PERSON_ID
+    data_type: VARCHAR
+    description: People Intelligence userId
+    synonyms:
+    - employee id
+    - user id
+  - name: person_name
+    expr: DISPLAY_NAME
+    data_type: VARCHAR
+    description: Person's display name
+    synonyms:
+    - name
+    - employee
+    - consultant
+  - name: person_level
+    expr: LEVEL
+    data_type: VARCHAR
+    description: Career level at the as-of date (Analyst .. Principal)
+    synonyms:
+    - level
+    - grade
+    - rank
+  - name: bill_code
+    expr: BILL_CODE
+    data_type: NUMBER
+    description: Bill code 30-79 within the level band (higher = more senior, more bid time)
+    synonyms:
+    - billing code
+  - name: is_active
+    expr: IS_ACTIVE_AS_OF
+    data_type: BOOLEAN
+    description: Employed on the as-of date (1 Oct 2026)
+    synonyms:
+    - active
+    - current employee
+  - name: is_managing_director
+    expr: IS_MANAGING_DIRECTOR
+    data_type: BOOLEAN
+    description: Holds the Managing Director role for a group
+    synonyms:
+    - MD
+  - name: person_source
+    expr: SOURCE_SYSTEM
+    data_type: VARCHAR
+    description: BDC_CLD = real People Intelligence person; SIMULATED = simulated pool
+- name: md_group
+  description: Shared ontology entity MD_GROUP (ACOCO_L2.ONTOLOGY.ENT_MD_GROUP)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_MD_GROUP
+  primary_key:
+    columns:
+    - MD_GROUP_ID
+  dimensions:
+  - name: md_group_id
+    expr: MD_GROUP_ID
+    data_type: VARCHAR
+    description: MD group code (FS, CMT, HPS, PRD, RES, XAI)
+    synonyms:
+    - group code
+  - name: md_group
+    expr: MD_GROUP_NAME
+    data_type: VARCHAR
+    description: MD group name, e.g. Financial Services
+    synonyms:
+    - group
+    - industry group
+    - practice
+  - name: managing_director
+    expr: MANAGING_DIRECTOR_NAME
+    data_type: VARCHAR
+    description: Managing Director of the group
+    synonyms:
+    - MD name
+    - partner
+- name: ai_tool
+  description: Shared ontology entity AI_TOOL (ACOCO_L2.ONTOLOGY.ENT_AI_TOOL)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_AI_TOOL
+  primary_key:
+    columns:
+    - AI_TOOL_ID
+  dimensions:
+  - name: ai_tool_id
+    expr: AI_TOOL_ID
+    data_type: VARCHAR
+    description: AI assistant (OPENAI, ANTHROPIC, CORTEX) or S/4 agent activity type (AGT_*)
+  - name: ai_tool_name
+    expr: AI_TOOL_NAME
+    data_type: VARCHAR
+    description: AI tool / agent name
+    synonyms:
+    - AI tool
+    - assistant
+    - agent
+  - name: tool_kind
+    expr: TOOL_KIND
+    data_type: VARCHAR
+    description: ASSISTANT (people use it) or AGENT (charged to projects)
+- name: project
+  description: Shared ontology entity PROJECT (ACOCO_L2.ONTOLOGY.ENT_PROJECT)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_PROJECT
+  primary_key:
+    columns:
+    - PROJECT_ID
+  dimensions:
+  - name: project_id
+    expr: PROJECT_ID
+    data_type: VARCHAR
+    description: Customer project (S/4 project / WBS)
+    synonyms:
+    - project
+    - engagement
+  - name: size_class
+    expr: SIZE_CLASS
+    data_type: VARCHAR
+    description: Project size class (XX-Small .. Large)
+    synonyms:
+    - size
+  - name: work_type
+    expr: WORK_TYPE
+    data_type: VARCHAR
+    description: Type of work (Data Migration, AI Engineering, ...)
+    synonyms:
+    - service line
+  - name: contract_type
+    expr: CONTRACT_TYPE
+    data_type: VARCHAR
+    description: FIXED_PRICE or TIME_AND_MATERIALS
+    synonyms:
+    - pricing
+  - name: delivery_model
+    expr: DELIVERY_MODEL
+    data_type: VARCHAR
+    description: HUMAN, HUMAN_AGENT (people + agents) or AGENT_LED
+    synonyms:
+    - AI delivery model
+  - name: project_status
+    expr: STATUS_AS_OF
+    data_type: VARCHAR
+    description: ACTIVE / CLOSED / NOT_STARTED at the as-of date
+    synonyms:
+    - status
+  - name: is_story_project
+    expr: IS_STORY_PROJECT
+    data_type: BOOLEAN
+    description: The seeded at-risk FS fixed-price project
+- name: learning_item
+  description: Shared ontology entity LEARNING_ITEM (ACOCO_L2.ONTOLOGY.ENT_LEARNING_ITEM)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_LEARNING_ITEM
+  primary_key:
+    columns:
+    - LEARNING_ITEM_ID
+  dimensions:
+  - name: learning_item_id
+    expr: LEARNING_ITEM_ID
+    data_type: VARCHAR
+    description: Learning item
+    synonyms:
+    - course
+  - name: learning_item_title
+    expr: LEARNING_ITEM_TITLE
+    data_type: VARCHAR
+    description: Learning item title
+    synonyms:
+    - course name
+  - name: curriculum
+    expr: CURRICULUM
+    data_type: VARCHAR
+    description: AGENTIC_AI or CORE curriculum
+    synonyms:
+    - learning path
+- name: skill
+  description: Shared ontology entity SKILL (ACOCO_L2.ONTOLOGY.ENT_SKILL)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_SKILL
+  primary_key:
+    columns:
+    - SKILL_ID
+  dimensions:
+  - name: skill_id
+    expr: SKILL_ID
+    data_type: VARCHAR
+    description: Skill code
+  - name: skill_name
+    expr: SKILL_NAME
+    data_type: VARCHAR
+    description: Skill name
+    synonyms:
+    - skill
+    - capability
+  - name: skill_family
+    expr: SKILL_FAMILY
+    data_type: VARCHAR
+    description: AGENTIC_AI, TECHNICAL or INDUSTRY
+    synonyms:
+    - skill category
+- name: fiscal_month
+  description: Shared ontology entity FISCAL_MONTH (ACOCO_L2.CORE.DT_FISCAL_MONTH)
+  base_table:
+    database: ACOCO_L2
+    schema: CORE
+    table: DT_FISCAL_MONTH
+  primary_key:
+    columns:
+    - MONTH_START
+  dimensions:
+  - name: fiscal_year
+    expr: FISCAL_YEAR
+    data_type: NUMBER
+    description: ACoCo fiscal year (Oct-Sep, V9); FY26 = Oct 2025 - Sep 2026
+    synonyms:
+    - FY
+    - year
+  - name: fiscal_period
+    expr: FISCAL_PERIOD
+    data_type: NUMBER
+    description: Fiscal period 1-12 (1 = October)
+    synonyms:
+    - period
+  - name: fiscal_quarter
+    expr: FISCAL_QUARTER
+    data_type: NUMBER
+    description: Fiscal quarter 1-4 (1 = Oct-Dec)
+    synonyms:
+    - quarter
+  - name: month_label
+    expr: MONTH_LABEL
+    data_type: VARCHAR
+    description: Calendar month label, e.g. SEP 2026
+    synonyms:
+    - month
+  time_dimensions:
+  - name: month_start
+    expr: MONTH_START
+    data_type: DATE
+    description: First day of the fiscal month (join key)
+- name: ai_usage
+  description: Fact AI_ADOPTION.DT_AI_USAGE_DAILY
+  base_table:
+    database: ACOCO_L2
+    schema: AI_ADOPTION
+    table: DT_AI_USAGE_DAILY
+  time_dimensions:
+  - name: usage_date
+    expr: USAGE_DATE
+    data_type: DATE
+    description: Usage date
+  facts:
+  - name: cost_usd
+    expr: COST_USD
+    data_type: NUMBER
+    description: Spend USD
+  - name: sessions
+    expr: SESSIONS
+    data_type: NUMBER
+    description: Sessions
+  metrics:
+  - name: ai_cost_usd
+    expr: SUM(cost_usd)
+    description: AI assistant spend (USD)
+    synonyms:
+    - AI spend
+  - name: ai_sessions
+    expr: SUM(sessions)
+    description: AI assistant sessions
+- name: agent_on_project
+  description: Fact AI_ADOPTION.DT_AI_AGENT_PROJECT_MONTH
+  base_table:
+    database: ACOCO_L2
+    schema: AI_ADOPTION
+    table: DT_AI_AGENT_PROJECT_MONTH
+  primary_key:
+    columns:
+    - AGENT_PROJECT_MONTH_ID
+  facts:
+  - name: agent_cost
+    expr: AGENT_COST
+    data_type: NUMBER
+    description: Agent cost USD
+  - name: agent_hours
+    expr: AGENT_HOURS
+    data_type: NUMBER
+    description: Agent hours
+  metrics:
+  - name: total_agent_cost
+    expr: SUM(agent_cost)
+    description: AI-agent cost charged to projects (S/4 AGT_* allocations, USD)
+    synonyms:
+    - AI cost
+  - name: total_agent_hours
+    expr: SUM(agent_hours)
+    description: AI-agent hours charged to projects
+- name: ai_productivity
+  description: Fact AI_ADOPTION.DT_AI_PRODUCTIVITY
+  base_table:
+    database: ACOCO_L2
+    schema: AI_ADOPTION
+    table: DT_AI_PRODUCTIVITY
+  dimensions:
+  - name: productivity_work_type
+    expr: WORK_TYPE
+    data_type: VARCHAR
+    description: Work type of the delivery
+  facts:
+  - name: person_key
+    expr: PERSON_ID
+    data_type: VARCHAR
+    description: Person
+  - name: ai_active
+    expr: AI_ACTIVE
+    data_type: BOOLEAN
+    description: AI-active in the quarter
+  - name: ai_skilled_inactive
+    expr: AI_SKILLED_INACTIVE
+    data_type: BOOLEAN
+    description: AI-skilled but no use
+  - name: earned_hours
+    expr: EARNED_HOURS
+    data_type: NUMBER
+    description: Earned hours
+  - name: delivery_hours
+    expr: DELIVERY_HOURS
+    data_type: NUMBER
+    description: Delivery hours
+  metrics:
+  - name: ai_active_people
+    expr: COUNT(DISTINCT IFF(ai_active, person_key, NULL))
+    description: People AI-active in the quarter (AI-skill >= 3 and use on >= 50 % of working days)
+  - name: ai_skilled_inactive_people
+    expr: COUNT(DISTINCT IFF(ai_skilled_inactive, person_key, NULL))
+    description: People with AI-skill >= 3 and no AI use in the quarter
+  - name: pi_ai_active
+    expr: SUM(IFF(ai_active, earned_hours, 0)) / NULLIF(SUM(IFF(ai_active, delivery_hours, 0)), 0)
+    description: Productivity index of AI-active people (unstratified)
+  - name: pi_not_ai_active
+    expr: SUM(IFF(NOT ai_active, earned_hours, 0)) / NULLIF(SUM(IFF(NOT ai_active, delivery_hours, 0)), 0)
+    description: Productivity index of everyone else (unstratified; the stratified test is VW_AI_PRODUCTIVITY_TEST)
+- name: learning_episode
+  description: Fact AI_ADOPTION.DT_LEARNING_PAYBACK
+  base_table:
+    database: ACOCO_L2
+    schema: AI_ADOPTION
+    table: DT_LEARNING_PAYBACK
+  facts:
+  - name: payback
+    expr: PAYBACK
+    data_type: NUMBER
+    description: Productivity payback
+  - name: hours_saved
+    expr: HOURS_SAVED
+    data_type: NUMBER
+    description: Hours saved
+  metrics:
+  - name: learning_payback
+    expr: AVG(payback)
+    description: Productivity change after vs before a learning episode minus the matched comparison change
+    synonyms:
+    - learning ROI
+  - name: learning_hours_saved
+    expr: SUM(hours_saved)
+    description: Hours saved by learning payback
+relationships:
+- name: ai_usage_to_person
+  left_table: ai_usage
+  right_table: person
+  relationship_columns:
+  - left_column: PERSON_ID
+    right_column: PERSON_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: ai_usage_to_ai_tool
+  left_table: ai_usage
+  right_table: ai_tool
+  relationship_columns:
+  - left_column: AI_TOOL_ID
+    right_column: AI_TOOL_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: agent_on_project_to_project
+  left_table: agent_on_project
+  right_table: project
+  relationship_columns:
+  - left_column: PROJECT_ID
+    right_column: PROJECT_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: agent_on_project_to_ai_tool
+  left_table: agent_on_project
+  right_table: ai_tool
+  relationship_columns:
+  - left_column: AI_TOOL_ID
+    right_column: AI_TOOL_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: agent_on_project_to_fiscal_month
+  left_table: agent_on_project
+  right_table: fiscal_month
+  relationship_columns:
+  - left_column: MONTH_START
+    right_column: MONTH_START
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: ai_productivity_to_person
+  left_table: ai_productivity
+  right_table: person
+  relationship_columns:
+  - left_column: PERSON_ID
+    right_column: PERSON_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: ai_productivity_to_fiscal_month
+  left_table: ai_productivity
+  right_table: fiscal_month
+  relationship_columns:
+  - left_column: QUARTER_START
+    right_column: MONTH_START
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: learning_episode_to_person
+  left_table: learning_episode
+  right_table: person
+  relationship_columns:
+  - left_column: PERSON_ID
+    right_column: PERSON_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: learning_episode_to_learning_item
+  left_table: learning_episode
+  right_table: learning_item
+  relationship_columns:
+  - left_column: LEARNING_ITEM_ID
+    right_column: LEARNING_ITEM_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: learning_episode_to_fiscal_month
+  left_table: learning_episode
+  right_table: fiscal_month
+  relationship_columns:
+  - left_column: COMPLETION_MONTH
+    right_column: MONTH_START
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: person_to_md_group
+  left_table: person
+  right_table: md_group
+  relationship_columns:
+  - left_column: MD_GROUP_ID
+    right_column: MD_GROUP_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: learning_item_to_skill
+  left_table: learning_item
+  right_table: skill
+  relationship_columns:
+  - left_column: TARGET_SKILL_ID
+    right_column: SKILL_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+verified_queries:
+- name: vq_1
+  question: What is FY26 AI assistant spend by tool?
+  sql: 'SELECT t.AI_TOOL_NAME, ROUND(SUM(u.COST_USD), 0) AS AI_COST_USD
+
+    FROM ACOCO_L2.AI_ADOPTION.DT_AI_USAGE_DAILY u JOIN ACOCO_L2.ONTOLOGY.ENT_AI_TOOL t ON t.AI_TOOL_ID = u.AI_TOOL_ID
+
+    WHERE u.USAGE_DATE BETWEEN ''2025-10-01'' AND ''2026-09-30'' GROUP BY t.AI_TOOL_NAME ORDER BY AI_COST_USD DESC'
+  verified_by: ACoCo build (CP-07)
+  verified_at: 1793059200
+  use_as_onboarding_question: true
+- name: vq_2
+  question: What is the average learning payback by curriculum?
+  sql: 'SELECT li.CURRICULUM, ROUND(AVG(l.PAYBACK), 4) AS LEARNING_PAYBACK
+
+    FROM ACOCO_L2.AI_ADOPTION.DT_LEARNING_PAYBACK l JOIN ACOCO_L2.ONTOLOGY.ENT_LEARNING_ITEM li ON li.LEARNING_ITEM_ID = l.LEARNING_ITEM_ID
+
+    GROUP BY li.CURRICULUM ORDER BY li.CURRICULUM'
+  verified_by: ACoCo build (CP-07)
+  verified_at: 1793059200
+  use_as_onboarding_question: false
+custom_instructions: Fiscal years run October to September (FY26 = Oct 2025 - Sep 2026); the as-of date is 1 Oct 2026, so
+  FY26 is the last closed year. Percentages are 0-100. Filter MD groups by md_group name (e.g. 'Financial Services').

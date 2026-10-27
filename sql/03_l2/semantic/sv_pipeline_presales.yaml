@@ -1,0 +1,476 @@
+name: SV_PIPELINE_PRESALES
+description: 'Value Creation pillar: bids, win-rate, pursuit cost and intensity, pursuit-team skill fit, required skills,
+  and which bids became projects.'
+tables:
+- name: opportunity
+  description: Shared ontology entity OPPORTUNITY (ACOCO_L2.ONTOLOGY.ENT_OPPORTUNITY)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_OPPORTUNITY
+  primary_key:
+    columns:
+    - OPPORTUNITY_ID
+  dimensions:
+  - name: opportunity_id
+    expr: OPPORTUNITY_ID
+    data_type: VARCHAR
+    description: CRM opportunity (bid)
+    synonyms:
+    - bid
+    - deal
+    - pursuit
+  - name: opportunity_size
+    expr: SIZE_CLASS
+    data_type: VARCHAR
+    description: Opportunity size class
+  - name: opportunity_work_type
+    expr: WORK_TYPE
+    data_type: VARCHAR
+    description: Type of work bid for
+  - name: opportunity_status
+    expr: STATUS_AS_OF
+    data_type: VARCHAR
+    description: OPEN / WON / LOST at the as-of date
+    synonyms:
+    - outcome
+    - stage
+  - name: required_ai_skill_level
+    expr: REQUIRED_AI_SKILL_LEVEL
+    data_type: NUMBER
+    description: AI-skill level (1-5) the bid requires
+- name: customer
+  description: Shared ontology entity CUSTOMER (ACOCO_L2.ONTOLOGY.ENT_CUSTOMER)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_CUSTOMER
+  primary_key:
+    columns:
+    - CUSTOMER_ID
+  dimensions:
+  - name: customer_id
+    expr: CUSTOMER_ID
+    data_type: VARCHAR
+    description: Customer account id
+  - name: customer_name
+    expr: CUSTOMER_NAME
+    data_type: VARCHAR
+    description: Customer account name
+    synonyms:
+    - client
+    - account
+- name: md_group
+  description: Shared ontology entity MD_GROUP (ACOCO_L2.ONTOLOGY.ENT_MD_GROUP)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_MD_GROUP
+  primary_key:
+    columns:
+    - MD_GROUP_ID
+  dimensions:
+  - name: md_group_id
+    expr: MD_GROUP_ID
+    data_type: VARCHAR
+    description: MD group code (FS, CMT, HPS, PRD, RES, XAI)
+    synonyms:
+    - group code
+  - name: md_group
+    expr: MD_GROUP_NAME
+    data_type: VARCHAR
+    description: MD group name, e.g. Financial Services
+    synonyms:
+    - group
+    - industry group
+    - practice
+  - name: managing_director
+    expr: MANAGING_DIRECTOR_NAME
+    data_type: VARCHAR
+    description: Managing Director of the group
+    synonyms:
+    - MD name
+    - partner
+- name: fiscal_month
+  description: Shared ontology entity FISCAL_MONTH (ACOCO_L2.CORE.DT_FISCAL_MONTH)
+  base_table:
+    database: ACOCO_L2
+    schema: CORE
+    table: DT_FISCAL_MONTH
+  primary_key:
+    columns:
+    - MONTH_START
+  dimensions:
+  - name: fiscal_year
+    expr: FISCAL_YEAR
+    data_type: NUMBER
+    description: ACoCo fiscal year (Oct-Sep, V9); FY26 = Oct 2025 - Sep 2026
+    synonyms:
+    - FY
+    - year
+  - name: fiscal_period
+    expr: FISCAL_PERIOD
+    data_type: NUMBER
+    description: Fiscal period 1-12 (1 = October)
+    synonyms:
+    - period
+  - name: fiscal_quarter
+    expr: FISCAL_QUARTER
+    data_type: NUMBER
+    description: Fiscal quarter 1-4 (1 = Oct-Dec)
+    synonyms:
+    - quarter
+  - name: month_label
+    expr: MONTH_LABEL
+    data_type: VARCHAR
+    description: Calendar month label, e.g. SEP 2026
+    synonyms:
+    - month
+  time_dimensions:
+  - name: month_start
+    expr: MONTH_START
+    data_type: DATE
+    description: First day of the fiscal month (join key)
+- name: person
+  description: Shared ontology entity PERSON (ACOCO_L2.ONTOLOGY.ENT_PERSON)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_PERSON
+  primary_key:
+    columns:
+    - PERSON_ID
+  dimensions:
+  - name: person_id
+    expr: PERSON_ID
+    data_type: VARCHAR
+    description: People Intelligence userId
+    synonyms:
+    - employee id
+    - user id
+  - name: person_name
+    expr: DISPLAY_NAME
+    data_type: VARCHAR
+    description: Person's display name
+    synonyms:
+    - name
+    - employee
+    - consultant
+  - name: person_level
+    expr: LEVEL
+    data_type: VARCHAR
+    description: Career level at the as-of date (Analyst .. Principal)
+    synonyms:
+    - level
+    - grade
+    - rank
+  - name: bill_code
+    expr: BILL_CODE
+    data_type: NUMBER
+    description: Bill code 30-79 within the level band (higher = more senior, more bid time)
+    synonyms:
+    - billing code
+  - name: is_active
+    expr: IS_ACTIVE_AS_OF
+    data_type: BOOLEAN
+    description: Employed on the as-of date (1 Oct 2026)
+    synonyms:
+    - active
+    - current employee
+  - name: is_managing_director
+    expr: IS_MANAGING_DIRECTOR
+    data_type: BOOLEAN
+    description: Holds the Managing Director role for a group
+    synonyms:
+    - MD
+  - name: person_source
+    expr: SOURCE_SYSTEM
+    data_type: VARCHAR
+    description: BDC_CLD = real People Intelligence person; SIMULATED = simulated pool
+- name: skill
+  description: Shared ontology entity SKILL (ACOCO_L2.ONTOLOGY.ENT_SKILL)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_SKILL
+  primary_key:
+    columns:
+    - SKILL_ID
+  dimensions:
+  - name: skill_id
+    expr: SKILL_ID
+    data_type: VARCHAR
+    description: Skill code
+  - name: skill_name
+    expr: SKILL_NAME
+    data_type: VARCHAR
+    description: Skill name
+    synonyms:
+    - skill
+    - capability
+  - name: skill_family
+    expr: SKILL_FAMILY
+    data_type: VARCHAR
+    description: AGENTIC_AI, TECHNICAL or INDUSTRY
+    synonyms:
+    - skill category
+- name: project
+  description: Shared ontology entity PROJECT (ACOCO_L2.ONTOLOGY.ENT_PROJECT)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_PROJECT
+  primary_key:
+    columns:
+    - PROJECT_ID
+  dimensions:
+  - name: project_id
+    expr: PROJECT_ID
+    data_type: VARCHAR
+    description: Customer project (S/4 project / WBS)
+    synonyms:
+    - project
+    - engagement
+  - name: size_class
+    expr: SIZE_CLASS
+    data_type: VARCHAR
+    description: Project size class (XX-Small .. Large)
+    synonyms:
+    - size
+  - name: work_type
+    expr: WORK_TYPE
+    data_type: VARCHAR
+    description: Type of work (Data Migration, AI Engineering, ...)
+    synonyms:
+    - service line
+  - name: contract_type
+    expr: CONTRACT_TYPE
+    data_type: VARCHAR
+    description: FIXED_PRICE or TIME_AND_MATERIALS
+    synonyms:
+    - pricing
+  - name: delivery_model
+    expr: DELIVERY_MODEL
+    data_type: VARCHAR
+    description: HUMAN, HUMAN_AGENT (people + agents) or AGENT_LED
+    synonyms:
+    - AI delivery model
+  - name: project_status
+    expr: STATUS_AS_OF
+    data_type: VARCHAR
+    description: ACTIVE / CLOSED / NOT_STARTED at the as-of date
+    synonyms:
+    - status
+  - name: is_story_project
+    expr: IS_STORY_PROJECT
+    data_type: BOOLEAN
+    description: The seeded at-risk FS fixed-price project
+- name: bid
+  description: Fact PIPELINE_PRESALES.DT_OPPORTUNITY_FACT
+  base_table:
+    database: ACOCO_L2
+    schema: PIPELINE_PRESALES
+    table: DT_OPPORTUNITY_FACT
+  primary_key:
+    columns:
+    - OPPORTUNITY_ID
+  dimensions:
+  - name: decision_fiscal_year
+    expr: DECISION_FISCAL_YEAR
+    data_type: NUMBER
+    description: Fiscal year the bid was decided (or created if open)
+  - name: skill_fit_band
+    expr: SKILL_FIT_BAND
+    data_type: VARCHAR
+    description: HIGH (>= 0.8) / MEDIUM / LOW (< 0.5)
+    synonyms:
+    - fit band
+  - name: is_above_median_intensity
+    expr: IS_ABOVE_MEDIAN_INTENSITY
+    data_type: BOOLEAN
+    description: Pursuit intensity above the size-class median
+  facts:
+  - name: opportunity_key
+    expr: OPPORTUNITY_ID
+    data_type: VARCHAR
+    description: Bid
+  - name: is_won
+    expr: IS_WON
+    data_type: BOOLEAN
+    description: Won
+  - name: is_closed
+    expr: IS_CLOSED
+    data_type: BOOLEAN
+    description: Decided
+  - name: is_open
+    expr: IS_OPEN_AS_OF
+    data_type: BOOLEAN
+    description: Open at the as-of date
+  - name: estimated_value
+    expr: ESTIMATED_VALUE
+    data_type: NUMBER
+    description: Estimated value USD
+  - name: pursuit_cost
+    expr: PURSUIT_COST
+    data_type: NUMBER
+    description: Pursuit cost USD
+  - name: skill_fit
+    expr: SKILL_FIT
+    data_type: NUMBER
+    description: Team skill fit 0-1
+  - name: pursuit_intensity
+    expr: PURSUIT_INTENSITY
+    data_type: NUMBER
+    description: Pursuit cost / estimated value
+  metrics:
+  - name: win_rate_pct
+    expr: 100 * SUM(IFF(is_won, 1, 0)) / NULLIF(SUM(IFF(is_closed, 1, 0)), 0)
+    description: Won / (won + lost) bids
+    synonyms:
+    - hit rate
+    - conversion
+  - name: total_pursuit_cost
+    expr: SUM(pursuit_cost)
+    description: Pre-sales people cost booked to the bid's internal order (USD)
+    synonyms:
+    - bid cost
+    - presales cost
+  - name: pursuit_cost_per_won_usd
+    expr: SUM(IFF(is_closed, pursuit_cost, 0)) / NULLIF(SUM(IFF(is_won, estimated_value, 0)), 0)
+    description: Pursuit cost of closed bids per USD won
+  - name: avg_skill_fit
+    expr: AVG(skill_fit)
+    description: Share of required skills held at >= 3 by the pursuit team
+    synonyms:
+    - team fit
+  - name: won_value
+    expr: SUM(IFF(is_won, estimated_value, 0))
+    description: Value of won bids (USD)
+    synonyms:
+    - bookings
+  - name: open_pipeline_value
+    expr: SUM(IFF(is_open, estimated_value, 0))
+    description: Value of open bids at the as-of date (USD)
+    synonyms:
+    - pipeline
+  - name: bid_count
+    expr: COUNT(opportunity_key)
+    description: Number of bids
+    synonyms:
+    - opportunities
+- name: pursuit_team
+  description: Fact PIPELINE_PRESALES.DT_PURSUIT_TEAM
+  base_table:
+    database: ACOCO_L2
+    schema: PIPELINE_PRESALES
+    table: DT_PURSUIT_TEAM
+  dimensions:
+  - name: team_role
+    expr: TEAM_ROLE
+    data_type: VARCHAR
+    description: LEAD or MEMBER
+  facts:
+  - name: bid_hours
+    expr: BID_HOURS
+    data_type: NUMBER
+    description: Bid hours booked
+  metrics:
+  - name: pursuit_team_bid_hours
+    expr: SUM(bid_hours)
+    description: Bid hours booked by the team member
+- name: bid_skill
+  description: Fact ONTOLOGY.REL_OPPORTUNITY_SKILL
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: REL_OPPORTUNITY_SKILL
+relationships:
+- name: bid_to_opportunity
+  left_table: bid
+  right_table: opportunity
+  relationship_columns:
+  - left_column: OPPORTUNITY_ID
+    right_column: OPPORTUNITY_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: bid_to_customer
+  left_table: bid
+  right_table: customer
+  relationship_columns:
+  - left_column: CUSTOMER_ID
+    right_column: CUSTOMER_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: bid_to_project
+  left_table: bid
+  right_table: project
+  relationship_columns:
+  - left_column: PROJECT_ID
+    right_column: PROJECT_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: pursuit_team_to_opportunity
+  left_table: pursuit_team
+  right_table: opportunity
+  relationship_columns:
+  - left_column: OPPORTUNITY_ID
+    right_column: OPPORTUNITY_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: pursuit_team_to_person
+  left_table: pursuit_team
+  right_table: person
+  relationship_columns:
+  - left_column: PERSON_ID
+    right_column: PERSON_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: bid_skill_to_opportunity
+  left_table: bid_skill
+  right_table: opportunity
+  relationship_columns:
+  - left_column: OPPORTUNITY_ID
+    right_column: OPPORTUNITY_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: bid_skill_to_skill
+  left_table: bid_skill
+  right_table: skill
+  relationship_columns:
+  - left_column: SKILL_ID
+    right_column: SKILL_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: customer_to_md_group
+  left_table: customer
+  right_table: md_group
+  relationship_columns:
+  - left_column: MD_GROUP_ID
+    right_column: MD_GROUP_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+verified_queries:
+- name: vq_1
+  question: What is the win-rate by pursuit-team skill fit band?
+  sql: 'SELECT SKILL_FIT_BAND, COUNT(*) AS BIDS, ROUND(100 * AVG(IFF(IS_WON, 1, 0)), 1) AS WIN_RATE_PCT
+
+    FROM ACOCO_L2.PIPELINE_PRESALES.DT_OPPORTUNITY_FACT WHERE IS_CLOSED GROUP BY SKILL_FIT_BAND ORDER BY SKILL_FIT_BAND'
+  verified_by: ACoCo build (CP-07)
+  verified_at: 1793059200
+  use_as_onboarding_question: true
+- name: vq_2
+  question: What is the open pipeline value by MD group?
+  sql: 'SELECT g.MD_GROUP_NAME, ROUND(SUM(o.ESTIMATED_VALUE), 0) AS OPEN_PIPELINE_VALUE
+
+    FROM ACOCO_L2.PIPELINE_PRESALES.DT_OPPORTUNITY_FACT o
+
+    JOIN ACOCO_L2.ONTOLOGY.ENT_CUSTOMER c ON c.CUSTOMER_ID = o.CUSTOMER_ID
+
+    JOIN ACOCO_L2.ONTOLOGY.ENT_MD_GROUP g ON g.MD_GROUP_ID = c.MD_GROUP_ID
+
+    WHERE o.IS_OPEN_AS_OF GROUP BY g.MD_GROUP_NAME ORDER BY OPEN_PIPELINE_VALUE DESC'
+  verified_by: ACoCo build (CP-07)
+  verified_at: 1793059200
+  use_as_onboarding_question: false
+custom_instructions: Fiscal years run October to September (FY26 = Oct 2025 - Sep 2026); the as-of date is 1 Oct 2026, so
+  FY26 is the last closed year. Percentages are 0-100. Filter MD groups by md_group name (e.g. 'Financial Services').

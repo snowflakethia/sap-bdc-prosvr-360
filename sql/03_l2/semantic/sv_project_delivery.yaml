@@ -1,0 +1,674 @@
+name: SV_PROJECT_DELIVERY
+description: 'Operational Excellence pillar: project P&L, earned value (CPI, SPI, EAC), liquidated-damages exposure, forecast
+  margin, teams, asset reuse and the skills work packages need.'
+tables:
+- name: project
+  description: Shared ontology entity PROJECT (ACOCO_L2.ONTOLOGY.ENT_PROJECT)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_PROJECT
+  primary_key:
+    columns:
+    - PROJECT_ID
+  dimensions:
+  - name: project_id
+    expr: PROJECT_ID
+    data_type: VARCHAR
+    description: Customer project (S/4 project / WBS)
+    synonyms:
+    - project
+    - engagement
+  - name: size_class
+    expr: SIZE_CLASS
+    data_type: VARCHAR
+    description: Project size class (XX-Small .. Large)
+    synonyms:
+    - size
+  - name: work_type
+    expr: WORK_TYPE
+    data_type: VARCHAR
+    description: Type of work (Data Migration, AI Engineering, ...)
+    synonyms:
+    - service line
+  - name: contract_type
+    expr: CONTRACT_TYPE
+    data_type: VARCHAR
+    description: FIXED_PRICE or TIME_AND_MATERIALS
+    synonyms:
+    - pricing
+  - name: delivery_model
+    expr: DELIVERY_MODEL
+    data_type: VARCHAR
+    description: HUMAN, HUMAN_AGENT (people + agents) or AGENT_LED
+    synonyms:
+    - AI delivery model
+  - name: project_status
+    expr: STATUS_AS_OF
+    data_type: VARCHAR
+    description: ACTIVE / CLOSED / NOT_STARTED at the as-of date
+    synonyms:
+    - status
+  - name: is_story_project
+    expr: IS_STORY_PROJECT
+    data_type: BOOLEAN
+    description: The seeded at-risk FS fixed-price project
+- name: customer
+  description: Shared ontology entity CUSTOMER (ACOCO_L2.ONTOLOGY.ENT_CUSTOMER)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_CUSTOMER
+  primary_key:
+    columns:
+    - CUSTOMER_ID
+  dimensions:
+  - name: customer_id
+    expr: CUSTOMER_ID
+    data_type: VARCHAR
+    description: Customer account id
+  - name: customer_name
+    expr: CUSTOMER_NAME
+    data_type: VARCHAR
+    description: Customer account name
+    synonyms:
+    - client
+    - account
+- name: md_group
+  description: Shared ontology entity MD_GROUP (ACOCO_L2.ONTOLOGY.ENT_MD_GROUP)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_MD_GROUP
+  primary_key:
+    columns:
+    - MD_GROUP_ID
+  dimensions:
+  - name: md_group_id
+    expr: MD_GROUP_ID
+    data_type: VARCHAR
+    description: MD group code (FS, CMT, HPS, PRD, RES, XAI)
+    synonyms:
+    - group code
+  - name: md_group
+    expr: MD_GROUP_NAME
+    data_type: VARCHAR
+    description: MD group name, e.g. Financial Services
+    synonyms:
+    - group
+    - industry group
+    - practice
+  - name: managing_director
+    expr: MANAGING_DIRECTOR_NAME
+    data_type: VARCHAR
+    description: Managing Director of the group
+    synonyms:
+    - MD name
+    - partner
+- name: work_package
+  description: Shared ontology entity WORK_PACKAGE (ACOCO_L2.ONTOLOGY.ENT_WORK_PACKAGE)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_WORK_PACKAGE
+  primary_key:
+    columns:
+    - WBS_ID
+  dimensions:
+  - name: wbs_id
+    expr: WBS_ID
+    data_type: VARCHAR
+    description: Work package (WBS element)
+    synonyms:
+    - work package
+    - WBS
+  - name: is_critical_path
+    expr: IS_CRITICAL_PATH
+    data_type: BOOLEAN
+    description: On the project's critical path
+- name: fiscal_month
+  description: Shared ontology entity FISCAL_MONTH (ACOCO_L2.CORE.DT_FISCAL_MONTH)
+  base_table:
+    database: ACOCO_L2
+    schema: CORE
+    table: DT_FISCAL_MONTH
+  primary_key:
+    columns:
+    - MONTH_START
+  dimensions:
+  - name: fiscal_year
+    expr: FISCAL_YEAR
+    data_type: NUMBER
+    description: ACoCo fiscal year (Oct-Sep, V9); FY26 = Oct 2025 - Sep 2026
+    synonyms:
+    - FY
+    - year
+  - name: fiscal_period
+    expr: FISCAL_PERIOD
+    data_type: NUMBER
+    description: Fiscal period 1-12 (1 = October)
+    synonyms:
+    - period
+  - name: fiscal_quarter
+    expr: FISCAL_QUARTER
+    data_type: NUMBER
+    description: Fiscal quarter 1-4 (1 = Oct-Dec)
+    synonyms:
+    - quarter
+  - name: month_label
+    expr: MONTH_LABEL
+    data_type: VARCHAR
+    description: Calendar month label, e.g. SEP 2026
+    synonyms:
+    - month
+  time_dimensions:
+  - name: month_start
+    expr: MONTH_START
+    data_type: DATE
+    description: First day of the fiscal month (join key)
+- name: person
+  description: Shared ontology entity PERSON (ACOCO_L2.ONTOLOGY.ENT_PERSON)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_PERSON
+  primary_key:
+    columns:
+    - PERSON_ID
+  dimensions:
+  - name: person_id
+    expr: PERSON_ID
+    data_type: VARCHAR
+    description: People Intelligence userId
+    synonyms:
+    - employee id
+    - user id
+  - name: person_name
+    expr: DISPLAY_NAME
+    data_type: VARCHAR
+    description: Person's display name
+    synonyms:
+    - name
+    - employee
+    - consultant
+  - name: person_level
+    expr: LEVEL
+    data_type: VARCHAR
+    description: Career level at the as-of date (Analyst .. Principal)
+    synonyms:
+    - level
+    - grade
+    - rank
+  - name: bill_code
+    expr: BILL_CODE
+    data_type: NUMBER
+    description: Bill code 30-79 within the level band (higher = more senior, more bid time)
+    synonyms:
+    - billing code
+  - name: is_active
+    expr: IS_ACTIVE_AS_OF
+    data_type: BOOLEAN
+    description: Employed on the as-of date (1 Oct 2026)
+    synonyms:
+    - active
+    - current employee
+  - name: is_managing_director
+    expr: IS_MANAGING_DIRECTOR
+    data_type: BOOLEAN
+    description: Holds the Managing Director role for a group
+    synonyms:
+    - MD
+  - name: person_source
+    expr: SOURCE_SYSTEM
+    data_type: VARCHAR
+    description: BDC_CLD = real People Intelligence person; SIMULATED = simulated pool
+- name: asset
+  description: Shared ontology entity ASSET (ACOCO_L2.ONTOLOGY.ENT_ASSET)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_ASSET
+  primary_key:
+    columns:
+    - ASSET_ID
+  dimensions:
+  - name: asset_id
+    expr: ASSET_ID
+    data_type: VARCHAR
+    description: Reusable delivery asset
+  - name: asset_title
+    expr: ASSET_TITLE
+    data_type: VARCHAR
+    description: Asset title
+    synonyms:
+    - accelerator
+    - template
+  - name: asset_type
+    expr: ASSET_TYPE
+    data_type: VARCHAR
+    description: Accelerator, code template, test pack ...
+  - name: asset_work_type
+    expr: WORK_TYPE
+    data_type: VARCHAR
+    description: Work type the asset serves
+- name: skill
+  description: Shared ontology entity SKILL (ACOCO_L2.ONTOLOGY.ENT_SKILL)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_SKILL
+  primary_key:
+    columns:
+    - SKILL_ID
+  dimensions:
+  - name: skill_id
+    expr: SKILL_ID
+    data_type: VARCHAR
+    description: Skill code
+  - name: skill_name
+    expr: SKILL_NAME
+    data_type: VARCHAR
+    description: Skill name
+    synonyms:
+    - skill
+    - capability
+  - name: skill_family
+    expr: SKILL_FAMILY
+    data_type: VARCHAR
+    description: AGENTIC_AI, TECHNICAL or INDUSTRY
+    synonyms:
+    - skill category
+- name: source_project
+  description: Shared ontology entity PROJECT (ACOCO_L2.ONTOLOGY.ENT_PROJECT) in the role source_project
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_PROJECT
+  primary_key:
+    columns:
+    - PROJECT_ID
+  dimensions:
+  - name: source_project_project_id
+    expr: PROJECT_ID
+    data_type: VARCHAR
+    description: Customer project (S/4 project / WBS)
+  - name: source_project_size_class
+    expr: SIZE_CLASS
+    data_type: VARCHAR
+    description: Project size class (XX-Small .. Large)
+  - name: source_project_work_type
+    expr: WORK_TYPE
+    data_type: VARCHAR
+    description: Type of work (Data Migration, AI Engineering, ...)
+  - name: source_project_contract_type
+    expr: CONTRACT_TYPE
+    data_type: VARCHAR
+    description: FIXED_PRICE or TIME_AND_MATERIALS
+  - name: source_project_delivery_model
+    expr: DELIVERY_MODEL
+    data_type: VARCHAR
+    description: HUMAN, HUMAN_AGENT (people + agents) or AGENT_LED
+  - name: source_project_project_status
+    expr: STATUS_AS_OF
+    data_type: VARCHAR
+    description: ACTIVE / CLOSED / NOT_STARTED at the as-of date
+  - name: source_project_is_story_project
+    expr: IS_STORY_PROJECT
+    data_type: BOOLEAN
+    description: The seeded at-risk FS fixed-price project
+- name: project_month
+  description: Fact PROJECT_DELIVERY.DT_PROJECT_MONTH_FINANCIALS
+  base_table:
+    database: ACOCO_L2
+    schema: PROJECT_DELIVERY
+    table: DT_PROJECT_MONTH_FINANCIALS
+  facts:
+  - name: revenue
+    expr: REVENUE
+    data_type: NUMBER
+    description: Revenue USD
+  - name: total_cost
+    expr: TOTAL_COST
+    data_type: NUMBER
+    description: Total cost USD
+  - name: margin
+    expr: MARGIN
+    data_type: NUMBER
+    description: Margin USD
+  - name: agent_cost
+    expr: AGENT_COST
+    data_type: NUMBER
+    description: AI-agent cost USD
+  - name: agent_hours
+    expr: AGENT_HOURS
+    data_type: NUMBER
+    description: AI-agent hours
+  - name: delivery_hours
+    expr: DELIVERY_HOURS
+    data_type: NUMBER
+    description: Delivery hours
+  - name: earned_hours
+    expr: EARNED_HOURS
+    data_type: NUMBER
+    description: Earned hours
+  metrics:
+  - name: total_revenue
+    expr: SUM(revenue)
+    description: Recognised revenue (USD, S/4 journal GL 0041000000)
+    synonyms:
+    - sales
+    - fees
+  - name: total_total_cost
+    expr: SUM(total_cost)
+    description: People + AI-agent + 35 % overhead cost (USD)
+    synonyms:
+    - cost
+  - name: total_margin
+    expr: SUM(margin)
+    description: Revenue minus total cost (USD)
+    synonyms:
+    - profit
+  - name: margin_pct
+    expr: 100 * SUM(margin) / NULLIF(SUM(revenue), 0)
+    description: Margin as % of revenue
+    synonyms:
+    - profit margin
+  - name: total_agent_cost
+    expr: SUM(agent_cost)
+    description: AI-agent cost charged to projects (S/4 AGT_* allocations, USD)
+    synonyms:
+    - AI cost
+  - name: total_agent_hours
+    expr: SUM(agent_hours)
+    description: AI-agent hours charged to projects
+  - name: productivity_index
+    expr: SUM(earned_hours) / NULLIF(SUM(delivery_hours), 0)
+    description: Earned hours / actual delivery hours (> 1 = faster than plan)
+    synonyms:
+    - productivity
+- name: project_health
+  description: Fact PROJECT_DELIVERY.DT_PROJECT_HEALTH
+  base_table:
+    database: ACOCO_L2
+    schema: PROJECT_DELIVERY
+    table: DT_PROJECT_HEALTH
+  primary_key:
+    columns:
+    - PROJECT_ID
+  facts:
+  - name: project_key
+    expr: PROJECT_ID
+    data_type: VARCHAR
+    description: Project
+  - name: earned_value_td
+    expr: EARNED_VALUE_TD
+    data_type: NUMBER
+    description: Earned value to date
+  - name: actual_cost_td
+    expr: ACTUAL_COST_TD
+    data_type: NUMBER
+    description: Actual cost to date
+  - name: planned_value_td
+    expr: PLANNED_VALUE_TD
+    data_type: NUMBER
+    description: Planned value to date
+  - name: contract_value
+    expr: CONTRACT_VALUE
+    data_type: NUMBER
+    description: Contract value
+  - name: eac
+    expr: EAC
+    data_type: NUMBER
+    description: Estimate at completion
+  - name: ld_exposure
+    expr: LD_EXPOSURE
+    data_type: NUMBER
+    description: LD exposure
+  - name: reused_asset
+    expr: REUSED_ASSET
+    data_type: BOOLEAN
+    description: Reused >= 1 asset
+  - name: forecast_slip_weeks
+    expr: FORECAST_SLIP_WEEKS
+    data_type: NUMBER
+    description: Forecast slip in weeks
+  metrics:
+  - name: total_cpi
+    expr: SUM(earned_value_td) / NULLIF(SUM(actual_cost_td), 0)
+    description: Cost performance index = earned value / actual cost (< 1 = over budget)
+    synonyms:
+    - cost performance
+  - name: total_spi
+    expr: SUM(earned_value_td) / NULLIF(SUM(planned_value_td), 0)
+    description: Schedule performance index = earned value / planned value (< 1 = late)
+    synonyms:
+    - schedule performance
+  - name: total_forecast_margin_pct
+    expr: 100 * (SUM(contract_value) - SUM(eac) - SUM(ld_exposure)) / NULLIF(SUM(contract_value), 0)
+    description: (Contract - EAC - LD exposure) / contract
+    synonyms:
+    - forecast profitability
+  - name: total_ld_exposure
+    expr: SUM(ld_exposure)
+    description: Liquidated damages exposure on late fixed-price projects (USD)
+    synonyms:
+    - penalties
+  - name: total_eac
+    expr: SUM(eac)
+    description: Estimate at completion = sold cost / CPI (USD)
+  - name: project_count
+    expr: COUNT(DISTINCT project_key)
+    description: Number of projects
+    synonyms:
+    - projects
+  - name: asset_reuse_rate_pct
+    expr: 100 * AVG(IFF(reused_asset, 1, 0))
+    description: Projects with >= 1 recorded asset use / projects
+    synonyms:
+    - reuse rate
+- name: project_team
+  description: Fact PROJECT_DELIVERY.DT_PROJECT_TEAM
+  base_table:
+    database: ACOCO_L2
+    schema: PROJECT_DELIVERY
+    table: DT_PROJECT_TEAM
+  facts:
+  - name: delivery_hours
+    expr: DELIVERY_HOURS
+    data_type: NUMBER
+    description: Delivery hours on the project
+  metrics:
+  - name: team_delivery_hours
+    expr: SUM(delivery_hours)
+    description: Delivery hours booked by the person on the project
+- name: asset_use
+  description: Fact ONTOLOGY.REL_ASSET_USE
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: REL_ASSET_USE
+  primary_key:
+    columns:
+    - ASSET_USE_ID
+  facts:
+  - name: hours_saved_estimated
+    expr: HOURS_SAVED_ESTIMATED
+    data_type: NUMBER
+    description: ESTIMATED hours saved
+  - name: uses
+    expr: '1'
+    data_type: NUMBER
+    description: One recorded use
+  metrics:
+  - name: total_hours_saved_estimated
+    expr: SUM(hours_saved_estimated)
+    description: ESTIMATED hours saved by asset reuse (catalogued saving per use)
+  - name: asset_uses
+    expr: SUM(uses)
+    description: Recorded asset uses
+- name: wp_skill
+  description: Fact ONTOLOGY.REL_WP_SKILL
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: REL_WP_SKILL
+  facts:
+  - name: required_proficiency
+    expr: REQUIRED_PROFICIENCY
+    data_type: NUMBER
+    description: Required proficiency
+- name: asset_skill
+  description: Fact ONTOLOGY.REL_ASSET_SKILL
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: REL_ASSET_SKILL
+relationships:
+- name: project_month_to_work_package
+  left_table: project_month
+  right_table: work_package
+  relationship_columns:
+  - left_column: WBS_ID
+    right_column: WBS_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: project_month_to_fiscal_month
+  left_table: project_month
+  right_table: fiscal_month
+  relationship_columns:
+  - left_column: MONTH_START
+    right_column: MONTH_START
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: project_health_to_project
+  left_table: project_health
+  right_table: project
+  relationship_columns:
+  - left_column: PROJECT_ID
+    right_column: PROJECT_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: project_team_to_project
+  left_table: project_team
+  right_table: project
+  relationship_columns:
+  - left_column: PROJECT_ID
+    right_column: PROJECT_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: project_team_to_person
+  left_table: project_team
+  right_table: person
+  relationship_columns:
+  - left_column: PERSON_ID
+    right_column: PERSON_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: asset_use_to_asset
+  left_table: asset_use
+  right_table: asset
+  relationship_columns:
+  - left_column: ASSET_ID
+    right_column: ASSET_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: asset_use_to_project
+  left_table: asset_use
+  right_table: project
+  relationship_columns:
+  - left_column: PROJECT_ID
+    right_column: PROJECT_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: wp_skill_to_work_package
+  left_table: wp_skill
+  right_table: work_package
+  relationship_columns:
+  - left_column: WBS_ID
+    right_column: WBS_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: wp_skill_to_skill
+  left_table: wp_skill
+  right_table: skill
+  relationship_columns:
+  - left_column: SKILL_ID
+    right_column: SKILL_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: asset_skill_to_asset
+  left_table: asset_skill
+  right_table: asset
+  relationship_columns:
+  - left_column: ASSET_ID
+    right_column: ASSET_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: asset_skill_to_skill
+  left_table: asset_skill
+  right_table: skill
+  relationship_columns:
+  - left_column: SKILL_ID
+    right_column: SKILL_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: project_to_customer
+  left_table: project
+  right_table: customer
+  relationship_columns:
+  - left_column: CUSTOMER_ID
+    right_column: CUSTOMER_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: project_to_md_group
+  left_table: project
+  right_table: md_group
+  relationship_columns:
+  - left_column: MD_GROUP_ID
+    right_column: MD_GROUP_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: work_package_to_project
+  left_table: work_package
+  right_table: project
+  relationship_columns:
+  - left_column: PROJECT_ID
+    right_column: PROJECT_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: asset_to_source_project
+  left_table: asset
+  right_table: source_project
+  relationship_columns:
+  - left_column: SOURCE_PROJECT_ID
+    right_column: PROJECT_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+verified_queries:
+- name: vq_1
+  question: Which active Financial Services projects have a negative forecast margin?
+  sql: "SELECT h.PROJECT_ID, h.SIZE_CLASS, h.CONTRACT_TYPE, ROUND(h.CPI, 2) AS CPI, ROUND(h.SPI, 2) AS SPI,\n       ROUND(100\
+    \ * h.FORECAST_MARGIN_PCT, 1) AS FORECAST_MARGIN_PCT, ROUND(h.LD_EXPOSURE, 0) AS LD_EXPOSURE\nFROM ACOCO_L2.PROJECT_DELIVERY.DT_PROJECT_HEALTH\
+    \ h\nJOIN ACOCO_L2.ONTOLOGY.ENT_MD_GROUP g ON g.MD_GROUP_ID = h.MD_GROUP_ID\nWHERE g.MD_GROUP_NAME = 'Financial Services'\
+    \ AND h.STATUS_AS_OF = 'ACTIVE' AND h.FORECAST_MARGIN_PCT < 0\nORDER BY h.FORECAST_MARGIN_PCT"
+  verified_by: ACoCo build (CP-07)
+  verified_at: 1793059200
+  use_as_onboarding_question: true
+- name: vq_2
+  question: What was FY26 margin % by delivery model?
+  sql: 'SELECT p.DELIVERY_MODEL, ROUND(100 * SUM(m.MARGIN) / SUM(m.REVENUE), 1) AS MARGIN_PCT
+
+    FROM ACOCO_L2.PROJECT_DELIVERY.DT_PROJECT_MONTH_FINANCIALS m
+
+    JOIN ACOCO_L2.ONTOLOGY.ENT_WORK_PACKAGE w ON w.WBS_ID = m.WBS_ID
+
+    JOIN ACOCO_L2.ONTOLOGY.ENT_PROJECT p ON p.PROJECT_ID = w.PROJECT_ID
+
+    JOIN ACOCO_L2.CORE.DT_FISCAL_MONTH f ON f.MONTH_START = m.MONTH_START
+
+    WHERE f.FISCAL_YEAR = 2026 GROUP BY p.DELIVERY_MODEL ORDER BY MARGIN_PCT DESC'
+  verified_by: ACoCo build (CP-07)
+  verified_at: 1793059200
+  use_as_onboarding_question: false
+custom_instructions: Fiscal years run October to September (FY26 = Oct 2025 - Sep 2026); the as-of date is 1 Oct 2026, so
+  FY26 is the last closed year. Percentages are 0-100. Filter MD groups by md_group name (e.g. 'Financial Services').

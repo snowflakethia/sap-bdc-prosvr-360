@@ -197,18 +197,18 @@ def r14():
               f"significant={x['SIGNIFICANT']}")
 
 
-def write_table(name, rows, comment):
+def write_table(name, rows, comment, schema="REASONING"):
     cols = list(rows[0])
     types = {c: ("BOOLEAN" if isinstance(rows[0][c], bool) else "FLOAT" if isinstance(rows[0][c], float)
                  else "NUMBER" if isinstance(rows[0][c], int) else "VARCHAR") for c in cols}
     lit = lambda v: "NULL" if v is None or (isinstance(v, float) and np.isnan(v)) else (
         str(v).upper() if isinstance(v, bool) else repr(float(v)) if isinstance(v, float) else str(v)
         if isinstance(v, int) else "'" + str(v).replace("'", "''") + "'")
-    sf.query(f"CREATE OR REPLACE TABLE ACOCO_L2.REASONING.{name} ({', '.join(f'{c} {types[c]}' for c in cols)}) "
+    sf.query(f"CREATE OR REPLACE TABLE ACOCO_L2.{schema}.{name} ({', '.join(f'{c} {types[c]}' for c in cols)}) "
              f"COMMENT = '{comment}'")
     for i in range(0, len(rows), 500):
         vals = ",\n".join("(" + ", ".join(lit(r[c]) for c in cols) + ")" for r in rows[i:i + 500])
-        sf.query(f"INSERT INTO ACOCO_L2.REASONING.{name} VALUES {vals}")
+        sf.query(f"INSERT INTO ACOCO_L2.{schema}.{name} VALUES {vals}")
 
 
 def main():
