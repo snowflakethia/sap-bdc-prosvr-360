@@ -29,6 +29,7 @@ CP="cp${NN}"; TAG="cp-${NN}"
 echo "== gate $CP"; python3 tools/gate.py "$CP"
 
 mkdir -p "backup/$CP"
+: > "backup/$CP/clones.txt"            # re-running a checkpoint starts a fresh list
 for db in "$@"; do
   [[ " $ALLOWED " == *" $db "* ]] || { echo "refusing to clone $db (not in: $ALLOWED)"; exit 2; }
   bkp="ACOCO_BKP_CP${NN}_${db}"
