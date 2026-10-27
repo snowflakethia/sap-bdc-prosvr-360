@@ -375,6 +375,39 @@ tables:
   - name: roll_off_below_ai_level
     expr: SUM(IFF(below_pipeline_ai_level, 1, 0))
     description: Roll-offs below the pipeline's required AI-skill level
+- name: attrition_risk
+  description: Fact REASONING.DT_ATTRITION_RISK
+  base_table:
+    database: ACOCO_L2
+    schema: REASONING
+    table: DT_ATTRITION_RISK
+  primary_key:
+    columns:
+    - PERSON_ID
+  dimensions:
+  - name: risk_decile
+    expr: RISK_DECILE
+    data_type: NUMBER
+    description: 1 = highest risk decile
+  - name: top_drivers
+    expr: TOP_DRIVERS
+    data_type: VARCHAR
+    description: Global top model drivers
+  facts:
+  - name: attrition_risk
+    expr: ATTRITION_RISK
+    data_type: FLOAT
+    description: Modelled probability of leaving
+  metrics:
+  - name: avg_attrition_risk
+    expr: AVG(attrition_risk)
+    description: 'Modelled probability of voluntary leaving in the next year (indicative: hold-out AUC 0.90 overall, 0.57
+      within the simulated pool)'
+    synonyms:
+    - flight risk
+  - name: high_risk_people
+    expr: SUM(IFF(risk_decile = 1, 1, 0))
+    description: People in the top attrition-risk decile
 - name: person_skill
   description: Fact ONTOLOGY.REL_PERSON_SKILL
   base_table:
@@ -449,6 +482,14 @@ relationships:
   relationship_type: many_to_one
 - name: roll_off_to_person
   left_table: roll_off
+  right_table: person
+  relationship_columns:
+  - left_column: PERSON_ID
+    right_column: PERSON_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: attrition_risk_to_person
+  left_table: attrition_risk
   right_table: person
   relationship_columns:
   - left_column: PERSON_ID

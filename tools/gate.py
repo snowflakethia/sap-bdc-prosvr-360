@@ -498,9 +498,34 @@ def gate_cp07():
     return checks
 
 
+def gate_cp08():
+    import sf
+    checks = []
+    ag = sf.query("SHOW AGENTS LIKE 'ACOCO_ADVISOR' IN SCHEMA ACOCO_DB.AGENT")
+    spec = (ROOT / "agent" / "acoco_advisor.agent.yaml").read_text()
+    n_an, n_cs = spec.count("type: cortex_analyst_text_to_sql"), spec.count("type: cortex_search")
+    checks.append(("CP08-01", "agent ACOCO_DB.AGENT.ACOCO_ADVISOR exists with 5 Cortex Analyst + 2 Cortex Search tools",
+                   "exists, 5 + 2", f"exists={bool(ag)}, {n_an} + {n_cs}", bool(ag) and n_an == 5 and n_cs == 2))
+    reg = json.loads((ROOT / "logs" / "agent_regression.json").read_text())["results"]
+    route = [r["id"] for r in reg if not r["routing"]]
+    checks.append(("CP08-02", "regression: 20 prompts, routing correct", "20/20", f"{len(reg) - len(route)}/{len(reg)} misses {route}",
+                   len(reg) == 20 and not route))
+    fig = [r["id"] for r in reg if not (r["figures"] and r["phrases"])]
+    checks.append(("CP08-03", "figures within tolerance of measured_anchors.md and required phrases present (R13 'no significant', association)",
+                   "0 misses", str(fig), not fig))
+    r13 = next(r for r in reg if r["id"] == 20)
+    checks.append(("CP08-04", "R13 honesty: skilled-but-inactive answered as 'no significant effect', association not cause",
+                   "PASS", r13["answer"][:140].replace("\n", " "), r13["ok"]))
+    secs = sorted(r["seconds"] for r in reg if r["seconds"] is not None)
+    p90 = secs[min(len(secs) - 1, int(round(0.9 * (len(secs) - 1))))] if secs else None
+    checks.append(("CP08-05", "p90 latency recorded in logs/agent_regression.md", "recorded", f"p50 {secs[len(secs) // 2]} s, p90 {p90} s",
+                   p90 is not None and "## Latency" in (ROOT / "logs" / "agent_regression.md").read_text()))
+    return checks
+
+
 GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03, "cp04": gate_cp04,
          "cp05": gate_cp05, "cp06": gate_cp06,
-         "cp07": gate_cp07}
+         "cp07": gate_cp07, "cp08": gate_cp08}
 
 
 def log_to_quality(cp, run_at, rows):

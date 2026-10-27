@@ -378,6 +378,48 @@ tables:
   - name: pursuit_team_bid_hours
     expr: SUM(bid_hours)
     description: Bid hours booked by the team member
+- name: bench_match
+  description: Fact REASONING.VW_BENCH_TO_PIPELINE_MATCH
+  base_table:
+    database: ACOCO_L2
+    schema: REASONING
+    table: VW_BENCH_TO_PIPELINE_MATCH
+  dimensions:
+  - name: match_rank
+    expr: RANK_FOR_PERSON
+    data_type: NUMBER
+    description: 1 = best open bid for the person
+  - name: meets_ai_level
+    expr: MEETS_AI_LEVEL
+    data_type: BOOLEAN
+    description: Person's AI-skill level meets the bid's requirement
+  time_dimensions:
+  - name: roll_off_date
+    expr: ROLL_OFF_DATE
+    data_type: DATE
+    description: Date the person rolls off
+  facts:
+  - name: match_person_key
+    expr: PERSON_ID
+    data_type: VARCHAR
+    description: Roll-off person
+  - name: match_score
+    expr: MATCH_SCORE
+    data_type: FLOAT
+    description: Match score 0-1
+  - name: skill_coverage
+    expr: SKILL_COVERAGE
+    data_type: NUMBER
+    description: Share of required skills the person holds at >= 3
+  metrics:
+  - name: avg_match_score
+    expr: AVG(match_score)
+    description: 'R1: 0.6 x semantic skill similarity + 0.4 x exact skill coverage between a roll-off person and an open bid'
+    synonyms:
+    - fit score
+  - name: matched_people
+    expr: COUNT(DISTINCT match_person_key)
+    description: Roll-off people with at least one matching open bid
 - name: bid_skill
   description: Fact ONTOLOGY.REL_OPPORTUNITY_SKILL
   base_table:
@@ -423,6 +465,22 @@ relationships:
   relationship_columns:
   - left_column: PERSON_ID
     right_column: PERSON_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: bench_match_to_person
+  left_table: bench_match
+  right_table: person
+  relationship_columns:
+  - left_column: PERSON_ID
+    right_column: PERSON_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: bench_match_to_opportunity
+  left_table: bench_match
+  right_table: opportunity
+  relationship_columns:
+  - left_column: OPPORTUNITY_ID
+    right_column: OPPORTUNITY_ID
   join_type: left_outer
   relationship_type: many_to_one
 - name: bid_skill_to_opportunity

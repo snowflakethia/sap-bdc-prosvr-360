@@ -355,12 +355,13 @@ question per SV with SQL that runs.
 
 **Human validation**
 1. Read `logs/agent_regression.md` - expected 20/20 `PASS`; latency table present.
-2. Ask two questions yourself in Snowflake Intelligence (or `POST .../agents/ACOCO_ADVISOR:run`):
+2. Ask two questions yourself in Snowflake Intelligence, or from the terminal with
+   `cortex agents run ACOCO_DB.AGENT.ACOCO_ADVISOR "<question>" -c sfseapac_kp`:
    - *"Give me my FY26 ProServe360 scorecard against FY25."* -> expected: one figure per pillar, sources cited.
    - *"Which bench consultants with AI skill 3+ fit my open bids above USD 5 M?"* -> expected: a named list that
      uses the Pipeline and Workforce tools together.
-3. Honesty check: ask *"Does AI make my skilled-but-inactive consultants more productive?"* - expected: the agent
-   says there is no significant effect, and says it is an association, not a cause.
+3. Honesty check: ask *"Does AI make my skilled-but-inactive consultants more productive?"* (same command) - expected:
+   "no significant effect" (~+2.6 %, 90 % CI ~-0.5 % to +5.8 %), stated as an association, not a cause.
 
 **Rollback:** `CREATE OR REPLACE AGENT ... FROM backup/cp07/agent.sql` (previous) or `DROP AGENT` +
 `git checkout cp-07`.
@@ -456,8 +457,8 @@ regression 20/20 re-run on the final build.
 | 04 | approved | cp-04 | Boon Sing Thia, 2026-10-27 | gate 8/8; ontology 19/19; D-04-1..5 |
 | 05 | approved | cp-05 | Boon Sing Thia, 2026-10-27 | gate 7/7; marts 8/8; anchors 4/13 OK, 9 MISS (decision); D-05-1..10 |
 | 06 | approved | cp-06 | Boon Sing Thia, 2026-10-27 | gate 11/11; reasoning 8/8; anchors 9/13; D-06-1..10 |
-| 07 | awaiting validation | cp-07 | | gate 6/6; ontology check 0 errors; D-07-1..5 |
-| 08 | not started | | | |
+| 07 | approved | cp-07 | Boon Sing Thia, 2026-10-27 | gate 6/6; ontology check 0 errors; D-07-1..5 |
+| 08 | awaiting validation | cp-08 | | gate 5/5; regression 20/20; p90 84 s; D-08-1..4 |
 | 09 | not started | | | |
 | 10 | not started | | | |
 | 11 | not started | | | |

@@ -25,3 +25,8 @@ artifacts:
     targets:
       default:
         object: ACOCO_L2.SEMANTIC.SV_PORTFOLIO_360
+  - path: ACOCO_ADVISOR.agent.yaml
+    type: cortex_agent
+    targets:
+      default:
+        object: ACOCO_DB.AGENT.ACOCO_ADVISOR

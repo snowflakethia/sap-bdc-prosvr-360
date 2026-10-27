@@ -506,6 +506,34 @@ tables:
   - name: asset_uses
     expr: SUM(uses)
     description: Recorded asset uses
+- name: asset_match
+  description: Fact REASONING.VW_ASSET_MATCH
+  base_table:
+    database: ACOCO_L2
+    schema: REASONING
+    table: VW_ASSET_MATCH
+  dimensions:
+  - name: reuse_status
+    expr: REUSE_STATUS
+    data_type: VARCHAR
+    description: REUSED or MISSED
+  - name: same_work_type
+    expr: SAME_WORK_TYPE
+    data_type: BOOLEAN
+    description: Asset built for the same work type
+  facts:
+  - name: similarity
+    expr: SIMILARITY
+    data_type: FLOAT
+    description: Semantic similarity of the work package need and the asset
+  - name: effort_saving_hours
+    expr: EFFORT_SAVING_HOURS
+    data_type: NUMBER
+    description: Catalogued effort saving (ESTIMATED)
+  metrics:
+  - name: missed_reuse_hours
+    expr: SUM(IFF(reuse_status = 'MISSED', effort_saving_hours, 0))
+    description: ESTIMATED hours a matching asset would have saved but was not reused
 - name: wp_skill
   description: Fact ONTOLOGY.REL_WP_SKILL
   base_table:
@@ -578,6 +606,22 @@ relationships:
   relationship_columns:
   - left_column: PROJECT_ID
     right_column: PROJECT_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: asset_match_to_work_package
+  left_table: asset_match
+  right_table: work_package
+  relationship_columns:
+  - left_column: WBS_ID
+    right_column: WBS_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: asset_match_to_asset
+  left_table: asset_match
+  right_table: asset
+  relationship_columns:
+  - left_column: ASSET_ID
+    right_column: ASSET_ID
   join_type: left_outer
   relationship_type: many_to_one
 - name: wp_skill_to_work_package

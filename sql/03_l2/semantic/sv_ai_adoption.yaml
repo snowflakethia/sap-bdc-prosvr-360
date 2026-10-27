@@ -362,6 +362,107 @@ tables:
   - name: pi_not_ai_active
     expr: SUM(IFF(NOT ai_active, earned_hours, 0)) / NULLIF(SUM(IFF(NOT ai_active, delivery_hours, 0)), 0)
     description: Productivity index of everyone else (unstratified; the stratified test is VW_AI_PRODUCTIVITY_TEST)
+- name: productivity_test
+  description: Fact REASONING.AI_PRODUCTIVITY_TEST
+  base_table:
+    database: ACOCO_L2
+    schema: REASONING
+    table: AI_PRODUCTIVITY_TEST
+  dimensions:
+  - name: test_scope
+    expr: SCOPE
+    data_type: VARCHAR
+    description: FIRM or MD group id (FS, CMT, ...)
+    synonyms:
+    - scope
+  - name: test_fiscal_year
+    expr: FISCAL_YEAR
+    data_type: NUMBER
+    description: Fiscal year tested
+  - name: test_stratum
+    expr: STRATUM
+    data_type: VARCHAR
+    description: ALL LEVELS or a level
+  - name: ai_band
+    expr: AI_BAND
+    data_type: VARCHAR
+    description: AI_ACTIVE or SKILLED_INACTIVE (each vs the non-active rest)
+  - name: is_significant
+    expr: SIGNIFICANT
+    data_type: BOOLEAN
+    description: 90 % CI excludes zero
+  facts:
+  - name: uplift
+    expr: UPLIFT
+    data_type: FLOAT
+    description: Stratified uplift
+  - name: ci_low
+    expr: CI_LOW
+    data_type: FLOAT
+    description: 90 % CI low
+  - name: ci_high
+    expr: CI_HIGH
+    data_type: FLOAT
+    description: 90 % CI high
+  - name: people_in_band
+    expr: PEOPLE_IN_BAND
+    data_type: NUMBER
+    description: People in the band
+  metrics:
+  - name: productivity_uplift
+    expr: AVG(uplift)
+    description: 'R13: stratified productivity-index uplift of the AI band vs the non-active rest (one row per scope x year
+      x stratum x band)'
+    synonyms:
+    - AI uplift
+  - name: uplift_ci_low
+    expr: AVG(ci_low)
+    description: 'R13: lower bound of the 90 % bootstrap confidence interval'
+  - name: uplift_ci_high
+    expr: AVG(ci_high)
+    description: 'R13: upper bound of the 90 % bootstrap confidence interval'
+- name: payback_test
+  description: Fact REASONING.LEARNING_PAYBACK_TEST
+  base_table:
+    database: ACOCO_L2
+    schema: REASONING
+    table: LEARNING_PAYBACK_TEST
+  dimensions:
+  - name: payback_scope
+    expr: SCOPE
+    data_type: VARCHAR
+    description: FIRM or FS
+  - name: payback_curriculum
+    expr: CURRICULUM
+    data_type: VARCHAR
+    description: AGENTIC_AI or CORE
+  - name: payback_significant
+    expr: SIGNIFICANT
+    data_type: BOOLEAN
+    description: 90 % CI excludes zero
+  facts:
+  - name: payback
+    expr: PAYBACK
+    data_type: FLOAT
+    description: Payback
+  - name: ci_low
+    expr: CI_LOW
+    data_type: FLOAT
+    description: 90 % CI low
+  - name: ci_high
+    expr: CI_HIGH
+    data_type: FLOAT
+    description: 90 % CI high
+  metrics:
+  - name: payback_estimate
+    expr: AVG(payback)
+    description: 'R14: learning payback with bootstrap CI (one row per scope x curriculum)'
+  - name: payback_ci_low
+    expr: AVG(ci_low)
+    description: 'R14: lower bound of the 90 % confidence interval'
+  - name: payback_ci_high
+    expr: AVG(ci_high)
+    description: 'R14: upper bound of the 90 % confidence interval'
 - name: learning_episode
   description: Fact AI_ADOPTION.DT_LEARNING_PAYBACK
   base_table:
