@@ -439,8 +439,8 @@ regression 20/20 re-run on the final build.
 
 | CP | Status | Tag | Approved by / date | Notes |
 |---|---|---|---|---|
-| 00 | awaiting validation | cp-00 | | gate 8/8; deviations D-00-1..8 |
-| 01 | not started | | | |
+| 00 | approved | cp-00 | Boon Sing Thia, 2026-10-27 | gate 8/8; deviations D-00-1..8 |
+| 01 | awaiting validation | cp-01 | | gate 8/8; deviations D-01-1..5 |
 | 02 | not started | | | |
 | 03 | not started | | | |
 | 04 | not started | | | |

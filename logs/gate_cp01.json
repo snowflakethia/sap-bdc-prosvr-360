@@ -1,0 +1,62 @@
+{
+  "cp": "cp01",
+  "run_at": "2026-10-27T03:02:23+00:00",
+  "checks": [
+    {
+      "check_id": "CP01-01",
+      "description": "six MD groups, each with >= 1 real S/4 delivery cost centre",
+      "expected": "6 groups, 0 short",
+      "actual": "6 groups {'CMT': 3, 'FS': 3, 'HPS': 3, 'PRD': 3, 'RES': 3, 'XAI': 3}",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP01-02",
+      "description": "every mapped cost centre exists in COSTCENTER_V1",
+      "expected": "0",
+      "actual": "0",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP01-03",
+      "description": "every payGrade in Core Workforce maps to a level",
+      "expected": "0 unmapped",
+      "actual": "0",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP01-04",
+      "description": "every People Intelligence costCenter maps to a delivery cost centre",
+      "expected": "0 unmapped",
+      "actual": "0",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP01-05",
+      "description": "time targets match PRD 2.1 and sum to 100",
+      "expected": "5 levels, PRD values",
+      "actual": "{'Analyst': (80.0, 8.0, 7.0, 3.0, 2.0), 'Consultant': (78.0, 12.0, 5.0, 3.0, 2.0), 'Manager': (70.0, 20.0, 5.0, 3.0, 2.0), 'Senior Manager': (55.0, 35.0, 5.0, 3.0, 2.0), 'Principal': (45.0, 45.0, 5.0, 3.0, 2.0)}",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP01-06",
+      "description": "fiscal variant V9 starts in October for FY22-FY26",
+      "expected": "5",
+      "actual": "5",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP01-07",
+      "description": "as-of date is 2026-10-01",
+      "expected": "2026-10-01 (1 row)",
+      "actual": "2026-10-01 (1 row)",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP01-08",
+      "description": "pool suspended; both warehouses and image repo exist",
+      "expected": "SUSPENDED, 2 wh, 1 repo",
+      "actual": "SUSPENDED, ['WH_ACOCO_APP', 'WH_ACOCO_BUILD'], 1 repo",
+      "result": "PASS"
+    }
+  ]
+}
