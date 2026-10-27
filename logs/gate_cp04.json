@@ -1,0 +1,62 @@
+{
+  "cp": "cp04",
+  "run_at": "2026-10-27T07:44:17+00:00",
+  "checks": [
+    {
+      "check_id": "CP04-01",
+      "description": "12 ENT_* entities: key unique and not null; rows = distinct keys in the owning L1 source",
+      "expected": "12 / 0 failing",
+      "actual": "12 / []",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP04-02",
+      "description": "7 REL_* bridges: non-empty, key unique and not null",
+      "expected": "7 / 0 failing",
+      "actual": "7 / []",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP04-03",
+      "description": "no L2 object references L0 (*_V1 CLDs, ACOCO_SIM)",
+      "expected": "0",
+      "actual": "22 scanned, []",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP04-04",
+      "description": "every L2 dynamic table ACTIVE with a successful last refresh",
+      "expected": "21 / 0 / 0",
+      "actual": "21 / not active [] / not succeeded []",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP04-05",
+      "description": "explicit TARGET_LAG on every DT (none DOWNSTREAM-only chains)",
+      "expected": "0 DOWNSTREAM",
+      "actual": "['1 hour'] downstream []",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP04-06",
+      "description": "deterministic: no CURRENT_DATE / CURRENT_TIMESTAMP in L2 (today = CORE.VW_AS_OF)",
+      "expected": "0",
+      "actual": "[]",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP04-07",
+      "description": "fiscal calendar: unique months, FY27 forward months generated (P01 = Oct 2026)",
+      "expected": "12 FY27 months, P01 2026-10-01",
+      "actual": "{'N': 84, 'D': 84, 'FY27': 12, 'P1': '2026-10-01'}",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP04-08",
+      "description": "ENT_PERSON as of 2026-10-01: active people complete, six groups, six active Principal MDs",
+      "expected": "incomplete 0, 6 groups, 6 MDs",
+      "actual": "{'ACTIVE': 1940, 'INCOMPLETE': 0, 'GROUPS_': 6, 'MDS': 6}",
+      "result": "PASS"
+    }
+  ]
+}

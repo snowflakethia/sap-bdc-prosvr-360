@@ -300,7 +300,66 @@ def gate_cp03():
     return checks
 
 
-GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03}
+def gate_cp04():
+    import re
+    import sf
+    import gen_ontology as go
+    q = sf.query
+    checks = []
+    rep = go.report()
+    ent = [r for r in rep if r["object"].startswith("ENT_")]
+    rel = [r for r in rep if r["object"].startswith("REL_")]
+    bad_e = [r["object"] for r in ent if not r["ok"]]
+    checks.append(("CP04-01", "12 ENT_* entities: key unique and not null; rows = distinct keys in the owning L1 source",
+                   "12 / 0 failing", f"{len(ent)} / {bad_e}", len(ent) == 12 and not bad_e))
+    bad_r = [r["object"] for r in rel if not r["ok"]]
+    checks.append(("CP04-02", "7 REL_* bridges: non-empty, key unique and not null", "7 / 0 failing",
+                   f"{len(rel)} / {bad_r}", len(rel) == 7 and not bad_r))
+
+    n, refs = go.check_refs()
+    checks.append(("CP04-03", "no L2 object references L0 (*_V1 CLDs, ACOCO_SIM)", "0", f"{n} scanned, {refs}", not refs))
+
+    dts = q("""SELECT name, state st FROM TABLE(ACOCO_L2.INFORMATION_SCHEMA.DYNAMIC_TABLE_REFRESH_HISTORY())
+               WHERE state IN ('SUCCEEDED', 'FAILED', 'UPSTREAM_FAILED', 'CANCELLED')
+               QUALIFY ROW_NUMBER() OVER (PARTITION BY qualified_name ORDER BY refresh_start_time DESC) = 1""")
+    dts_show = q("SHOW DYNAMIC TABLES IN DATABASE ACOCO_L2")
+    unhealthy = [f"{r['name']}:{r['scheduling_state']}" for r in dts_show if r["scheduling_state"] != "ACTIVE"]
+    failed = [r["NAME"] for r in dts if r["ST"] != "SUCCEEDED"] + [r["name"] for r in dts_show if r["name"] not in {d["NAME"] for d in dts}]
+    checks.append(("CP04-04", "every L2 dynamic table ACTIVE with a successful last refresh", "21 / 0 / 0",
+                   f"{len(dts_show)} / not active {unhealthy} / not succeeded {failed}",
+                   len(dts_show) == 21 and not unhealthy and not failed))
+
+    lags = {r["name"]: r["target_lag"] for r in dts_show}
+    downstream = [k for k, v in lags.items() if str(v).upper() == "DOWNSTREAM"]
+    checks.append(("CP04-05", "explicit TARGET_LAG on every DT (none DOWNSTREAM-only chains)", "0 DOWNSTREAM",
+                   f"{sorted(set(lags.values()))} downstream {downstream}", not downstream))
+
+    cd = []
+    for kind, fqn in go.l2_objects():
+        if kind == "TABLE":
+            continue
+        ddl = q(f"SELECT GET_DDL('{'VIEW' if kind == 'VIEW' else 'TABLE'}', '{fqn}') d")[0]["D"]
+        if re.search(r"\bCURRENT_DATE\b|\bCURRENT_TIMESTAMP\b|\bSYSDATE\b|\bGETDATE\b", ddl, re.I):
+            cd.append(fqn)
+    checks.append(("CP04-06", "deterministic: no CURRENT_DATE / CURRENT_TIMESTAMP in L2 (today = CORE.VW_AS_OF)", "0",
+                   str(cd), not cd))
+
+    fm = q("""SELECT COUNT(*) n, COUNT(DISTINCT MONTH_START) d, COUNT_IF(FISCAL_YEAR = 2027) fy27,
+                     MIN(IFF(FISCAL_YEAR = 2027 AND FISCAL_PERIOD = 1, MONTH_START, NULL))::VARCHAR p1
+              FROM ACOCO_L2.CORE.DT_FISCAL_MONTH""")[0]
+    checks.append(("CP04-07", "fiscal calendar: unique months, FY27 forward months generated (P01 = Oct 2026)",
+                   "12 FY27 months, P01 2026-10-01", str(fm), fm["N"] == fm["D"] and fm["FY27"] == 12 and fm["P1"] == "2026-10-01"))
+
+    p = q("""SELECT COUNT_IF(IS_ACTIVE_AS_OF) active, COUNT_IF(IS_ACTIVE_AS_OF AND (LEVEL IS NULL OR MD_GROUP_ID IS NULL
+                     OR DISPLAY_NAME IS NULL)) incomplete, COUNT(DISTINCT IFF(IS_ACTIVE_AS_OF, MD_GROUP_ID, NULL)) groups_,
+                     COUNT_IF(IS_MANAGING_DIRECTOR AND IS_ACTIVE_AS_OF AND LEVEL = 'Principal') mds
+              FROM ACOCO_L2.ONTOLOGY.ENT_PERSON""")[0]
+    checks.append(("CP04-08", "ENT_PERSON as of 2026-10-01: active people complete, six groups, six active Principal MDs",
+                   "incomplete 0, 6 groups, 6 MDs", str(p), p["INCOMPLETE"] == 0 and p["GROUPS_"] == 6 and p["MDS"] == 6))
+    return checks
+
+
+GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03, "cp04": gate_cp04}
 
 
 def main():

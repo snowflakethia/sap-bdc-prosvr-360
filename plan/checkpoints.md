@@ -220,14 +220,15 @@ total); determinism hashes equal; 100 % of foreign keys to CLD master data resol
 no L2 object references L0 (`tools/gen_ontology.py --check-refs`); all DTs `ACTIVE` with a successful refresh.
 
 **Human validation**
-1. Entity integrity: `python tools/validate.py --step ontology --report` - expected `PASS` on uniqueness, count
-   and no-L0-reference for all 12 entities.
+1. Entity integrity: `.venv/bin/python tools/gen_ontology.py --check-refs --report` - expected `0 reference L0` and
+   `ontology: 19/19 PASS` (12 entities: unique, not null, count = L1 distinct keys; 7 bridges) (D-04-3).
 2. One entity end to end:
    ```sql
    SELECT level, md_group, COUNT(*) FROM ACOCO_L2.ONTOLOGY.ENT_PERSON
    WHERE is_active_as_of GROUP BY 1,2 ORDER BY 2,1;
    ```
-   Expected: ~1,000 active people across six groups; level mix roughly 500/270/130/70/30.
+   Expected: 1,940 active people across six groups (296-366 each); level mix 1,099 / 456 / 204 / 95 / 86
+   (D-04-1: workforce = real People Intelligence users + simulated pool, CP-02).
 3. Refresh health:
    ```sql
    SELECT name, scheduling_state, last_completed_refresh_state, target_lag
@@ -442,8 +443,8 @@ regression 20/20 re-run on the final build.
 | 00 | approved | cp-00 | Boon Sing Thia, 2026-10-27 | gate 8/8; deviations D-00-1..8 |
 | 01 | approved | cp-01 | Boon Sing Thia, 2026-10-27 | gate 8/8; D-01-1..5; MD = role of 6 Principals (decision 2026-10-27) |
 | 02 | approved | cp-02 | Boon Sing Thia, 2026-10-27 | gate 11/11; D-02-1..13; targets revised (Bid ~15, Learning 10); bench < 3 % |
-| 03 | awaiting validation | cp-03 | | gate 9/9; reconcile 47/47; D-03-1..7 |
-| 04 | not started | | | |
+| 03 | approved | cp-03 | Boon Sing Thia, 2026-10-27 | gate 9/9; reconcile 47/47; D-03-1..7 |
+| 04 | awaiting validation | cp-04 | | gate 8/8; ontology 19/19; D-04-1..5 |
 | 05 | not started | | | |
 | 06 | not started | | | |
 | 07 | not started | | | |
