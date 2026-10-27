@@ -361,6 +361,24 @@ def weekly_availability(ctx: Ctx, people: pd.DataFrame, wk: pd.DataFrame):
     return avail, leave
 
 
+WIN_FIT_COEF = 2.4           # logit weight of bid-team skill fit (anchor A7)
+AI_LEARN_BOOST = 0.07        # productivity uplift for 26 weeks after an AI-curriculum completion (anchor A11)
+ROLL_OFF_KEEP = 35           # people per MD group who roll off in the 90 days after the as-of date (anchor A3)
+
+
+def held_skills(ctx, user_id, on_date):
+    """Skills held at proficiency >= 3 on the person's latest assessment on or before on_date."""
+    hist = ctx.out["_skill_hist"].get(user_id)
+    if not hist:
+        return set()
+    best = set()
+    for d, sk in hist:                      # ascending by assessment date
+        if d > on_date:
+            break
+        best = sk
+    return best
+
+
 # ----------------------------------------------------------------------------------------------- 6/7 demand + staffing
 class Staffing:
     def __init__(self, ctx, people, wk, avail, ai_level):
@@ -369,6 +387,7 @@ class Staffing:
         self.deliv = np.zeros((P, W), dtype=np.float32)       # delivery hours
         self.bid = np.zeros((P, W), dtype=np.float32)
         self.learn = np.zeros((P, W), dtype=np.float32)
+        self.ai_learn_weeks = {}                               # person -> AI-curriculum completion weeks
         self.frac = np.zeros((P, W), dtype=np.float32)        # committed delivery fraction
         self.ai_level = ai_level
         self.level_i = people.level.map(LEVEL_IDX).values
@@ -488,7 +507,8 @@ def run_demand(ctx, people, wk, avail, ai_level, skill_df, learning, assets_stat
             gap = target - dv
             tries = 0
             story_due = (g == "FS" and tgt_m == dt.date(2025, 12, 1) and not seeded_loss["done"])
-            while (gap > 0.04 * av or story_due) and tries < 12:
+            # the opening backlog needs more bids at a ~40 % win-rate (D-06-4)
+            while (gap > 0.04 * av or story_due) and tries < (30 if mi == 0 else 12):
                 story_due = False
                 tries += 1
                 n_opp += 1
@@ -538,10 +558,11 @@ def run_demand(ctx, people, wk, avail, ai_level, skill_df, learning, assets_stat
                     opp_team.append((opp_id, people.user_id.iloc[pi], role))
                 fit = 0.0
                 if team_p:
-                    sk = ctx.out["_skill_sets"]
-                    have = set().union(*[sk.get(people.user_id.iloc[pi], set()) for pi in team_p])
+                    # same definition as the mart: required skills held at >= 3 on the latest assessment <= close (D-06-1)
+                    have = set().union(*[held_skills(ctx, people.user_id.iloc[pi], close_date) for pi in team_p])
                     fit = len(set(req_skills) & have) / len(req_skills)
-                logit = -0.6 + 1.3 * np.log(max(intensity, 0.05)) + 1.6 * (fit - 0.5) + 0.45 * principal
+                # A6: base win-rate ~40 %; A7: skill fit carries real weight (D-06-1)
+                logit = -0.7 + 0.55 * np.log(max(intensity, 0.05)) + WIN_FIT_COEF * (fit - 0.7) + 0.45 * principal
                 p_win = 1 / (1 + np.exp(-logit))
                 st.pursuits.append((g, pw0, pw1, io, intensity * BID_HOURS[size] / BID_HOURS["Small"]))
                 if not known:
@@ -752,12 +773,14 @@ def schedule_learning(ctx, st, people, learning, ps, wk):
             ws = ws[st.avail[pi, ws] > 0]
             if not len(ws):
                 continue
+            # a person-year is an AI-curriculum year or a core year, so AI learning starts at different times (D-06-2)
+            ai_year = rng.random() < ai_share[fy]
             target = float(st.avail[pi, ws].sum()) * LEARNING_SHARE * float(np.clip(rng.normal(1.0, 0.2), 0.5, 1.5))
             booked = 0.0
             guard = 0
             while booked < target and guard < 40:
                 guard += 1
-                pool = ai_items if rng.random() < ai_share[fy] else core_items
+                pool = ai_items if ai_year else core_items
                 item = pool.iloc[int(rng.integers(0, len(pool)))]
                 free = st.avail[pi, ws] * (1 - st.frac[pi, ws]) - st.bid[pi, ws] - st.learn[pi, ws]
                 if free.max() <= 1:
@@ -768,10 +791,42 @@ def schedule_learning(ctx, st, people, learning, ps, wk):
                     break
                 st.learn[pi, w] += h
                 booked += h
+                if ai_year:
+                    st.ai_learn_weeks.setdefault(pi, []).append(w)
                 comps.append(dict(USER_ID=uid[pi], LEARNING_ITEM_ID=item.LEARNING_ITEM_ID,
                                   COMPLETION_DATE=wk.week_start.iloc[w] + dt.timedelta(days=4),
                                   COMPLETION_STATUS="COMPLETED", LEARNING_HOURS=round(h, 1), SOURCE_SYSTEM="SIMULATED"))
     return pd.DataFrame(comps)
+
+
+def shape_roll_off(ctx, people, assign, ai_level):
+    """A3: of the people whose last assignment ends in the 90 days after the as-of date, keep ~ROLL_OFF_KEEP per MD
+    group as roll-offs (~80 % of them below AI-skill 3) and extend the rest's last assignment by 13-26 weeks - the
+    forward staffing plan rolls most people onto follow-on work (D-06-3)."""
+    rng = ctx.rng
+    end = pd.to_datetime(assign.ASSIGNMENT_END).dt.date
+    last = assign.assign(_END=end).groupby("USER_ID")._END.max()
+    lo, hi = AS_OF, AS_OF + dt.timedelta(days=90)
+    cand = last[(last > lo) & (last <= hi)]
+    pinfo = people.set_index("user_id")
+    active = pinfo.term_date.isna() | (pd.to_datetime(pinfo.term_date).dt.date >= AS_OF)
+    cand = cand[cand.index.isin(pinfo.index[active])]
+    ai_now = dict(zip(people.user_id, ai_level[:, 5]))
+    extend = set()
+    for g, users in cand.groupby(pinfo.loc[cand.index].md_group):
+        u = sorted(users.index)
+        low = [x for x in u if ai_now.get(x, 1) < 3]
+        high = [x for x in u if ai_now.get(x, 1) >= 3]
+        n_low = min(len(low), int(round(ROLL_OFF_KEEP * 0.82)))
+        n_high = min(len(high), ROLL_OFF_KEEP - n_low)
+        keep = set(rng.choice(low, n_low, replace=False)) if n_low else set()
+        keep |= set(rng.choice(high, n_high, replace=False)) if n_high else set()
+        extend |= set(u) - keep
+    is_last = assign.index.isin(assign.assign(_END=end).sort_values("_END").groupby("USER_ID").tail(1).index)
+    sel = is_last & assign.USER_ID.isin(extend)
+    weeks_more = rng.integers(13, 27, int(sel.sum()))
+    assign.loc[sel, "ASSIGNMENT_END"] = [d + dt.timedelta(weeks=int(k)) for d, k in zip(end[sel], weeks_more)]
+    return assign
 
 
 def build_timesheets(ctx, st, people, wk, projects):
@@ -784,7 +839,11 @@ def build_timesheets(ctx, st, people, wk, projects):
     cc = people.cost_center.values
     fy = wk.fiscal_year.values
     wstart = wk.week_start.values
+    # A11: +AI_LEARN_BOOST productivity for the 26 weeks after each AI-curriculum completion week (D-06-2)
     learn_boost = np.zeros_like(st.avail)
+    for pi, wl in getattr(st, "ai_learn_weeks", {}).items():
+        for w in wl:
+            learn_boost[pi, w + 1:w + 27] = AI_LEARN_BOOST
     for (pi, wp, w0, w1, alloc, eff, ai_proj) in st.ts_rows:
         for w in range(w0, w1):
             h = float(st.avail[pi, w] * alloc)
@@ -793,7 +852,7 @@ def build_timesheets(ctx, st, people, wk, projects):
             use = float(st.usage[pi, w])
             assisted = round(h * min(0.6, use * 0.5), 1) if use > 0 else 0.0
             rows.append((uid[pi], cc[pi], wstart[w], int(fy[w]), "DELIVERY", wp, None, round(h, 1),
-                         round(h * eff, 1), assisted, round(assisted * float(rng.uniform(0.05, 0.2)), 1)))
+                         round(h * eff * (1 + float(learn_boost[pi, w])), 1), assisted, round(assisted * float(rng.uniform(0.05, 0.2)), 1)))
     for (pi, proj, wp, w0, w1, alloc, role) in st.assignments:
         if role == "PROJECT_LEAD":
             for w in range(w0, w1):

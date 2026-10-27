@@ -449,7 +449,7 @@ regression 20/20 re-run on the final build.
 | 02 | approved | cp-02 | Boon Sing Thia, 2026-10-27 | gate 11/11; D-02-1..13; targets revised (Bid ~15, Learning 10); bench < 3 % |
 | 03 | approved | cp-03 | Boon Sing Thia, 2026-10-27 | gate 9/9; reconcile 47/47; D-03-1..7 |
 | 04 | approved | cp-04 | Boon Sing Thia, 2026-10-27 | gate 8/8; ontology 19/19; D-04-1..5 |
-| 05 | awaiting validation | cp-05 | | gate 7/7; marts 8/8; anchors 4/13 OK, 9 MISS (decision); D-05-1..10 |
+| 05 | approved | cp-05 | Boon Sing Thia, 2026-10-27 | gate 7/7; marts 8/8; anchors 4/13 OK, 9 MISS (decision); D-05-1..10 |
 | 06 | not started | | | |
 | 07 | not started | | | |
 | 08 | not started | | | |

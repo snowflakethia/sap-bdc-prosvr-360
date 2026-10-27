@@ -10,7 +10,7 @@
   "id": "R2",
   "name": "billable hours: Delivery timesheet hours = journal activity quantity on WBS, per month",
   "expected": "worst month within 0.5 %",
-  "actual": "60 months, worst 0.000 %, totals 13,388,655 / 13,388,655",
+  "actual": "60 months, worst 0.000 %, totals 13,232,485 / 13,232,485",
   "ok": true
  },
  {
@@ -24,21 +24,21 @@
   "id": "R4",
   "name": "overhead = 35 % of people activity cost, per project",
   "expected": "every project 35 % +/- 0.5 pt",
-  "actual": "822 projects, 0 off; firm 35.00 %",
+  "actual": "733 projects, 0 off; firm 35.00 %",
   "ok": true
  },
  {
   "id": "R5",
   "name": "every journal document balances (debits = credits)",
   "expected": "0 unbalanced",
-  "actual": "681,228 documents, 0 unbalanced",
+  "actual": "681,939 documents, 0 unbalanced",
   "ok": true
  },
  {
   "id": "R6",
   "name": "revenue: L1 journal = PROJECT_DELIVERY = PORTFOLIO_360 (closed months)",
   "expected": "all equal (< 1 USD)",
-  "actual": "1,545,736,519 / 1,545,736,519 / 1,545,736,519",
+  "actual": "1,521,614,664 / 1,521,614,664 / 1,521,614,664",
   "ok": true
  },
  {
@@ -52,7 +52,7 @@
   "id": "R8",
   "name": "booked hours: L1 timesheets = scorecard (closed months)",
   "expected": "equal (< 1 h)",
-  "actual": "18,657,590 / 18,657,590",
+  "actual": "18,639,241 / 18,639,241",
   "ok": true
  }
 ]

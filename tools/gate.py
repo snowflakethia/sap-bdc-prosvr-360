@@ -133,10 +133,10 @@ def gate_cp02():
                    not mism and 3_000_000 <= total <= 8_000_000))
 
     st = load["stats"]
-    bands = {"projects": (400, 1000), "opportunities": (800, 2200), "assets": (80, 300)}
+    bands = {"projects": (400, 1000), "opportunities": (800, 2600), "assets": (80, 300)}
     bad = {k: st[k] for k, (lo, hi) in bands.items() if not lo <= st[k] <= hi}
     pc = q("""select count(distinct user_id) n from ACOCO_SIM.DIRECTORY.PERSON_NAME""")[0]["N"]
-    checks.append(("CP02-03", "volumes in band (projects 400-1000, opps 800-2200, assets 80-300); 3,555 people",
+    checks.append(("CP02-03", "volumes in band (projects 400-1000, opps 800-2600 (D-06-4), assets 80-300); 3,555 people",
                    "in band", f"projects {st['projects']}, opps {st['opportunities']}, assets {st['assets']}, "
                               f"people {pc}", not bad and pc == 3555))
 

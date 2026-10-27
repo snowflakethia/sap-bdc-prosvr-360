@@ -117,7 +117,7 @@ WHERE d.Q_END < (SELECT AS_OF_DATE FROM ACOCO_L2.CORE.VW_AS_OF);
 -- for non-learners in the same level x completion month (the matched comparison group).
 CREATE OR REPLACE DYNAMIC TABLE ACOCO_L2.AI_ADOPTION.DT_LEARNING_PAYBACK
   TARGET_LAG = '1 hour' WAREHOUSE = WH_ACOCO_BUILD
-  COMMENT = 'Learning completion: productivity index 6 months before / after vs same-level people who did not complete that curriculum in +/- 6 months; payback = learner change - comparison change'
+  COMMENT = 'Learning episode (first completion per person x curriculum x FY): productivity index 6 months before / after vs same-level people who did not complete that curriculum in +/- 6 months; payback = learner change - comparison change'
 AS
 WITH c AS (
   SELECT lc.PERSON_ID, lc.LEARNING_ITEM_ID, lc.COMPLETION_DATE, DATE_TRUNC(month, lc.COMPLETION_DATE) AS COMPLETION_MONTH,
@@ -127,6 +127,9 @@ WITH c AS (
   JOIN ACOCO_L2.ONTOLOGY.ENT_PERSON p ON p.PERSON_ID = lc.PERSON_ID
   WHERE lc.COMPLETION_STATUS = 'COMPLETED'
     AND lc.COMPLETION_DATE <= DATEADD(month, -6, (SELECT AS_OF_DATE FROM ACOCO_L2.CORE.VW_AS_OF))
+  -- one episode per person x curriculum x fiscal year: its first completion (a learner completes many items a year)
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY lc.PERSON_ID, li.CURRICULUM, YEAR(DATEADD(month, 3, lc.COMPLETION_DATE))
+                             ORDER BY lc.COMPLETION_DATE, lc.LEARNING_ITEM_ID) = 1
 ),
 pm AS (   -- person x month delivery productivity
   SELECT PERSON_ID, MONTH_START, LEVEL, DELIVERY_HOURS, EARNED_HOURS

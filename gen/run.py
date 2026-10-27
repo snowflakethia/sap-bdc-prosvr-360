@@ -82,6 +82,12 @@ def generate(inputs) -> dict:
     skill, ps, ai_level = g.build_skills(ctx, people)
     latest = ps.sort_values("ASSESSED_DATE").groupby("USER_ID").SKILL_ID.apply(set)
     ctx.out["_skill_sets"] = latest.to_dict()
+    # skill history: per person, ascending (assessment date, skills held at >= 3) - bid-team fit (D-06-1)
+    held = ps[ps.PROFICIENCY >= 3].groupby(["USER_ID", "ASSESSED_DATE"]).SKILL_ID.apply(set)
+    hist = {}
+    for (u, d), sk in held.sort_index().items():
+        hist.setdefault(u, []).append((d, sk))
+    ctx.out["_skill_hist"] = hist
     learning = g.build_learning_catalogue(ctx, skill)
     perf, comp = g.build_hr_extras(ctx, people)
     avail, leave = g.weekly_availability(ctx, people, wk)
@@ -102,6 +108,7 @@ def generate(inputs) -> dict:
                            for (pi, proj, wp, w0, w1, a, role) in st.assignments],
                           columns=["USER_ID", "PROJECT_ID", "WBS_ELEMENT", "ASSIGNMENT_START", "ASSIGNMENT_END",
                                    "ALLOCATION", "ROLE"])
+    assign = g.shape_roll_off(ctx, people, assign, ai_level)
     assign.insert(0, "ASSIGNMENT_ID", [f"RA{i + 1:07d}" for i in range(len(assign))])
     assign["SOURCE_SYSTEM"] = "SIMULATED"
     succession = (people[(people.level.isin(["Manager", "Senior Manager", "Principal"]))]

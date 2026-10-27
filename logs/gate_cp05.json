@@ -1,6 +1,6 @@
 {
   "cp": "cp05",
-  "run_at": "2026-10-27T09:23:40+00:00",
+  "run_at": "2026-10-27T13:07:12+00:00",
   "checks": [
     {
       "check_id": "CP05-01",
@@ -48,7 +48,7 @@
       "check_id": "CP05-07",
       "description": "every PRD 6.3 story anchor measured; each MISS carries a proposed fix (decision is the user's)",
       "expected": "13 measured, 0 MISS without fix",
-      "actual": "13 measured, OK 4, unmeasured [], MISS without fix []",
+      "actual": "13 measured, OK 8, unmeasured [], MISS without fix []",
       "result": "PASS"
     }
   ]
