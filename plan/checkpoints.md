@@ -235,7 +235,7 @@ no L2 object references L0 (`tools/gen_ontology.py --check-refs`); all DTs `ACTI
    SELECT "schema_name", "name", "scheduling_state", "target_lag", "refresh_mode", "rows"
    FROM TABLE(RESULT_SCAN(LAST_QUERY_ID())) ORDER BY 1, 2;
    ```
-   Expected: 21 rows (3 CORE, 12 ENT_*, 7 REL_*), all `ACTIVE`, `target_lag` `1 hour`, none `DOWNSTREAM`
+   Expected: 21 rows (2 CORE, 12 ENT_*, 7 REL_*), all `ACTIVE`, `target_lag` `1 hour`, none `DOWNSTREAM`
    (`DYNAMIC_TABLES()` lists the whole account, so `SHOW ... IN DATABASE` is used) (D-04-3).
 
 **Rollback:** `CREATE OR REPLACE DATABASE ACOCO_L2 CLONE ACOCO_BKP_CP04_ACOCO_L2;` or `DROP DATABASE ACOCO_L2;`
