@@ -26,7 +26,8 @@ fi
 NN="${1:?checkpoint number, e.g. 02}"; TITLE="${2:?title}"; shift 2
 CP="cp${NN}"; TAG="cp-${NN}"
 
-echo "== gate $CP"; python3 tools/gate.py "$CP"
+PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python
+echo "== gate $CP"; $PY tools/gate.py "$CP"
 
 mkdir -p "backup/$CP"
 : > "backup/$CP/clones.txt"            # re-running a checkpoint starts a fresh list
@@ -40,7 +41,7 @@ done
 
 # Objects a clone does not carry (Cortex Search, measured in CP-00) or that live outside the cloned databases
 # (agent, service) are exported as DDL when they exist.
-python3 tools/export_ddl.py "$CP" || { echo "DDL export failed"; exit 3; }
+$PY tools/export_ddl.py "$CP" || { echo "DDL export failed"; exit 3; }
 
 echo "== git"
 git add -A

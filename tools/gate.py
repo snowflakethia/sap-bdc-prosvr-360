@@ -217,7 +217,90 @@ def gate_cp02():
     return checks
 
 
-GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02}
+def gate_cp03():
+    import re
+    import sf
+    import gen_l1
+    q = sf.query
+    checks = []
+    objs = [(d, n) for d, n, _, _ in gen_l1.objects()]
+    doms = list(gen_l1.MAP["domains"])
+
+    sch = {r["SCHEMA_NAME"] for r in q("select schema_name from ACOCO_L1.information_schema.schemata")}
+    miss = [d for d in doms if d not in sch]
+    checks.append(("CP03-01", "ACOCO_L1 has the nine domain schemas", "9 / 0 missing", f"{len(doms) - len(miss)} / {miss}",
+                   len(doms) == 9 and not miss))
+
+    tabs = q("select table_schema s, table_name t, table_type k from ACOCO_L1.information_schema.tables where table_schema <> 'INFORMATION_SCHEMA'")
+    views = {(r["S"], r["T"]) for r in tabs if r["K"] == "VIEW"}
+    non_views = [f"{r['S']}.{r['T']}" for r in tabs if r["K"] != "VIEW"]
+    missing = [f"{d}.{n}" for d, n in objs if (d, n) not in views]
+    extra = [f"{s}.{t}" for s, t in views if (s, t) not in set(objs)]
+    checks.append(("CP03-02", "every mapped object is a view; L1 holds no tables and nothing unmapped",
+                   f"{len(objs)} views / 0 tables / 0 extra",
+                   f"{len(views)} views / tables {non_views} / missing {missing} / extra {extra}",
+                   not missing and not non_views and not extra))
+
+    errs = gen_l1.lint()
+    checks.append(("CP03-03", "L1 lint: domain-only sources, no aggregation, no CURRENT_DATE, no technical columns",
+                   "0 errors", f"{len(errs)} {errs[:3]}", not errs))
+
+    rec_p = ROOT / "logs" / "l1_reconcile.json"
+    fresh = rec_p.exists() and rec_p.stat().st_mtime > (ROOT / "tools" / "l1_map.yml").stat().st_mtime
+    rec = json.loads(rec_p.read_text()) if rec_p.exists() else []
+    bad = [f"{r['object']}/{r['source_system']}" for r in rec if not r["ok"]]
+    checks.append(("CP03-04", "reconcile: L1 rows = base L0 rows per object and source; declared keys unique",
+                   "all PASS, newer than l1_map.yml", f"{len(rec) - len(bad)}/{len(rec)} fresh={fresh} {bad}",
+                   fresh and bool(rec) and not bad))
+
+    nosrc = q("""select table_schema||'.'||table_name t from ACOCO_L1.information_schema.tables v
+                 where table_schema <> 'INFORMATION_SCHEMA' and not exists (select 1 from ACOCO_L1.information_schema.columns c
+                 where c.table_schema = v.table_schema and c.table_name = v.table_name and c.column_name = 'SOURCE_SYSTEM')""")
+    checks.append(("CP03-05", "every view carries SOURCE_SYSTEM", "0 without", str([r["T"] for r in nosrc]), not nosrc))
+
+    mix = {}
+    for obj in ("WORKFORCE.WORKFORCE_JOB", "TIME.EMPLOYEE_AVAILABILITY", "ORGANISATION.ACTIVITY_TYPE"):
+        mix[obj] = sorted(r["S"] for r in q(f"select distinct SOURCE_SYSTEM s from ACOCO_L1.{obj}"))
+    checks.append(("CP03-06", "CLD UNION SIM: mixed objects return both BDC_CLD and SIMULATED rows",
+                   "both in 3 objects", str(mix), all(v == ["BDC_CLD", "SIMULATED"] for v in mix.values())))
+
+    norm = lambda s: re.sub(r"\s+", " ", s).strip().rstrip(";").upper()
+    drift = []
+    for d, n in objs:
+        live = q(f"select get_ddl('VIEW', 'ACOCO_L1.{d}.{n}') ddl")[0]["DDL"]
+        body = (gen_l1.OUT / d.lower() / f"{n.lower()}.sql").read_text()
+        if norm(body.split("\nAS\n", 1)[1]) not in norm(live):
+            drift.append(f"{d}.{n}")
+    checks.append(("CP03-07", "deployed view definitions match the generated SQL (no hand edits)", "0 drifted",
+                   str(drift), not drift))
+
+    orphans = q("""select
+      (select count(*) from ACOCO_L1.TIME.TIMESHEET_RECORD t where not exists
+         (select 1 from ACOCO_L1.WORKFORCE.WORKFORCE_JOB w where w.PERSON_ID = t.PERSON_ID)) ts_person,
+      (select count(*) from ACOCO_L1.TIME.TIMESHEET_RECORD t where t.WBS_ID is not null and not exists
+         (select 1 from ACOCO_L1.PROJECTS.WBS_ELEMENT w where w.WBS_ID = t.WBS_ID)) ts_wbs,
+      (select count(*) from ACOCO_L1.TIME.TIMESHEET_RECORD t where t.ORDER_ID is not null and not exists
+         (select 1 from ACOCO_L1.FINANCE.INTERNAL_ORDER o where o.ORDER_ID = t.ORDER_ID)) ts_order,
+      (select count(*) from (select distinct COST_CENTER_ID from ACOCO_L1.WORKFORCE.WORKFORCE_JOB) w where not exists
+         (select 1 from ACOCO_L1.ORGANISATION.COST_CENTER c where c.COST_CENTER_ID = w.COST_CENTER_ID)) job_cc,
+      (select count(*) from ACOCO_L1.FINANCE.JOURNAL_ENTRY_ITEM j where j.WBS_ID is not null and not exists
+         (select 1 from ACOCO_L1.PROJECTS.WBS_ELEMENT w where w.WBS_ID = j.WBS_ID)) je_wbs,
+      (select count(*) from ACOCO_L1.PROJECTS.PROJECT p where p.SOURCE_SYSTEM = 'SIMULATED' and not exists
+         (select 1 from ACOCO_L1.SALES.CUSTOMER c where c.CUSTOMER_ID = p.CUSTOMER_ID)) prj_customer,
+      (select count(*) from ACOCO_L1.TIME.EMPLOYEE_AVAILABILITY e where e.PERSON_ID is null
+         and e.PERSON_LINK <> 'UNMATCHED') ea_unlinked_unflagged""")[0]
+    checks.append(("CP03-08", "conformed keys resolve across domains (person, WBS, order, cost centre, customer)",
+                   "all 0", str(orphans), all(v == 0 for v in orphans.values())))
+
+    um = q("""select count(distinct ASSIGNMENT_ID) a, count(*) n,
+                     100 * count(*) / (select count(*) from ACOCO_L1.TIME.EMPLOYEE_AVAILABILITY where SOURCE_SYSTEM = 'BDC_CLD') pct
+              from ACOCO_L1.TIME.EMPLOYEE_AVAILABILITY where PERSON_LINK = 'UNMATCHED'""")[0]
+    checks.append(("CP03-09", "real availability assignments with no Core Workforce person are flagged UNMATCHED and < 1 % of CLD rows (D-03-4)",
+                   "< 1 %", f"{um['A']} assignments, {um['N']:,} rows, {float(um['PCT']):.2f} %", float(um["PCT"]) < 1))
+    return checks
+
+
+GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03}
 
 
 def main():

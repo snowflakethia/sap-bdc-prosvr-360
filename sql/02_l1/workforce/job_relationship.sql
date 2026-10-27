@@ -1,0 +1,10 @@
+CREATE OR REPLACE VIEW ACOCO_L1.WORKFORCE.JOB_RELATIONSHIP
+  COMMENT = 'L1 WORKFORCE.JOB_RELATIONSHIP: one row per business object; sources BDC_CLD. Generated from tools/l1_map.yml - do not edit.'
+AS
+  SELECT
+    CAST(j."id" AS VARCHAR) AS RELATIONSHIP_ID,
+    CAST(j."assignmentId" AS VARCHAR) AS ASSIGNMENT_ID,
+    CAST(m.USER_ID AS VARCHAR) AS PERSON_ID,
+    'BDC_CLD' AS SOURCE_SYSTEM
+  FROM ASSIGNMENTADDITIONALINFORMATION_V1."assignmentadditionalinformation"."jobrelationship" j
+  LEFT JOIN ACOCO_DB.OPS.MAP_ASSIGNMENT_USER m ON m.ASSIGNMENT_ID = j."assignmentId";

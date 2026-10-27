@@ -197,7 +197,8 @@ def build_people(ctx: Ctx) -> pd.DataFrame:
         stay = []
         for a, lv in zip(active, leave):
             if lv:
-                a["term_date"] = m + dt.timedelta(days=int(rng.integers(0, 27)))
+                # a replacement hired late in month m cannot leave before its hire date (D-03-3)
+                a["term_date"] = max(m + dt.timedelta(days=int(rng.integers(0, 27))), a["hire_date"])
                 a["term_reason"] = rng.choice(["VOL_CAREER", "VOL_COMPENSATION", "VOL_WORKLOAD", "VOL_RELOCATION"],
                                               p=[0.4, 0.3, 0.2, 0.1])
                 rows.append(a)
@@ -650,6 +651,12 @@ def run_demand(ctx, people, wk, avail, ai_level, skill_df, learning, assets_stat
                 elif seeded:
                     assets_state.ensure_matching(wt, 3, dt.date(2025, 6, 30), rng)
                 gap -= sum(planned_hours.values()) / max(weeks_n, 1) * (w1 - w0) / 1.0
+    # the agentic-AI skill can be drawn twice for one opportunity / work package: keep one row per pair (D-03-1)
+    best = {}
+    for wp_id, s, p in wp_skills:
+        best[(wp_id, s)] = max(p, best.get((wp_id, s), p))
+    wp_skills = [(k[0], k[1], p) for k, p in best.items()]
+    opp_skills = list(dict.fromkeys(opp_skills))
     return st, opps, projects, wps, wp_skills, wp_plan, opp_team, opp_skills, list(accounts.values())
 
 
@@ -1091,8 +1098,13 @@ def core_workforce_rows(ctx, people, perf, comp):
                 hired = p.hire_date and m <= p.hire_date <= me
                 mid = sal_mid[p.level]
                 tenure = max(0, (m.year - p.hire_date.year) * 12 + m.month - p.hire_date.month) if p.hire_date else 0
-                rows.append({"userId": p.user_id, "startDate": max(m, p.hire_date) if hired else m,
-                             "endDate": p.term_date if is_term else me,
+                # clip to the span so back-history / extension never overlaps the real CLD records (D-03-2)
+                r_start = max(max(m, p.hire_date) if hired else m, s0)
+                r_end = min(p.term_date if is_term else me, s1)
+                if r_start > r_end:
+                    continue
+                rows.append({"userId": p.user_id, "startDate": r_start,
+                             "endDate": r_end,
                              "employmentStatus": "D" if is_term else "A",
                              "eventReasonCode": "TERM_VOL" if is_term else ("HIRNEW" if hired else "DATACHG"),
                              "moveOutReason": p.term_reason if is_term else None,

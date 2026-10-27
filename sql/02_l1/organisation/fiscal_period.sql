@@ -1,0 +1,14 @@
+CREATE OR REPLACE VIEW ACOCO_L1.ORGANISATION.FISCAL_PERIOD
+  COMMENT = 'L1 ORGANISATION.FISCAL_PERIOD: one row per business object; sources BDC_CLD. Generated from tools/l1_map.yml - do not edit.'
+AS
+  SELECT
+    CAST(f."FiscalYearVariant" AS VARCHAR) AS FISCAL_YEAR_VARIANT,
+    CAST(TRY_TO_NUMBER(f."FiscalYear"::VARCHAR) AS NUMBER) AS FISCAL_YEAR,
+    CAST(TRY_TO_NUMBER(f."FiscalPeriod"::VARCHAR) AS NUMBER) AS FISCAL_PERIOD,
+    CAST(TRY_TO_DATE(f."FiscalPeriodStartDate"::VARCHAR) AS DATE) AS PERIOD_START,
+    CAST(TRY_TO_DATE(f."FiscalPeriodEndDate"::VARCHAR) AS DATE) AS PERIOD_END,
+    CAST(TRY_TO_DATE(f."FiscalYearStartDate"::VARCHAR) AS DATE) AS FISCAL_YEAR_START,
+    CAST(TRY_TO_DATE(f."FiscalYearEndDate"::VARCHAR) AS DATE) AS FISCAL_YEAR_END,
+    'BDC_CLD' AS SOURCE_SYSTEM
+  FROM FISCALYEAR_V1."fiscalyear"."fiscalperiod" f
+  WHERE f."FiscalYearVariant" = 'V9' AND TRY_TO_NUMBER(f."FiscalYear"::VARCHAR) >= 2021 AND TRY_TO_NUMBER(f."FiscalPeriod"::VARCHAR) <= 12;

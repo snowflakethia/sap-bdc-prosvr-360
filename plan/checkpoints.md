@@ -187,14 +187,14 @@ total); determinism hashes equal; 100 % of foreign keys to CLD master data resol
   `sql/02_l1/` and creates `ACOCO_L1` with nine schemas: `ORGANISATION`, `FINANCE`, `PROJECTS`, `TIME`, `SALES`,
   `WORKFORCE`, `TALENT`, `ASSETS`, `AI_TELEMETRY` (PRD 7.1). Views only; CLD UNION SIM with `SOURCE_SYSTEM`;
   conformed keys.
-- Lint `tools/gate.py --l1-lint`: no view references two domains, no aggregation, no `CURRENT_DATE`, no technical
+- Lint `tools/gen_l1.py --lint` (D-03-7): no view references two domains, no aggregation, no `CURRENT_DATE`, no technical
   columns.
 
 **Gate:** every view compiles; lint passes; per view, row count = sum of its L0 sources (reconciliation).
 
 **Human validation**
-1. Reconciliation report: `python tools/validate.py --step l1 --report` - expected every L1 view `PASS`
-   (L1 rows = L0 CLD rows in scope + SIM rows).
+1. Reconciliation report: `.venv/bin/python tools/gen_l1.py --reconcile` - expected `reconcile: 47/47 PASS`
+   (per object and source: L1 rows = L0 rows in scope; declared keys unique) (D-03-7).
 2. The domain layer is real and mixed-source:
    ```sql
    SELECT table_schema, COUNT(*) AS views FROM ACOCO_L1.INFORMATION_SCHEMA.VIEWS
@@ -441,8 +441,8 @@ regression 20/20 re-run on the final build.
 |---|---|---|---|---|
 | 00 | approved | cp-00 | Boon Sing Thia, 2026-10-27 | gate 8/8; deviations D-00-1..8 |
 | 01 | approved | cp-01 | Boon Sing Thia, 2026-10-27 | gate 8/8; D-01-1..5; MD = role of 6 Principals (decision 2026-10-27) |
-| 02 | awaiting validation | cp-02 | | gate 11/11; D-02-1..13; targets revised (Bid ~15, Learning 10); bench < 3 % |
-| 03 | not started | | | |
+| 02 | approved | cp-02 | Boon Sing Thia, 2026-10-27 | gate 11/11; D-02-1..13; targets revised (Bid ~15, Learning 10); bench < 3 % |
+| 03 | awaiting validation | cp-03 | | gate 9/9; reconcile 47/47; D-03-1..7 |
 | 04 | not started | | | |
 | 05 | not started | | | |
 | 06 | not started | | | |

@@ -1,0 +1,597 @@
+# L1 data domains - source -> business object map (PRD 7.1).
+#
+# Rendered by tools/gen_l1.py into sql/02_l1/<domain>/<object>.sql (CREATE OR REPLACE VIEW ACOCO_L1.<DOMAIN>.<OBJECT>).
+# Rules enforced by gen_l1.py --lint:
+#   - views only; each source may read only the domain's allowed sources (+ ACOCO_DB.OPS configuration)
+#   - no aggregation, no CURRENT_DATE / CURRENT_TIMESTAMP, no technical columns (__*, load_type_*, run_id_*)
+#   - every source of an object yields the same columns (missing -> NULL), cast to the declared type
+#   - every object carries SOURCE_SYSTEM
+# Swapping a simulated stand-in for a real CLD (PRD 3.2) = changing that object's source entry here only.
+#
+# Column spec: NAME: TYPE.   Source spec: system, from (+ optional joins, where), select {NAME: expression}.
+
+defaults:
+  config: [ACOCO_DB.OPS]
+
+domains:
+
+  ORGANISATION:
+    allowed: [COSTCENTER_V1, COSTCENTERACTIVITYTYPE_V1, PROFITCENTER_V1, GENERALLEDGERACCOUNT_V1, FISCALYEAR_V1,
+              ACOCO_SIM.FINANCE_ACOCO.ACTIVITYTYPE_EXT]
+    objects:
+      COST_CENTER:
+        key: [COST_CENTER_ID, VALID_TO]
+        columns: {CONTROLLING_AREA: VARCHAR, COST_CENTER_ID: VARCHAR, COMPANY_CODE: VARCHAR, PROFIT_CENTER_ID: VARCHAR,
+                  COST_CENTER_CATEGORY: VARCHAR, COST_CENTER_NAME: VARCHAR, CC_ROLE: VARCHAR, MD_GROUP_ID: VARCHAR,
+                  ACOCO_LABEL: VARCHAR, VALID_FROM: DATE, VALID_TO: DATE}
+        sources:
+          - system: BDC_CLD
+            from: COSTCENTER_V1."costcenter"."costcenter" c
+            joins: |
+              LEFT JOIN COSTCENTER_V1."costcenter"."costcentertext" t
+                ON t."ControllingArea" = c."ControllingArea" AND t."CostCenter" = c."CostCenter"
+               AND t."Language" = 'EN' AND t."ValidityEndDate" = c."ValidityEndDate"
+              LEFT JOIN ACOCO_DB.OPS.MAP_MD_GROUP m ON m.COST_CENTER = c."CostCenter"
+            where: c."CompanyCode" = 'USC1'
+            select: {CONTROLLING_AREA: 'c."ControllingArea"', COST_CENTER_ID: 'UPPER(TRIM(c."CostCenter"))',
+                     COMPANY_CODE: 'c."CompanyCode"', PROFIT_CENTER_ID: 'UPPER(TRIM(c."ProfitCenter"))',
+                     COST_CENTER_CATEGORY: 'c."CostCenterCategory"', COST_CENTER_NAME: 't."CostCenterName"',
+                     CC_ROLE: 'm.CC_ROLE', MD_GROUP_ID: 'm.MD_GROUP_ID', ACOCO_LABEL: 'm.ACOCO_LABEL',
+                     VALID_FROM: 'TRY_TO_DATE(c."ValidityStartDate"::VARCHAR)', VALID_TO: 'TRY_TO_DATE(c."ValidityEndDate"::VARCHAR)'}
+
+      COST_CENTER_HIERARCHY:
+        key: []
+        columns: {HIERARCHY_ID: VARCHAR, NODE_ID: VARCHAR, PARENT_NODE_ID: VARCHAR, NODE_LEVEL: NUMBER, NODE_TYPE: VARCHAR,
+                  COST_CENTER_ID: VARCHAR, NODE_TEXT: VARCHAR, VALID_FROM: DATE, VALID_TO: DATE}
+        sources:
+          - system: BDC_CLD
+            from: COSTCENTER_V1."costcenter"."costcenterhierarchynode" n
+            joins: |
+              LEFT JOIN COSTCENTER_V1."costcenter"."costcenterhierarchynodetext" t
+                ON t."CostCenterHierarchy" = n."CostCenterHierarchy" AND t."HierarchyNode" = n."HierarchyNode"
+               AND t."ValidityEndDate" = n."ValidityEndDate" AND t."Language" = 'EN'
+            where: n."CostCenterHierarchy" = '0101/A000/0001'
+            select: {HIERARCHY_ID: 'n."CostCenterHierarchy"', NODE_ID: 'n."HierarchyNode"', PARENT_NODE_ID: 'n."ParentNode"',
+                     NODE_LEVEL: 'TRY_TO_NUMBER(n."HierarchyNodeLevel"::VARCHAR)', NODE_TYPE: 'n."NodeType"',
+                     COST_CENTER_ID: 'NULLIF(UPPER(TRIM(n."CostCenter")), '''')', NODE_TEXT: 't."HierarchyNodeText"',
+                     VALID_FROM: 'TRY_TO_DATE(n."ValidityStartDate"::VARCHAR)', VALID_TO: 'TRY_TO_DATE(n."ValidityEndDate"::VARCHAR)'}
+
+      PROFIT_CENTER:
+        key: [PROFIT_CENTER_ID, VALID_TO]
+        columns: {CONTROLLING_AREA: VARCHAR, PROFIT_CENTER_ID: VARCHAR, COMPANY_CODE: VARCHAR, PROFIT_CENTER_NAME: VARCHAR,
+                  SEGMENT: VARCHAR, VALID_FROM: DATE, VALID_TO: DATE}
+        sources:
+          - system: BDC_CLD
+            from: PROFITCENTER_V1."profitcenter"."profitcenter" p
+            joins: |
+              LEFT JOIN PROFITCENTER_V1."profitcenter"."profitcentertext" t
+                ON t."ControllingArea" = p."ControllingArea" AND t."ProfitCenter" = p."ProfitCenter"
+               AND t."ValidityEndDate" = p."ValidityEndDate" AND t."Language" = 'EN'
+            where: p."ControllingArea" = 'A000' AND p."ProfitCenter" IN (SELECT "ProfitCenter" FROM COSTCENTER_V1."costcenter"."costcenter" WHERE "CompanyCode" = 'USC1')
+            select: {CONTROLLING_AREA: 'p."ControllingArea"', PROFIT_CENTER_ID: 'UPPER(TRIM(p."ProfitCenter"))',
+                     COMPANY_CODE: 'p."CompanyCode"', PROFIT_CENTER_NAME: 't."ProfitCenterName"', SEGMENT: 'p."Segment"',
+                     VALID_FROM: 'TRY_TO_DATE(p."ValidityStartDate"::VARCHAR)', VALID_TO: 'TRY_TO_DATE(p."ValidityEndDate"::VARCHAR)'}
+
+      ACTIVITY_TYPE:
+        key: [ACTIVITY_TYPE]
+        columns: {CONTROLLING_AREA: VARCHAR, ACTIVITY_TYPE: VARCHAR, ACTIVITY_TYPE_NAME: VARCHAR, UNIT: VARCHAR,
+                  COST_ELEMENT: VARCHAR, PLANNED_PRICE: 'NUMBER(18,2)', SENDER_COST_CENTER_ID: VARCHAR, LEVEL: VARCHAR,
+                  IS_AI_AGENT: BOOLEAN}
+        sources:
+          - system: BDC_CLD
+            from: COSTCENTERACTIVITYTYPE_V1."costcenteractivitytype"."costcenteractivitytype" a
+            joins: |
+              LEFT JOIN COSTCENTERACTIVITYTYPE_V1."costcenteractivitytype"."costcenteractivitytypetext" t
+                ON t."ControllingArea" = a."ControllingArea" AND t."CostCtrActivityType" = a."CostCtrActivityType"
+               AND t."ValidityEndDate" = a."ValidityEndDate" AND t."Language" = 'EN'
+            where: a."ControllingArea" = 'A000' AND a."ValidityEndDate" = '9999-12-31'
+            select: {CONTROLLING_AREA: 'a."ControllingArea"', ACTIVITY_TYPE: 'UPPER(TRIM(a."CostCtrActivityType"))',
+                     ACTIVITY_TYPE_NAME: 'TRIM(t."CostCtrActivityTypeName")', UNIT: 'a."CostCtrActivityTypeQtyUnit"',
+                     COST_ELEMENT: 'a."AllocationCostElement"',
+                     LEVEL: "DECODE(a.\"CostCtrActivityType\", 'ML-100', 'Analyst', 'ML-101', 'Consultant', 'ML-103', 'Manager', 'ML-104', 'Senior Manager', 'ML-105', 'Principal')",
+                     IS_AI_AGENT: 'FALSE'}
+          - system: SIMULATED
+            from: ACOCO_SIM.FINANCE_ACOCO.ACTIVITYTYPE_EXT x
+            select: {CONTROLLING_AREA: 'x."ControllingArea"', ACTIVITY_TYPE: 'UPPER(TRIM(x."CostCtrActivityType"))',
+                     ACTIVITY_TYPE_NAME: 'x."CostCtrActivityTypeName"', UNIT: 'x."CostCtrActivityTypeQtyUnit"',
+                     COST_ELEMENT: 'x."AllocationCostElement"', PLANNED_PRICE: 'x."PlannedPrice"',
+                     SENDER_COST_CENTER_ID: 'x."SenderCostCenter"', IS_AI_AGENT: 'TRUE'}
+
+      GL_ACCOUNT:
+        key: [GL_ACCOUNT]
+        columns: {CHART_OF_ACCOUNTS: VARCHAR, GL_ACCOUNT: VARCHAR, GL_ACCOUNT_NAME: VARCHAR, GL_ACCOUNT_TYPE: VARCHAR,
+                  GL_ACCOUNT_GROUP: VARCHAR, IS_PROFIT_LOSS: BOOLEAN, ACOCO_ROLE: VARCHAR}
+        sources:
+          - system: BDC_CLD
+            from: GENERALLEDGERACCOUNT_V1."generalledgeraccount"."generalledgeraccount" g
+            joins: |
+              LEFT JOIN GENERALLEDGERACCOUNT_V1."generalledgeraccount"."generalledgeraccounttext" t
+                ON t."ChartOfAccounts" = g."ChartOfAccounts" AND t."GLAccount" = g."GLAccount" AND t."Language" = 'EN'
+            where: g."ChartOfAccounts" = 'YCOA'
+            select: {CHART_OF_ACCOUNTS: 'g."ChartOfAccounts"', GL_ACCOUNT: 'g."GLAccount"', GL_ACCOUNT_NAME: 't."GLAccountName"',
+                     GL_ACCOUNT_TYPE: 'g."GLAccountType"', GL_ACCOUNT_GROUP: 'g."GLAccountGroup"',
+                     IS_PROFIT_LOSS: "g.\"IsProfitLossAccount\"::VARCHAR IN ('true', 'X', '1')",
+                     ACOCO_ROLE: "DECODE(g.\"GLAccount\", '0041000000', 'REVENUE', '0012100000', 'RECEIVABLE', '0094233007', 'OVERHEAD', '0094308000', 'PEOPLE_PLAN_AGENT_COST', 'Z610500', 'PEOPLE_COST', 'Z610501', 'PEOPLE_COST', 'Z610503', 'PEOPLE_COST', 'Z610504', 'PEOPLE_COST', 'Z610505', 'PEOPLE_COST')"}
+
+      FISCAL_PERIOD:
+        key: [FISCAL_YEAR, FISCAL_PERIOD]
+        columns: {FISCAL_YEAR_VARIANT: VARCHAR, FISCAL_YEAR: NUMBER, FISCAL_PERIOD: NUMBER, PERIOD_START: DATE, PERIOD_END: DATE,
+                  FISCAL_YEAR_START: DATE, FISCAL_YEAR_END: DATE}
+        sources:
+          - system: BDC_CLD
+            from: FISCALYEAR_V1."fiscalyear"."fiscalperiod" f
+            where: f."FiscalYearVariant" = 'V9' AND TRY_TO_NUMBER(f."FiscalYear"::VARCHAR) >= 2021 AND TRY_TO_NUMBER(f."FiscalPeriod"::VARCHAR) <= 12
+            select: {FISCAL_YEAR_VARIANT: 'f."FiscalYearVariant"', FISCAL_YEAR: 'TRY_TO_NUMBER(f."FiscalYear"::VARCHAR)',
+                     FISCAL_PERIOD: 'TRY_TO_NUMBER(f."FiscalPeriod"::VARCHAR)', PERIOD_START: 'TRY_TO_DATE(f."FiscalPeriodStartDate"::VARCHAR)',
+                     PERIOD_END: 'TRY_TO_DATE(f."FiscalPeriodEndDate"::VARCHAR)', FISCAL_YEAR_START: 'TRY_TO_DATE(f."FiscalYearStartDate"::VARCHAR)',
+                     FISCAL_YEAR_END: 'TRY_TO_DATE(f."FiscalYearEndDate"::VARCHAR)'}
+
+      MD_GROUP:
+        key: [MD_GROUP_ID]
+        columns: {MD_GROUP_ID: VARCHAR, MD_GROUP_NAME: VARCHAR, SORT_ORDER: NUMBER}
+        sources:
+          - system: ACOCO_CONFIG
+            from: ACOCO_DB.OPS.MD_GROUP g
+            select: {MD_GROUP_ID: g.MD_GROUP_ID, MD_GROUP_NAME: g.MD_GROUP_NAME, SORT_ORDER: g.SORT_ORDER}
+
+      LEVEL:
+        key: [LEVEL]
+        columns: {LEVEL: VARCHAR, LEVEL_SORT: NUMBER, BILL_CODE_LO: NUMBER, BILL_CODE_HI: NUMBER, COST_PER_DAY: 'NUMBER(10,2)',
+                  BILL_RATE_BASE: 'NUMBER(10,2)', BILL_RATE_STEP: 'NUMBER(10,2)', TARGET_DELIVERY_PCT: 'NUMBER(5,1)',
+                  TARGET_BID_PCT: 'NUMBER(5,1)', TARGET_LEARNING_PCT: 'NUMBER(5,1)', TARGET_ADMIN_PCT: 'NUMBER(5,1)',
+                  TARGET_BENCH_PCT: 'NUMBER(5,1)'}
+        sources:
+          - system: ACOCO_CONFIG
+            from: ACOCO_DB.OPS.LEVEL l
+            joins: LEFT JOIN ACOCO_DB.OPS.GEN_PARAMS_TIME_TARGET t ON t.LEVEL = l.LEVEL
+            select: {LEVEL: l.LEVEL, LEVEL_SORT: l.LEVEL_SORT, BILL_CODE_LO: l.BILL_CODE_LO, BILL_CODE_HI: l.BILL_CODE_HI,
+                     COST_PER_DAY: l.COST_PER_DAY, BILL_RATE_BASE: l.BILL_RATE_BASE, BILL_RATE_STEP: l.BILL_RATE_STEP,
+                     TARGET_DELIVERY_PCT: t.DELIVERY, TARGET_BID_PCT: t.BID, TARGET_LEARNING_PCT: t.LEARNING,
+                     TARGET_ADMIN_PCT: t.ADMIN, TARGET_BENCH_PCT: t.BENCH}
+
+  FINANCE:
+    allowed: [ENTRYVIEWJOURNALENTRY_V1, JOURNALENTRYHEADER_V1, ACOCO_SIM.FINANCE_ACOCO, ACOCO_SIM.INTERNALORDER]
+    objects:
+      JOURNAL_ENTRY_ITEM:
+        key: [COMPANY_CODE, FISCAL_YEAR, ACCOUNTING_DOCUMENT, DOCUMENT_ITEM]
+        columns: {COMPANY_CODE: VARCHAR, FISCAL_YEAR: NUMBER, ACCOUNTING_DOCUMENT: VARCHAR, DOCUMENT_ITEM: VARCHAR,
+                  FISCAL_PERIOD: NUMBER, POSTING_DATE: DATE, DOCUMENT_TYPE: VARCHAR, GL_ACCOUNT: VARCHAR,
+                  COST_CENTER_ID: VARCHAR, PROFIT_CENTER_ID: VARCHAR, WBS_ID: VARCHAR, ORDER_ID: VARCHAR,
+                  ACTIVITY_TYPE: VARCHAR, PERSON_ID: VARCHAR, CUSTOMER_ID: VARCHAR, AMOUNT: 'NUMBER(18,2)',
+                  CURRENCY: VARCHAR, QUANTITY: 'NUMBER(18,3)', UNIT: VARCHAR, DEBIT_CREDIT: VARCHAR,
+                  BILLABLE_CONTROL: VARCHAR, IS_REVERSAL_RELATED: BOOLEAN}
+        sources:
+          # Real ACoCo postings would arrive here from the Universal Journal; the tenant's USC1 lines belong to the
+          # bike company, so the scope filter (ACoCo WBS / internal orders) returns no rows today (D-02-5).
+          - system: BDC_CLD
+            from: ENTRYVIEWJOURNALENTRY_V1."entryviewjournalentry"."operationalacctgdocitem" j
+            joins: |
+              LEFT JOIN JOURNALENTRYHEADER_V1."journalentryheader"."journalentry" h
+                ON h."CompanyCode" = j."CompanyCode" AND h."FiscalYear" = j."FiscalYear" AND h."AccountingDocument" = j."AccountingDocument"
+            where: j."CompanyCode" = 'USC1' AND (j."WBSElementInternalID"::VARCHAR LIKE 'P-%' OR j."OrderID"::VARCHAR LIKE 'IO%')
+            select: {COMPANY_CODE: 'j."CompanyCode"', FISCAL_YEAR: 'TRY_TO_NUMBER(j."FiscalYear"::VARCHAR)',
+                     ACCOUNTING_DOCUMENT: 'j."AccountingDocument"', DOCUMENT_ITEM: 'j."AccountingDocumentItem"',
+                     FISCAL_PERIOD: 'TRY_TO_NUMBER(j."FiscalPeriod"::VARCHAR)', POSTING_DATE: 'TRY_TO_DATE(j."PostingDate"::VARCHAR)',
+                     DOCUMENT_TYPE: 'j."AccountingDocumentType"', GL_ACCOUNT: 'j."GLAccount"', COST_CENTER_ID: 'NULLIF(UPPER(TRIM(j."CostCenter")), '''')',
+                     PROFIT_CENTER_ID: 'NULLIF(UPPER(TRIM(j."ProfitCenter")), '''')', WBS_ID: 'j."WBSElementInternalID"::VARCHAR',
+                     ORDER_ID: 'NULLIF(j."OrderID"::VARCHAR, '''')', ACTIVITY_TYPE: 'NULLIF(UPPER(TRIM(j."CostCtrActivityType")), '''')',
+                     PERSON_ID: 'NULLIF(j."PersonnelNumber"::VARCHAR, '''')', CUSTOMER_ID: 'NULLIF(j."Customer"::VARCHAR, '''')',
+                     AMOUNT: 'j."AmountInCompanyCodeCurrency"', CURRENCY: 'j."CompanyCodeCurrency"', QUANTITY: 'j."Quantity"',
+                     UNIT: 'j."BaseUnit"', DEBIT_CREDIT: 'j."DebitCreditCode"', IS_REVERSAL_RELATED: 'h."ReverseDocument" IS NOT NULL'}
+          - system: SIMULATED
+            from: ACOCO_SIM.FINANCE_ACOCO.OPERATIONALACCTGDOCITEM j
+            joins: |
+              LEFT JOIN ACOCO_SIM.FINANCE_ACOCO.JOURNALENTRY h
+                ON h."CompanyCode" = j."CompanyCode" AND h."FiscalYear" = j."FiscalYear" AND h."AccountingDocument" = j."AccountingDocument"
+            select: {COMPANY_CODE: 'j."CompanyCode"', FISCAL_YEAR: 'TRY_TO_NUMBER(j."FiscalYear")', ACCOUNTING_DOCUMENT: 'j."AccountingDocument"',
+                     DOCUMENT_ITEM: 'j."AccountingDocumentItem"', FISCAL_PERIOD: 'TRY_TO_NUMBER(j."FiscalPeriod")',
+                     POSTING_DATE: 'j."PostingDate"', DOCUMENT_TYPE: 'j."AccountingDocumentType"', GL_ACCOUNT: 'j."GLAccount"',
+                     COST_CENTER_ID: 'UPPER(TRIM(j."CostCenter"))', PROFIT_CENTER_ID: 'UPPER(TRIM(j."ProfitCenter"))',
+                     WBS_ID: 'j."WBSElement"', ORDER_ID: 'j."OrderID"', ACTIVITY_TYPE: 'UPPER(TRIM(j."CostCtrActivityType"))',
+                     PERSON_ID: 'j."PersonnelNumber"', CUSTOMER_ID: 'j."Customer"::VARCHAR', AMOUNT: 'j."AmountInCompanyCodeCurrency"',
+                     CURRENCY: 'j."CompanyCodeCurrency"', QUANTITY: 'j."Quantity"', UNIT: 'j."BaseUnit"',
+                     DEBIT_CREDIT: 'j."DebitCreditCode"', BILLABLE_CONTROL: 'j."ZZ_BILLABLE_CONTROL"',
+                     IS_REVERSAL_RELATED: 'COALESCE(h."IsReversal", FALSE) OR COALESCE(h."IsReversed", FALSE)'}
+
+      JOURNAL_ENTRY_HEADER:
+        key: [COMPANY_CODE, FISCAL_YEAR, ACCOUNTING_DOCUMENT]
+        columns: {COMPANY_CODE: VARCHAR, FISCAL_YEAR: NUMBER, ACCOUNTING_DOCUMENT: VARCHAR, DOCUMENT_TYPE: VARCHAR,
+                  POSTING_DATE: DATE, IS_REVERSAL: BOOLEAN, IS_REVERSED: BOOLEAN, REVERSAL_OF_DOCUMENT: VARCHAR}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.FINANCE_ACOCO.JOURNALENTRY h
+            select: {COMPANY_CODE: 'h."CompanyCode"', FISCAL_YEAR: 'TRY_TO_NUMBER(h."FiscalYear")', ACCOUNTING_DOCUMENT: 'h."AccountingDocument"',
+                     DOCUMENT_TYPE: 'h."AccountingDocumentType"', POSTING_DATE: 'h."PostingDate"', IS_REVERSAL: 'h."IsReversal"',
+                     IS_REVERSED: 'h."IsReversed"', REVERSAL_OF_DOCUMENT: 'h."ReversalReferenceDocument"::VARCHAR'}
+
+      PLAN_ITEM:
+        key: []
+        columns: {PLANNING_CATEGORY: VARCHAR, COMPANY_CODE: VARCHAR, WBS_ID: VARCHAR, FISCAL_YEAR: NUMBER, FISCAL_PERIOD: NUMBER,
+                  GL_ACCOUNT: VARCHAR, PLAN_AMOUNT: 'NUMBER(18,2)'}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.FINANCE_ACOCO.FINANCIALPLANNINGENTRYITEM p
+            select: {PLANNING_CATEGORY: 'p."PlanningCategory"', COMPANY_CODE: 'p."CompanyCode"', WBS_ID: 'p."WBSElement"',
+                     FISCAL_YEAR: 'TRY_TO_NUMBER(p."FiscalYear")', FISCAL_PERIOD: 'TRY_TO_NUMBER(p."FiscalPeriod")',
+                     GL_ACCOUNT: 'p."GLAccount"', PLAN_AMOUNT: 'p."AmountInCompanyCodeCurrency"'}
+
+      INTERNAL_ORDER:
+        key: [ORDER_ID]
+        columns: {ORDER_ID: VARCHAR, ORDER_TYPE: VARCHAR, OPPORTUNITY_ID: VARCHAR, COMPANY_CODE: VARCHAR,
+                  RESPONSIBLE_COST_CENTER_ID: VARCHAR, CREATED_DATE: DATE}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.INTERNALORDER.INTERNAL_ORDER o
+            select: {ORDER_ID: 'o."OrderID"', ORDER_TYPE: 'o."OrderType"', OPPORTUNITY_ID: 'o."OpportunityID"::VARCHAR',
+                     COMPANY_CODE: 'o."CompanyCode"', RESPONSIBLE_COST_CENTER_ID: 'o."ResponsibleCostCenter"',
+                     CREATED_DATE: 'TRY_TO_DATE(o."CreatedDate"::VARCHAR)'}
+
+  PROJECTS:
+    allowed: [PROJECT_V1, ACOCO_SIM.CUSTOMERPROJECT, ACOCO_SIM.RESOURCEASSIGNMENT, ACOCO_SIM.PROJECTCOMMENTARY]
+    objects:
+      PROJECT:
+        key: [PROJECT_ID]
+        columns: {PROJECT_ID: VARCHAR, PROJECT_NAME: VARCHAR, OPPORTUNITY_ID: VARCHAR, CUSTOMER_ID: VARCHAR, MD_GROUP_ID: VARCHAR,
+                  COMPANY_CODE: VARCHAR, SIZE_CLASS: VARCHAR, WORK_TYPE: VARCHAR, CONTRACT_TYPE: VARCHAR,
+                  CONTRACT_VALUE: 'NUMBER(18,2)', SOLD_COST: 'NUMBER(18,2)', LD_RATE_PCT_PER_WEEK: 'NUMBER(6,3)',
+                  DELIVERY_MODEL: VARCHAR, PLANNED_START: DATE, PLANNED_END: DATE, SEEDED_STORY: VARCHAR}
+        sources:
+          # S/4 projects of company code USC1 (none exist in this tenant, D-02-5) would land here.
+          - system: BDC_CLD
+            from: PROJECT_V1."project"."project" p
+            where: p."CompanyCode" = 'USC1'
+            select: {PROJECT_ID: 'p."Project"', PROJECT_NAME: 'p."ProjectDescription"', COMPANY_CODE: 'p."CompanyCode"',
+                     PLANNED_START: 'TRY_TO_DATE(p."PlannedStartDate"::VARCHAR)', PLANNED_END: 'TRY_TO_DATE(p."PlannedEndDate"::VARCHAR)'}
+          - system: SIMULATED
+            from: ACOCO_SIM.CUSTOMERPROJECT.CUSTOMER_PROJECT p
+            select: {PROJECT_ID: p.PROJECT_ID, PROJECT_NAME: "p.WORK_TYPE || ' - ' || p.PROJECT_ID", OPPORTUNITY_ID: p.OPPORTUNITY_ID,
+                     CUSTOMER_ID: p.CUSTOMER, MD_GROUP_ID: p.MD_GROUP_ID, COMPANY_CODE: "'USC1'", SIZE_CLASS: p.SIZE_CLASS,
+                     WORK_TYPE: p.WORK_TYPE, CONTRACT_TYPE: p.CONTRACT_TYPE, CONTRACT_VALUE: p.CONTRACT_VALUE, SOLD_COST: p.SOLD_COST,
+                     LD_RATE_PCT_PER_WEEK: p.LD_RATE_PCT_PER_WEEK, DELIVERY_MODEL: p.DELIVERY_MODEL, PLANNED_START: p.PLANNED_START,
+                     PLANNED_END: p.PLANNED_END, SEEDED_STORY: p.SEEDED_STORY}
+
+      WBS_ELEMENT:
+        key: [WBS_ID]
+        columns: {WBS_ID: VARCHAR, PROJECT_ID: VARCHAR, WBS_NAME: VARCHAR, WORK_TYPE: VARCHAR, OWNER_PERSON_ID: VARCHAR,
+                  PLANNED_HOURS: 'NUMBER(12,1)', PLANNED_START: DATE, PLANNED_END: DATE, FORECAST_END: DATE,
+                  TEAM_PRODUCTIVITY: 'NUMBER(6,3)', REUSED_ASSET_ID: VARCHAR, IS_CRITICAL_PATH: BOOLEAN}
+        sources:
+          - system: BDC_CLD
+            from: PROJECT_V1."project"."workbreakdownstructureelement" w
+            where: w."CompanyCode" = 'USC1'
+            select: {WBS_ID: 'w."WBSElement"', WBS_NAME: 'w."WBSDescription"'}
+          - system: SIMULATED
+            from: ACOCO_SIM.CUSTOMERPROJECT.WORK_PACKAGE w
+            select: {WBS_ID: w.WBS_ELEMENT, PROJECT_ID: w.PROJECT_ID, WBS_NAME: w.WORK_PACKAGE_NAME, WORK_TYPE: w.WORK_TYPE,
+                     OWNER_PERSON_ID: w.OWNER_USER_ID, PLANNED_HOURS: w.PLANNED_HOURS, PLANNED_START: w.PLANNED_START,
+                     PLANNED_END: w.PLANNED_END, FORECAST_END: w.FORECAST_END, TEAM_PRODUCTIVITY: w.TEAM_PRODUCTIVITY,
+                     REUSED_ASSET_ID: w.REUSED_ASSET_ID, IS_CRITICAL_PATH: w.IS_CRITICAL_PATH}
+
+      WBS_LEVEL_PLAN:
+        key: [WBS_ID, LEVEL]
+        columns: {WBS_ID: VARCHAR, LEVEL: VARCHAR, PLANNED_HOURS: 'NUMBER(12,1)'}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.CUSTOMERPROJECT.WORK_PACKAGE_LEVEL_PLAN p
+            select: {WBS_ID: p.WBS_ELEMENT, LEVEL: p.LEVEL, PLANNED_HOURS: p.PLANNED_HOURS}
+
+      WORK_PACKAGE_SKILL_REQUIREMENT:
+        key: [WBS_ID, SKILL_ID]
+        columns: {WBS_ID: VARCHAR, SKILL_ID: VARCHAR, REQUIRED_PROFICIENCY: NUMBER}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.CUSTOMERPROJECT.WORK_PACKAGE_SKILL s
+            select: {WBS_ID: s.WBS_ELEMENT, SKILL_ID: s.SKILL_ID, REQUIRED_PROFICIENCY: s.REQUIRED_PROFICIENCY}
+
+      RESOURCE_ASSIGNMENT:
+        key: [ASSIGNMENT_ID]
+        columns: {ASSIGNMENT_ID: VARCHAR, PERSON_ID: VARCHAR, PROJECT_ID: VARCHAR, WBS_ID: VARCHAR, ASSIGNMENT_START: DATE,
+                  ASSIGNMENT_END: DATE, ALLOCATION: 'NUMBER(5,3)', ASSIGNMENT_ROLE: VARCHAR}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.RESOURCEASSIGNMENT.RESOURCE_ASSIGNMENT a
+            select: {ASSIGNMENT_ID: a.ASSIGNMENT_ID, PERSON_ID: a.USER_ID, PROJECT_ID: a.PROJECT_ID, WBS_ID: a.WBS_ELEMENT::VARCHAR,
+                     ASSIGNMENT_START: a.ASSIGNMENT_START, ASSIGNMENT_END: a.ASSIGNMENT_END, ALLOCATION: a.ALLOCATION,
+                     ASSIGNMENT_ROLE: a.ROLE}
+
+      PROJECT_STATUS_NOTE:
+        key: [NOTE_ID]
+        columns: {NOTE_ID: VARCHAR, PROJECT_ID: VARCHAR, NOTE_DATE: DATE, RAG_STATUS: VARCHAR, NOTE_TEXT: VARCHAR}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.PROJECTCOMMENTARY.STATUS_NOTE n
+            select: {NOTE_ID: n.NOTE_ID, PROJECT_ID: n.PROJECT_ID, NOTE_DATE: n.NOTE_DATE, RAG_STATUS: n.RAG_STATUS, NOTE_TEXT: n.NOTE_TEXT}
+
+  TIME:
+    allowed: [EMPLOYEEAVAILABILITY_V1, WORKFORCEPLANNEDWORKINGTIME_V1, ACOCO_SIM.TIMESHEET, ACOCO_SIM.EMPLOYEEAVAILABILITY]
+    objects:
+      TIMESHEET_RECORD:
+        key: [TIMESHEET_RECORD_ID]
+        columns: {TIMESHEET_RECORD_ID: VARCHAR, PERSON_ID: VARCHAR, COST_CENTER_ID: VARCHAR, WEEK_START: DATE, FISCAL_YEAR: NUMBER,
+                  TIME_CATEGORY: VARCHAR, WBS_ID: VARCHAR, ORDER_ID: VARCHAR, HOURS: 'NUMBER(8,1)',
+                  EARNED_HOURS: 'NUMBER(8,1)', AI_ASSISTED_HOURS: 'NUMBER(8,1)', AI_HOURS_SAVED: 'NUMBER(8,1)',
+                  BILLABLE_CONTROL: VARCHAR}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.TIMESHEET.TIMESHEET t
+            select: {TIMESHEET_RECORD_ID: t.TIMESHEET_RECORD, PERSON_ID: t.USER_ID, COST_CENTER_ID: UPPER(TRIM(t.COST_CENTER)),
+                     WEEK_START: t.WEEK_START, FISCAL_YEAR: t.FISCAL_YEAR, TIME_CATEGORY: t.CATEGORY, WBS_ID: t.WBS_ELEMENT::VARCHAR,
+                     ORDER_ID: t.INTERNAL_ORDER, HOURS: t.HOURS, EARNED_HOURS: t.ZZ_EARNED_HOURS,
+                     AI_ASSISTED_HOURS: t.ZZ_AI_ASSISTED_HOURS, AI_HOURS_SAVED: t.ZZ_AI_HOURS_SAVED, BILLABLE_CONTROL: t.BILLABLE_CONTROL}
+
+      EMPLOYEE_AVAILABILITY:
+        key: [ASSIGNMENT_ID, WORK_DATE]
+        columns: {ASSIGNMENT_ID: VARCHAR, PERSON_ID: VARCHAR, PERSON_LINK: VARCHAR, WORK_DATE: DATE, PLANNED_HOURS: 'NUMBER(6,2)',
+                  ABSENCE_HOURS: 'NUMBER(6,2)', AVAILABLE_HOURS: 'NUMBER(6,2)', IS_PUBLIC_HOLIDAY: BOOLEAN,
+                  IS_WEEKLY_OFF: BOOLEAN, ABSENCE_TYPE: VARCHAR, AVAILABILITY_STATUS: VARCHAR}
+        sources:
+          - system: BDC_CLD
+            from: EMPLOYEEAVAILABILITY_V1."employeeavailability"."employeeavailability" e
+            joins: LEFT JOIN ACOCO_DB.OPS.MAP_ASSIGNMENT_USER m ON m.ASSIGNMENT_ID = e."assignmentId"
+            select: {ASSIGNMENT_ID: 'e."assignmentId"', PERSON_ID: m.USER_ID,
+                     PERSON_LINK: "IFF(m.USER_ID IS NULL, 'UNMATCHED', 'INFERRED_' || m.MATCH_METHOD)",
+                     WORK_DATE: 'e."workDate"', PLANNED_HOURS: 'COALESCE(e."plannedWorkHours", 0)',
+                     ABSENCE_HOURS: 'COALESCE(e."dailyAbsenceHours", 0)',
+                     AVAILABLE_HOURS: 'GREATEST(COALESCE(e."plannedWorkHours", 0) - COALESCE(e."dailyAbsenceHours", 0), 0)',
+                     IS_PUBLIC_HOLIDAY: 'e."isPublicHoliday"', IS_WEEKLY_OFF: 'e."isWeeklyOff"', ABSENCE_TYPE: 'e."absenceType"',
+                     AVAILABILITY_STATUS: 'e."availabilityStatus"'}
+          - system: SIMULATED
+            from: ACOCO_SIM.EMPLOYEEAVAILABILITY.EMPLOYEEAVAILABILITY e
+            joins: LEFT JOIN ACOCO_DB.OPS.MAP_ASSIGNMENT_USER m ON m.ASSIGNMENT_ID = e."assignmentId"
+            select: {ASSIGNMENT_ID: 'e."assignmentId"', PERSON_ID: 'COALESCE(m.USER_ID, SUBSTR(e."assignmentId", 4))',
+                     PERSON_LINK: "IFF(m.USER_ID IS NULL, 'SIMULATED_PERSON', 'INFERRED_' || m.MATCH_METHOD)",
+                     WORK_DATE: 'e."workDate"', PLANNED_HOURS: 'e."plannedWorkHours"', ABSENCE_HOURS: 'e."dailyAbsenceHours"',
+                     AVAILABLE_HOURS: 'GREATEST(e."plannedWorkHours" - e."dailyAbsenceHours", 0)',
+                     IS_PUBLIC_HOLIDAY: 'e."isPublicHoliday"', IS_WEEKLY_OFF: 'e."isWeeklyOff"', ABSENCE_TYPE: 'e."absenceType"',
+                     AVAILABILITY_STATUS: 'e."availabilityStatus"'}
+
+      PLANNED_WORKING_TIME:
+        key: [PLANNED_TIME_ID]
+        columns: {PLANNED_TIME_ID: VARCHAR, ASSIGNMENT_ID: VARCHAR, PERSON_ID: VARCHAR, START_DATE: DATE, END_DATE: DATE,
+                  PLANNED_WORKING_HOURS: 'NUMBER(6,2)', IS_NON_WORKING_DAY: BOOLEAN, IS_HOLIDAY: BOOLEAN}
+        sources:
+          - system: BDC_CLD
+            from: WORKFORCEPLANNEDWORKINGTIME_V1."workforceplannedworkingtime"."plannedworkingtime" p
+            joins: LEFT JOIN ACOCO_DB.OPS.MAP_ASSIGNMENT_USER m ON m.ASSIGNMENT_ID = p."assignmentId"
+            select: {PLANNED_TIME_ID: 'p."id"', ASSIGNMENT_ID: 'p."assignmentId"', PERSON_ID: m.USER_ID,
+                     START_DATE: 'p."startDate"', END_DATE: 'p."endDate"', PLANNED_WORKING_HOURS: 'p."plannedWorkingTime"',
+                     IS_NON_WORKING_DAY: 'p."nonWorkingDay"', IS_HOLIDAY: 'p."holiday"'}
+
+  SALES:
+    allowed: [ACOCO_SIM.CRM]
+    objects:
+      CUSTOMER:
+        key: [CUSTOMER_ID]
+        columns: {CUSTOMER_ID: VARCHAR, CUSTOMER_NAME: VARCHAR, MD_GROUP_ID: VARCHAR, INDUSTRY: VARCHAR}
+        sources:
+          # CUSTOMER_V1 masks every key and name in this tenant (D-02-4); the CRM account is the customer master.
+          - system: SIMULATED
+            from: ACOCO_SIM.CRM.ACCOUNT a
+            select: {CUSTOMER_ID: a.CUSTOMER, CUSTOMER_NAME: a.ACCOUNT_NAME, MD_GROUP_ID: a.MD_GROUP_ID, INDUSTRY: a.INDUSTRY}
+
+      OPPORTUNITY:
+        key: [OPPORTUNITY_ID]
+        columns: {OPPORTUNITY_ID: VARCHAR, CUSTOMER_ID: VARCHAR, MD_GROUP_ID: VARCHAR, SIZE_CLASS: VARCHAR, WORK_TYPE: VARCHAR,
+                  ESTIMATED_VALUE: 'NUMBER(18,2)', IS_FIXED_PRICE: BOOLEAN, CREATED_DATE: DATE, EXPECTED_CLOSE_DATE: DATE,
+                  CLOSED_DATE: DATE, STAGE: VARCHAR, PROBABILITY_PCT: NUMBER, OUTCOME: VARCHAR,
+                  REQUIRED_AI_SKILL_LEVEL: NUMBER, ORDER_ID: VARCHAR, PRESALES_HOURS_PLANNED: 'NUMBER(10,1)',
+                  PROJECT_ID: VARCHAR, EXPECTED_START_DATE: DATE}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.CRM.OPPORTUNITY o
+            select: {OPPORTUNITY_ID: o.OPPORTUNITY_ID, CUSTOMER_ID: o.CUSTOMER, MD_GROUP_ID: o.MD_GROUP_ID, SIZE_CLASS: o.SIZE_CLASS,
+                     WORK_TYPE: o.WORK_TYPE, ESTIMATED_VALUE: o.ESTIMATED_VALUE, IS_FIXED_PRICE: o.IS_FIXED_PRICE,
+                     CREATED_DATE: TRY_TO_DATE(o.CREATED_DATE::VARCHAR), EXPECTED_CLOSE_DATE: TRY_TO_DATE(o.EXPECTED_CLOSE_DATE::VARCHAR),
+                     CLOSED_DATE: TRY_TO_DATE(o.CLOSED_DATE::VARCHAR), STAGE: o.STAGE, PROBABILITY_PCT: o.PROBABILITY,
+                     OUTCOME: o.OUTCOME::VARCHAR, REQUIRED_AI_SKILL_LEVEL: o.REQUIRED_AI_SKILL_LEVEL, ORDER_ID: o.INTERNAL_ORDER,
+                     PRESALES_HOURS_PLANNED: o.PRESALES_HOURS_PLANNED, PROJECT_ID: o.PROJECT_ID::VARCHAR,
+                     EXPECTED_START_DATE: TRY_TO_DATE(o.EXPECTED_START_DATE::VARCHAR)}
+
+      OPPORTUNITY_SKILL_REQUIREMENT:
+        key: [OPPORTUNITY_ID, SKILL_ID]
+        columns: {OPPORTUNITY_ID: VARCHAR, SKILL_ID: VARCHAR}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.CRM.OPPORTUNITY_SKILL s
+            select: {OPPORTUNITY_ID: s.OPPORTUNITY_ID, SKILL_ID: s.SKILL_ID}
+
+      OPPORTUNITY_TEAM:
+        key: []
+        columns: {OPPORTUNITY_ID: VARCHAR, PERSON_ID: VARCHAR, TEAM_ROLE: VARCHAR}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.CRM.OPPORTUNITY_TEAM t
+            select: {OPPORTUNITY_ID: t.OPPORTUNITY_ID, PERSON_ID: t.USER_ID, TEAM_ROLE: t.TEAM_ROLE}
+
+  WORKFORCE:
+    allowed: [COREWORKFORCEDATA_V1, ASSIGNMENTADDITIONALINFORMATION_V1, ACOCO_SIM.COREWORKFORCE, ACOCO_SIM.DIRECTORY,
+              ACOCO_SIM.PERFORMANCE, ACOCO_SIM.COMPENSATION, ACOCO_SIM.SUCCESSION]
+    objects:
+      WORKFORCE_JOB:
+        key: [PERSON_ID, VALID_FROM, VALID_TO, EVENT_REASON]
+        columns: {PERSON_ID: VARCHAR, VALID_FROM: DATE, VALID_TO: DATE, EMPLOYMENT_STATUS: VARCHAR, EVENT_REASON: VARCHAR,
+                  MOVE_OUT_REASON: VARCHAR, IS_TERMINATION: BOOLEAN, IS_HIRE: BOOLEAN, PAY_GRADE: NUMBER,
+                  PAY_GRADE_IMPUTED: BOOLEAN, LEVEL: VARCHAR, BILL_CODE: NUMBER, SF_COST_CENTER: VARCHAR,
+                  COST_CENTER_ID: VARCHAR, MD_GROUP_ID: VARCHAR, MANAGER_ID: VARCHAR, FTE: 'NUMBER(5,2)',
+                  TENURE_MONTHS: NUMBER, TENURE_START: DATE, ANNUAL_SALARY: 'NUMBER(14,2)',
+                  SALARY_MIDPOINT: 'NUMBER(14,2)', GENDER: VARCHAR}
+        sources:
+          - system: BDC_CLD
+            from: COREWORKFORCEDATA_V1."coreworkforcedata"."coreworkforce_standardfields" w
+            joins: |
+              LEFT JOIN ACOCO_DB.OPS.MAP_PAYGRADE_LEVEL pg ON pg.PAY_GRADE = COALESCE(w."payGrade", 61)
+              LEFT JOIN ACOCO_DB.OPS.MAP_SF_COSTCENTER sc ON sc.SF_COST_CENTER = COALESCE(w."costCenter"::VARCHAR, 'UNASSIGNED')
+            select: {PERSON_ID: 'w."userId"', VALID_FROM: 'w."startDate"', VALID_TO: 'w."endDate"', EMPLOYMENT_STATUS: 'w."employmentStatus"',
+                     EVENT_REASON: 'w."eventReasonCode"', MOVE_OUT_REASON: 'w."moveOutReason"',
+                     IS_TERMINATION: 'COALESCE(w."terminations", 0) > 0', IS_HIRE: 'COALESCE(w."externalHires", 0) > 0',
+                     PAY_GRADE: 'COALESCE(w."payGrade", 61)', PAY_GRADE_IMPUTED: 'w."payGrade" IS NULL', LEVEL: pg.LEVEL,
+                     BILL_CODE: pg.BILL_CODE, SF_COST_CENTER: 'COALESCE(w."costCenter"::VARCHAR, ''UNASSIGNED'')',
+                     COST_CENTER_ID: sc.COST_CENTER, MD_GROUP_ID: sc.MD_GROUP_ID, MANAGER_ID: 'w."managerId"', FTE: 'w."fte"',
+                     TENURE_MONTHS: 'TRY_TO_NUMBER(w."organizationalTenure")', TENURE_START: 'w."tenureStartDate"',
+                     ANNUAL_SALARY: 'w."annualSalary"', SALARY_MIDPOINT: 'w."midPoint"', GENDER: 'w."gender"'}
+          - system: SIMULATED
+            from: ACOCO_SIM.COREWORKFORCE.COREWORKFORCE_STANDARDFIELDS w
+            joins: |
+              LEFT JOIN ACOCO_DB.OPS.MAP_PAYGRADE_LEVEL pg ON pg.PAY_GRADE = w."payGrade"
+              LEFT JOIN ACOCO_DB.OPS.MAP_SF_COSTCENTER sc ON sc.SF_COST_CENTER = w."costCenter"
+            select: {PERSON_ID: 'w."userId"', VALID_FROM: 'w."startDate"', VALID_TO: 'w."endDate"', EMPLOYMENT_STATUS: 'w."employmentStatus"',
+                     EVENT_REASON: 'w."eventReasonCode"', MOVE_OUT_REASON: 'w."moveOutReason"',
+                     IS_TERMINATION: 'COALESCE(w."terminations", 0) > 0', IS_HIRE: 'COALESCE(w."externalHires", 0) > 0',
+                     PAY_GRADE: 'w."payGrade"', PAY_GRADE_IMPUTED: 'FALSE', LEVEL: pg.LEVEL, BILL_CODE: pg.BILL_CODE,
+                     SF_COST_CENTER: 'w."costCenter"', COST_CENTER_ID: sc.COST_CENTER, MD_GROUP_ID: sc.MD_GROUP_ID,
+                     FTE: 'w."fte"', TENURE_MONTHS: 'TRY_TO_NUMBER(w."organizationalTenure")', TENURE_START: 'w."tenureStartDate"',
+                     ANNUAL_SALARY: 'w."annualSalary"', SALARY_MIDPOINT: 'w."midPoint"', GENDER: 'w."gender"'}
+
+      PERSON_DIRECTORY:
+        key: [PERSON_ID]
+        columns: {PERSON_ID: VARCHAR, FIRST_NAME: VARCHAR, LAST_NAME: VARCHAR, DISPLAY_NAME: VARCHAR, IS_SIMULATED_PERSON: BOOLEAN}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.DIRECTORY.PERSON_NAME n
+            select: {PERSON_ID: n.USER_ID, FIRST_NAME: n.FIRST_NAME, LAST_NAME: n.LAST_NAME,
+                     DISPLAY_NAME: "n.FIRST_NAME || ' ' || n.LAST_NAME", IS_SIMULATED_PERSON: "n.USER_ID LIKE 'S9%'"}
+
+      MD_ROLE:
+        key: [MD_GROUP_ID]
+        columns: {PERSON_ID: VARCHAR, MD_GROUP_ID: VARCHAR, ROLE: VARCHAR, VALID_FROM: DATE}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.DIRECTORY.MD_ROLE r
+            select: {PERSON_ID: r.USER_ID, MD_GROUP_ID: r.MD_GROUP_ID, ROLE: r.ROLE, VALID_FROM: r.VALID_FROM}
+
+      JOB_RELATIONSHIP:
+        key: [RELATIONSHIP_ID]
+        columns: {RELATIONSHIP_ID: VARCHAR, ASSIGNMENT_ID: VARCHAR, PERSON_ID: VARCHAR}
+        sources:
+          - system: BDC_CLD
+            from: ASSIGNMENTADDITIONALINFORMATION_V1."assignmentadditionalinformation"."jobrelationship" j
+            joins: LEFT JOIN ACOCO_DB.OPS.MAP_ASSIGNMENT_USER m ON m.ASSIGNMENT_ID = j."assignmentId"
+            select: {RELATIONSHIP_ID: 'j."id"', ASSIGNMENT_ID: 'j."assignmentId"', PERSON_ID: m.USER_ID}
+
+      PERFORMANCE_RATING:
+        key: [PERSON_ID, FISCAL_YEAR]
+        columns: {PERSON_ID: VARCHAR, FISCAL_YEAR: NUMBER, RATING_DATE: DATE, PERFORMANCE_RATING: NUMBER}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.PERFORMANCE.PERFORMANCE_RATING r
+            select: {PERSON_ID: r.USER_ID, FISCAL_YEAR: r.FISCAL_YEAR, RATING_DATE: r.RATING_DATE, PERFORMANCE_RATING: r.PERFORMANCE_RATING}
+
+      COMPENSATION_SUMMARY:
+        key: [PERSON_ID]
+        columns: {PERSON_ID: VARCHAR, LEVEL: VARCHAR, PAY_BAND: VARCHAR, COMPA_RATIO: 'NUMBER(6,3)'}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.COMPENSATION.COMPENSATION_SUMMARY c
+            select: {PERSON_ID: c.USER_ID, LEVEL: c.LEVEL, PAY_BAND: c.PAY_BAND, COMPA_RATIO: c.COMPA_RATIO}
+
+      SUCCESSION_NOMINATION:
+        key: [PERSON_ID]
+        columns: {PERSON_ID: VARCHAR, NOMINATION_TYPE: VARCHAR, HAS_READY_SUCCESSOR: BOOLEAN}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.SUCCESSION.NOMINATION n
+            select: {PERSON_ID: n.USER_ID, NOMINATION_TYPE: n.NOMINATION_TYPE, HAS_READY_SUCCESSOR: n.HAS_READY_SUCCESSOR}
+
+  TALENT:
+    allowed: [ACOCO_SIM.SKILLS, ACOCO_SIM.LEARNING]
+    objects:
+      SKILL:
+        key: [SKILL_ID]
+        columns: {SKILL_ID: VARCHAR, SKILL_NAME: VARCHAR, SKILL_FAMILY: VARCHAR, IS_AGENTIC_AI: BOOLEAN}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.SKILLS.SKILL s
+            select: {SKILL_ID: s.SKILL_ID, SKILL_NAME: s.SKILL_NAME, SKILL_FAMILY: s.SKILL_FAMILY, IS_AGENTIC_AI: "s.SKILL_FAMILY = 'AGENTIC_AI'"}
+
+      PERSON_SKILL:
+        key: [PERSON_ID, SKILL_ID, ASSESSED_DATE]
+        columns: {PERSON_ID: VARCHAR, SKILL_ID: VARCHAR, ASSESSED_DATE: DATE, PROFICIENCY: NUMBER, ASSESSMENT_SOURCE: VARCHAR}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.SKILLS.PERSON_SKILL p
+            select: {PERSON_ID: p.USER_ID, SKILL_ID: p.SKILL_ID, ASSESSED_DATE: p.ASSESSED_DATE, PROFICIENCY: p.PROFICIENCY,
+                     ASSESSMENT_SOURCE: p.ASSESSMENT_SOURCE}
+
+      LEARNING_ITEM:
+        key: [LEARNING_ITEM_ID]
+        columns: {LEARNING_ITEM_ID: VARCHAR, LEARNING_ITEM_TITLE: VARCHAR, CURRICULUM: VARCHAR, IS_AI_CURRICULUM: BOOLEAN,
+                  TARGET_SKILL_ID: VARCHAR, TARGET_PROFICIENCY_LEVEL: NUMBER, LEARNING_HOURS: 'NUMBER(6,1)'}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.LEARNING.LEARNING_ITEM i
+            select: {LEARNING_ITEM_ID: i.LEARNING_ITEM_ID, LEARNING_ITEM_TITLE: i.LEARNING_ITEM_TITLE, CURRICULUM: i.CURRICULUM,
+                     IS_AI_CURRICULUM: i.IS_AI_CURRICULUM, TARGET_SKILL_ID: i.TARGET_SKILL_ID,
+                     TARGET_PROFICIENCY_LEVEL: i.TARGET_PROFICIENCY_LEVEL, LEARNING_HOURS: i.LEARNING_HOURS}
+
+      LEARNING_COMPLETION:
+        key: []
+        columns: {PERSON_ID: VARCHAR, LEARNING_ITEM_ID: VARCHAR, COMPLETION_DATE: DATE, COMPLETION_STATUS: VARCHAR,
+                  LEARNING_HOURS: 'NUMBER(6,1)'}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.LEARNING.LEARNING_COMPLETION c
+            select: {PERSON_ID: c.USER_ID, LEARNING_ITEM_ID: c.LEARNING_ITEM_ID, COMPLETION_DATE: c.COMPLETION_DATE,
+                     COMPLETION_STATUS: c.COMPLETION_STATUS, LEARNING_HOURS: c.LEARNING_HOURS}
+
+  ASSETS:
+    allowed: [ACOCO_SIM.ASSETS]
+    objects:
+      ASSET:
+        key: [ASSET_ID]
+        columns: {ASSET_ID: VARCHAR, ASSET_TITLE: VARCHAR, ASSET_TYPE: VARCHAR, WORK_TYPE: VARCHAR, SKILL_TAGS: VARCHAR,
+                  EFFORT_SAVING_HOURS: 'NUMBER(10,1)', HARVESTED_DATE: DATE, DESCRIPTION: VARCHAR}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.ASSETS.ASSET a
+            select: {ASSET_ID: a.ASSET_ID, ASSET_TITLE: a.ASSET_TITLE, ASSET_TYPE: a.ASSET_TYPE, WORK_TYPE: a.WORK_TYPE,
+                     SKILL_TAGS: a.SKILL_TAGS, EFFORT_SAVING_HOURS: a.CATALOGUED_EFFORT_SAVING_HOURS,
+                     HARVESTED_DATE: TRY_TO_DATE(a.HARVESTED_DATE::VARCHAR), DESCRIPTION: a.DESCRIPTION}
+
+      ASSET_HARVEST:
+        key: [ASSET_ID]
+        columns: {ASSET_ID: VARCHAR, SOURCE_PROJECT_ID: VARCHAR, HARVEST_DATE: DATE, HARVESTED_BY_PERSON_ID: VARCHAR}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.ASSETS.ASSET_HARVEST h
+            select: {ASSET_ID: h.ASSET_ID, SOURCE_PROJECT_ID: h.SOURCE_PROJECT_ID::VARCHAR, HARVEST_DATE: TRY_TO_DATE(h.HARVEST_DATE::VARCHAR),
+                     HARVESTED_BY_PERSON_ID: h.HARVESTED_BY_USER_ID::VARCHAR}
+
+      ASSET_USAGE:
+        key: []
+        columns: {ASSET_ID: VARCHAR, PROJECT_ID: VARCHAR, WBS_ID: VARCHAR, OPPORTUNITY_ID: VARCHAR, USE_DATE: DATE,
+                  HOURS_SAVED_ESTIMATED: 'NUMBER(10,1)'}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.ASSETS.ASSET_USAGE u
+            select: {ASSET_ID: u.ASSET_ID, PROJECT_ID: u.PROJECT_ID, WBS_ID: u.WBS_ELEMENT, OPPORTUNITY_ID: u.OPPORTUNITY_ID::VARCHAR,
+                     USE_DATE: TRY_TO_DATE(u.USE_DATE::VARCHAR), HOURS_SAVED_ESTIMATED: u.HOURS_SAVED_ESTIMATED}
+
+  AI_TELEMETRY:
+    allowed: [ACOCO_SIM.TELEMETRY]
+    objects:
+      AI_USAGE_EVENT:
+        key: []
+        columns: {AI_TOOL_ID: VARCHAR, USAGE_DATE: DATE, PERSON_ID: VARCHAR, WBS_ID: VARCHAR, SESSIONS: NUMBER, TOKENS: NUMBER,
+                  COST_USD: 'NUMBER(12,4)'}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.TELEMETRY.OPENAI_USAGE u
+            select: {AI_TOOL_ID: "'OPENAI'", USAGE_DATE: u.USAGE_DATE, PERSON_ID: u.USER_KEY::VARCHAR, WBS_ID: u.PROJECT_KEY::VARCHAR,
+                     SESSIONS: u.SESSIONS, TOKENS: u.TOKENS, COST_USD: u.COST_USD}
+          - system: SIMULATED
+            from: ACOCO_SIM.TELEMETRY.ANTHROPIC_USAGE u
+            select: {AI_TOOL_ID: "'ANTHROPIC'", USAGE_DATE: u.USAGE_DATE, PERSON_ID: u.USER_KEY::VARCHAR, WBS_ID: u.PROJECT_KEY::VARCHAR,
+                     SESSIONS: u.SESSIONS, TOKENS: u.TOKENS, COST_USD: u.COST_USD}
+          - system: SIMULATED
+            from: ACOCO_SIM.TELEMETRY.CORTEX_USAGE u
+            select: {AI_TOOL_ID: "'CORTEX'", USAGE_DATE: u.USAGE_DATE, PERSON_ID: u.USER_KEY::VARCHAR, WBS_ID: u.PROJECT_KEY::VARCHAR,
+                     SESSIONS: u.SESSIONS, TOKENS: u.TOKENS, COST_USD: u.COST_USD}
+
+      AI_IDENTITY_MAP:
+        key: [PERSON_ID]
+        columns: {PERSON_ID: VARCHAR, OPENAI_USER_ID: VARCHAR, ANTHROPIC_ACTOR_EMAIL: VARCHAR, SNOWFLAKE_USER_NAME: VARCHAR}
+        sources:
+          - system: SIMULATED
+            from: ACOCO_SIM.TELEMETRY.AI_IDENTITY_MAP i
+            select: {PERSON_ID: i.USER_ID, OPENAI_USER_ID: i.OPENAI_USER_ID, ANTHROPIC_ACTOR_EMAIL: i.ANTHROPIC_ACTOR_EMAIL,
+                     SNOWFLAKE_USER_NAME: i.SNOWFLAKE_USER_NAME}
