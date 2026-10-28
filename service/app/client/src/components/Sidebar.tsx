@@ -44,7 +44,7 @@ function Filters() {
   const sel = 'w-full rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs text-white focus:outline-none';
   return (
     <div className="space-y-2 border-b border-white/10 px-4 pb-4">
-      <label className="block text-[10px] font-semibold uppercase tracking-wider text-sf-pale">MD group</label>
+      <label className="block text-[10px] font-semibold uppercase tracking-wider text-sf-pale">Business Group</label>
       <select className={sel} value={filters.group} onChange={(e) => setFilters({ group: e.target.value })}>
         {groups.map((g) => <option key={g.md_group_id} value={g.md_group_id} className="text-gray-900">{g.md_group_name}</option>)}
         <option value="ALL" className="text-gray-900">Firm-wide</option>

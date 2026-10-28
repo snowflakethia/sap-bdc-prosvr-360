@@ -11,12 +11,12 @@ export default function Trust() {
           return (
             <>
               <Grid cols={4}>
-                <Kpi label="Gates passing" value={`${latest.filter((g: any) => g.pass === g.n).length} / ${latest.length}`} sub="latest run of each checkpoint gate" tone="good" />
-                <Kpi label="Checks passing" value={`${d.tr_checks.filter((r) => r.result === 'PASS').length} / ${d.tr_checks.length}`} />
-                <Kpi label="Keys with nulls" value={String(d.tr_completeness.filter((r) => Number(r.null_pct) > 0).length)} sub={`of ${d.tr_completeness.length} conformed key columns`} />
+                <Kpi label="Gates passing" info="gates" value={`${latest.filter((g: any) => g.pass === g.n).length} / ${latest.length}`} sub="latest run of each checkpoint gate" tone="good" />
+                <Kpi label="Checks passing" info="checks" value={`${d.tr_checks.filter((r) => r.result === 'PASS').length} / ${d.tr_checks.length}`} />
+                <Kpi label="Keys with nulls" info="key_nulls" value={String(d.tr_completeness.filter((r) => Number(r.null_pct) > 0).length)} sub={`of ${d.tr_completeness.length} conformed key columns`} />
                 <Kpi label={String(writes?.check_name ?? 'Writes to CLDs').replace(/_/g, ' ')} value={fmt.text(writes?.value)} sub="from ACCESS_HISTORY snapshot" tone={Number(writes?.value) === 0 ? 'good' : 'bad'} />
               </Grid>
-              <Card title="Fee boundary" subtitle="How the app is kept on the governed side">
+              <Card title="Fee boundary" info="fee_boundary" subtitle="How the app is kept on the governed side">
                 <p className="text-sm text-gray-600">
                   Every app statement runs with <code>QUERY_TAG = 'ACOCO_APP'</code> and reads only <code>ACOCO_L2.SERVING</code>, <code>SEMANTIC</code> and <code>ONTOLOGY</code>
                   (linted in <code>tools/lint_app.py</code>). With a single <code>ACCOUNTADMIN</code> role grants cannot enforce it, so it is <b>evidenced</b>: <code>ACCESS_HISTORY</code>
@@ -24,7 +24,7 @@ export default function Trust() {
                 </p>
               </Card>
               <Grid cols={2}>
-                <Card title="Freshness" subtitle="Date coverage of the key facts by source">
+                <Card title="Freshness" info="freshness" subtitle="Date coverage of the key facts by source">
                   <Table rows={d.tr_freshness} cols={[
                     { key: 'object_name', label: 'Object' }, { key: 'date_column', label: 'Date column' }, { key: 'source_system', label: 'Source' },
                     { key: 'min_date', label: 'From', format: fmt.date }, { key: 'max_date', label: 'To', format: fmt.date },
@@ -38,7 +38,7 @@ export default function Trust() {
                 </Card>
               </Grid>
               <Grid cols={2}>
-                <Card title="Completeness" subtitle="Null rate of conformed keys per L1 object">
+                <Card title="Completeness" info="completeness" subtitle="Null rate of conformed keys per L1 object">
                   <Table max={360} rows={d.tr_completeness} cols={[
                     { key: 'object_name', label: 'Object' }, { key: 'column_name', label: 'Column' },
                     { key: 'row_count', label: 'Rows', format: fmt.num, align: 'right' }, { key: 'null_pct', label: 'Null %', format: fmt.pct, align: 'right' },

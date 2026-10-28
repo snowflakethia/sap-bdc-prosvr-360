@@ -27,13 +27,13 @@ export default function Assets({ openProject }: { openProject: (id: string) => v
         {(d) => (
           <>
             <Grid cols={2}>
-              <Card title="Harvest and reuse rate" subtitle="Harvest = closed projects that contributed an asset; reuse = projects that used one">
+              <Card title="Harvest and reuse rate" info="harvest_reuse" subtitle="Harvest = closed projects that contributed an asset; reuse = projects that used one">
                 <EChart height={280} option={lines(d.as_fy.map((r) => fmt.fy(r.fiscal_year)), [
                   { name: 'Harvest rate %', data: d.as_fy.map((r) => r.harvest_rate_pct), color: '#11567F' },
                   { name: 'Reuse rate %', data: d.as_fy.map((r) => r.reuse_rate_pct), color: '#29B5E8' },
                 ], { unit: 'pct' })} />
               </Card>
-              <Card title="Median CPI with vs without reuse" subtitle="Projects by fiscal year of (forecast) end">
+              <Card title="Median CPI with vs without reuse" info="cpi_reuse" subtitle="Projects by fiscal year of (forecast) end">
                 <EChart height={280} option={bars(d.as_fy.map((r) => fmt.fy(r.fiscal_year)), [
                   { name: 'With reuse', data: d.as_fy.map((r) => r.cpi_with_reuse), color: '#11567F' },
                   { name: 'Without reuse', data: d.as_fy.map((r) => r.cpi_without_reuse), color: '#8A8D91' },
@@ -41,14 +41,14 @@ export default function Assets({ openProject }: { openProject: (id: string) => v
               </Card>
             </Grid>
             <Grid cols={2}>
-              <Card title="Top reused assets" subtitle="Recorded uses and hours saved (ESTIMATED)">
+              <Card title="Top reused assets" info="top_reused" subtitle="Recorded uses and hours saved (ESTIMATED)">
                 <Table max={340} rows={d.as_top} onRow={(r) => openProject(r.source_project_id)} cols={[
                   { key: 'asset_title', label: 'Asset' }, { key: 'asset_type', label: 'Type' }, { key: 'work_type', label: 'Work type' },
                   { key: 'uses', label: 'Uses', align: 'right' }, { key: 'hours_saved_estimated', label: 'Est. hours saved', format: fmt.num, align: 'right' },
                   { key: 'source_project_id', label: 'Harvested from' },
                 ]} />
               </Card>
-              <Card title="Reuse by contract type" subtitle="From SV_PROJECT_DELIVERY; missed reuse = hours the best-matching unused asset would have saved (ESTIMATED)">
+              <Card title="Reuse by contract type" info="reuse_contract" subtitle="From SV_PROJECT_DELIVERY; missed reuse = hours the best-matching unused asset would have saved (ESTIMATED)">
                 <Table rows={d.as_reuse_value} cols={[
                   { key: 'contract_type', label: 'Contract' }, { key: 'project_count', label: 'Projects', align: 'right' },
                   { key: 'asset_reuse_rate_pct', label: 'Reuse rate', format: fmt.pct, align: 'right' },
@@ -57,7 +57,7 @@ export default function Assets({ openProject }: { openProject: (id: string) => v
                 ]} />
               </Card>
             </Grid>
-            <Card title="Search the library" subtitle="Cortex Search (CSS_ASSET_LIBRARY) over titles, descriptions and skill tags">
+            <Card title="Search the library" info="asset_search" subtitle="Cortex Search (CSS_ASSET_LIBRARY) over titles, descriptions and skill tags">
               <form onSubmit={search} className="mb-3 flex gap-2">
                 <input value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. data migration reconciliation accelerator"
                   className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none" />

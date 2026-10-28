@@ -18,9 +18,9 @@ export default function Overview({ nav, openProject }: { nav: Navigate; openProj
           const fy = fmt.fy(cur.fiscal_year), pfy = fmt.fy(prev.fiscal_year);
           const ot = d.ov_on_time[0] ?? {};
           const ai = d.ov_ai_uplift.find((r) => r.ai_band === 'AI_ACTIVE');
-          const k = (label: string, f: string, kind: 'pct' | 'usd' | 'ratio' | 'pts' | 'num', hib: boolean, show: (v: any) => string) => {
+          const k = (label: string, f: string, kind: 'pct' | 'usd' | 'ratio' | 'pts' | 'num', hib: boolean, show: (v: any) => string, info?: string, right = false) => {
             const dl = delta(cur[f], prev[f], kind, hib);
-            return <Kpi label={`${label} ${fy}`} value={show(cur[f])} sub={dl.sub ? `${dl.sub.replace('prior year', pfy)}` : undefined} tone={dl.tone} />;
+            return <Kpi label={`${label} ${fy}`} value={show(cur[f])} sub={dl.sub ? `${dl.sub.replace('prior year', pfy)}` : undefined} tone={dl.tone} info={info} infoAlign={right ? 'right' : 'left'} />;
           };
           const tm = d.ov_time_mix;
           return (
@@ -28,36 +28,36 @@ export default function Overview({ nav, openProject }: { nav: Navigate; openProj
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <Card title="Operational Excellence" subtitle="Deliver what was sold at the sold margin">
                   <div className="grid grid-cols-2 gap-3">
-                    {k('Margin', 'margin_pct', 'pts', true, fmt.pct)}
-                    <Kpi label="On-time (active)" value={fmt.pct(ot.on_time_pct)} sub={`${ot.active_projects} active projects, no forecast slip`} />
-                    {k('Asset reuse rate', 'reuse_rate_pct', 'pts', true, fmt.pct)}
-                    {k('Revenue', 'revenue', 'usd', true, fmt.usd)}
+                    {k('Margin', 'margin_pct', 'pts', true, fmt.pct, 'margin')}
+                    <Kpi label="On-time (active)" value={fmt.pct(ot.on_time_pct)} sub={`${ot.active_projects} active projects, no forecast slip`} info="on_time" infoAlign="right" />
+                    {k('Asset reuse rate', 'reuse_rate_pct', 'pts', true, fmt.pct, 'reuse_rate')}
+                    {k('Revenue', 'revenue', 'usd', true, fmt.usd, 'revenue', true)}
                   </div>
                 </Card>
                 <Card title="Value Creation" subtitle="Win the right work">
                   <div className="grid grid-cols-2 gap-3">
-                    {k('Win-rate', 'win_rate_pct', 'pts', true, fmt.pct)}
-                    {k('Pursuit cost / won USD', 'pursuit_cost_per_won_usd', 'ratio', false, (v) => `$${num(v).toFixed(3)}`)}
-                    <Kpi label={`Book-to-bill ${fy}`} value={fmt.ratio(num(cur.won_value) / num(cur.revenue))} sub={`won ${fmt.usd(cur.won_value)}`} />
-                    {k('Won value', 'won_value', 'usd', true, fmt.usd)}
+                    {k('Win-rate', 'win_rate_pct', 'pts', true, fmt.pct, 'win_rate')}
+                    {k('Pursuit cost / won USD', 'pursuit_cost_per_won_usd', 'ratio', false, (v) => `$${num(v).toFixed(3)}`, 'pursuit_cost', true)}
+                    <Kpi label={`Book-to-bill ${fy}`} value={fmt.ratio(num(cur.won_value) / num(cur.revenue))} sub={`won ${fmt.usd(cur.won_value)}`} info="book_to_bill" />
+                    {k('Won value', 'won_value', 'usd', true, fmt.usd, 'won_value', true)}
                   </div>
                 </Card>
                 <Card title="People Development" subtitle="The right people, skills and time mix">
                   <div className="grid grid-cols-2 gap-3">
-                    {k('Delivery share', 'delivery_pct', 'pts', true, fmt.pct)}
-                    {k('Bench cost', 'bench_cost', 'usd', false, fmt.usd)}
-                    {k('Admin share', 'admin_pct', 'pts', false, fmt.pct)}
-                    {k('Voluntary attrition', 'attrition_pct', 'pts', false, fmt.pct)}
-                    <Kpi label={`AI productivity uplift ${fy}`} value={ai ? fmt.signedPct(ai.uplift) : '-'}
+                    {k('Delivery share', 'delivery_pct', 'pts', true, fmt.pct, 'delivery_share')}
+                    {k('Bench cost', 'bench_cost', 'usd', false, fmt.usd, 'bench_cost', true)}
+                    {k('Admin share', 'admin_pct', 'pts', false, fmt.pct, 'admin_share')}
+                    {k('Voluntary attrition', 'attrition_pct', 'pts', false, fmt.pct, 'attrition', true)}
+                    <Kpi label={`AI productivity uplift ${fy}`} value={ai ? fmt.signedPct(ai.uplift) : '-'} info="ai_uplift"
                       sub={ai ? `90 % CI [${fmt.signedPct(ai.ci_low)}, ${fmt.signedPct(ai.ci_high)}] - ${ai.significant ? 'significant' : 'no significant effect'}` : undefined}
                       tone={ai?.significant ? 'good' : 'neutral'} />
-                    {k('People (end of year)', 'headcount_end', 'num', true, fmt.num)}
+                    {k('People (end of year)', 'headcount_end', 'num', true, fmt.num, 'headcount', true)}
                   </div>
                 </Card>
               </div>
 
               <Grid cols={2}>
-                <Card title={`Time mix by level, ${fy} - actual vs target`} subtitle="Share of available hours; each level's second bar is its target mix (PRD 2.1)">
+                <Card title={`Time mix by level, ${fy} - actual vs target`} subtitle="Share of available hours; each level's second bar is its target mix (PRD 2.1)" info="time_mix">
                   <EChart height={340} option={{
                     ...bars(tm.flatMap((r) => [r.level, `${r.level} target`]),
                       CATS.map((c) => ({ name: c, stack: 'mix', color: TIME_COLORS[c],
@@ -65,7 +65,7 @@ export default function Overview({ nav, openProject }: { nav: Navigate; openProj
                       { unit: 'pct', horizontal: true }),
                   }} />
                 </Card>
-                <Card title="Revenue and margin, 60 months" subtitle="Monthly, from SV_PORTFOLIO_360; the rule marks the as-of date">
+                <Card title="Revenue and margin, 60 months" subtitle="Monthly, from SV_PORTFOLIO_360; the rule marks the as-of date" info="rev_margin_trend">
                   <EChart height={340} option={lines(d.ov_trend.map((r) => String(r.month_start).slice(0, 7)), [
                     { name: 'Revenue', data: d.ov_trend.map((r) => r.total_revenue), area: true },
                     { name: 'Margin %', data: d.ov_trend.map((r) => r.margin_pct), yAxisIndex: 1, color: '#FF9F36' },

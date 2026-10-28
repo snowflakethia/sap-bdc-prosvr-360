@@ -16,7 +16,7 @@ export default function TimeMix() {
           return (
             <>
               <Grid cols={2}>
-                <Card title="Time mix by level vs target" subtitle="Actual (bars) vs target (markers), share of available hours, last year in the range">
+                <Card title="Time mix by level vs target" info="time_mix" subtitle="Actual (bars) vs target (markers), share of available hours, last year in the range">
                   <EChart height={340} option={{
                     ...bars(tm.map((r) => r.level), CATS.map((c) => ({ name: c, color: TIME_COLORS[c], data: tm.map((r) => r[`${c.toLowerCase()}_pct`]) })), { unit: 'pct' }),
                     series: [
@@ -26,19 +26,19 @@ export default function TimeMix() {
                     legend: { top: 0, data: [...CATS] },
                   }} />
                 </Card>
-                <Card title="Five-way mix over the years" subtitle="Share of available hours">
+                <Card title="Five-way mix over the years" info="mix_trend" subtitle="Share of available hours">
                   <EChart height={340} option={bars(d.wf_mix_trend.map((r) => fmt.fy(r.fiscal_year)),
                     CATS.map((c) => ({ name: c, stack: 'mix', color: TIME_COLORS[c], data: d.wf_mix_trend.map((r) => r[`${c.toLowerCase()}_pct`]) })), { unit: 'pct' })} />
                 </Card>
               </Grid>
               <Grid cols={2}>
-                <Card title="Excess bench cost by month" subtitle="Cost of bench hours above the ~2 % structural allowance">
+                <Card title="Excess bench cost by month" info="excess_bench" subtitle="Cost of bench hours above the ~2 % structural allowance">
                   <EChart height={280} option={bars(months, [
                     { name: 'Excess bench cost', data: bm.map((r) => r.excess_bench_cost), color: '#D45B90' },
                     { name: 'Total bench cost', data: bm.map((r) => r.bench_cost), color: '#F4B8CF' },
                   ], { unit: 'usd' })} />
                 </Card>
-                <Card title="Bench and admin share by month" subtitle="Admin ceiling 5 %, bench allowance 2 %">
+                <Card title="Bench and admin share by month" info="bench_admin" subtitle="Admin ceiling 5 %, bench allowance 2 %">
                   <EChart height={280} option={{
                     ...lines(months, [
                       { name: 'Admin %', data: bm.map((r) => r.admin_pct), color: '#FF9F36' },
@@ -52,7 +52,7 @@ export default function TimeMix() {
                   }} />
                 </Card>
               </Grid>
-              <Card title={`Rolling off in the next 90 days (${d.wf_roll_off.length})`} subtitle="Bold red = below the AI-skill level the open pipeline needs; SOURCE_SYSTEM shows real People Intelligence rows">
+              <Card title={`Rolling off in the next 90 days (${d.wf_roll_off.length})`} info="roll_off" subtitle="Bold red = below the AI-skill level the open pipeline needs; SOURCE_SYSTEM shows real People Intelligence rows">
                 <Table rows={d.wf_roll_off} highlight={(r) => r.below_pipeline_ai_level} cols={[
                   { key: 'display_name', label: 'Person' }, { key: 'level', label: 'Level' }, { key: 'project_id', label: 'Project' },
                   { key: 'roll_off_date', label: 'Roll-off', format: fmt.date }, { key: 'days_to_roll_off', label: 'Days', align: 'right' },

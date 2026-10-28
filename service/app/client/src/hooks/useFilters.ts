@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { getPage, type Filters, type Rows } from '@/lib/api';
 
-/** Global filters (PRD 8.3): MD group (default Financial Services, or Firm-wide), fiscal-year range, size class. */
+/** Global filters (PRD 8.3): Business Group (default Financial Services, or Firm-wide), fiscal-year range, size class. */
 interface FilterContextType {
   filters: Filters;
   setFilters: (f: Partial<Filters>) => void;

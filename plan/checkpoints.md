@@ -462,6 +462,6 @@ regression 20/20 re-run on the final build.
 | 06 | approved | cp-06 | Boon Sing Thia, 2026-10-27 | gate 11/11; reasoning 8/8; anchors 9/13; D-06-1..10 |
 | 07 | approved | cp-07 | Boon Sing Thia, 2026-10-27 | gate 6/6; ontology check 0 errors; D-07-1..5 |
 | 08 | approved | cp-08 | Boon Sing Thia, 2026-10-28 | gate 5/5; regression 20/20; p90 84 s; D-08-1..4 |
-| 09 | awaiting validation | cp-09 | |
+| 09 | approved 2026-10-28 | cp-09, cp-09.1 | UI: Business Group label, (i) metric popovers (D-09-11) |
 | 10 | not started | | | |
 | 11 | not started | | | |

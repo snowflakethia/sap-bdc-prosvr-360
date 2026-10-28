@@ -99,10 +99,10 @@ export default function Architecture() {
         {(d) => (
           <>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <Card className="lg:col-span-2" title="Ontology graph" subtitle="13 entities and 18 relationships from ACOCO_L2.ONTOLOGY (via SERVING.VW_ONTOLOGY_GRAPH); size = rows. Click an entity.">
+              <Card className="lg:col-span-2" title="Ontology graph" info="ontology" subtitle="13 entities and 18 relationships from ACOCO_L2.ONTOLOGY (via SERVING.VW_ONTOLOGY_GRAPH); size = rows. Click an entity.">
                 <Graph rows={d.on_graph} picked={picked} onPick={setPicked} />
               </Card>
-              <Card title="Entity lineage" subtitle="L0 -> L1 -> L2 -> Semantic Views">
+              <Card title="Entity lineage" info="entity_lineage" subtitle="L0 -> L1 -> L2 -> Semantic Views">
                 {picked ? <EntityDetail rows={d.on_graph} entity={picked} /> : <p className="text-sm text-gray-400">Click an entity in the graph.</p>}
               </Card>
             </div>

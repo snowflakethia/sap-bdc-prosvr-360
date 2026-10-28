@@ -24,15 +24,15 @@ export function BusinessOverview({ nav }: { nav: Navigate }) {
           return (
             <>
               <Grid cols={5}>
-                <Kpi label="FY26 revenue (firm)" value={fmt.usd(f.revenue)} sub={`margin ${fmt.pct(f.margin_pct)}`} />
-                <Kpi label="People (end FY26)" value={fmt.num(f.headcount_end)} sub={`voluntary attrition ${fmt.pct(f.attrition_pct)}`} />
-                <Kpi label="Delivery share" value={fmt.pct(f.delivery_pct)} sub="target ~70 % (headcount mix)" />
-                <Kpi label="Win-rate FY26" value={fmt.pct(f.win_rate_pct)} sub="decided bids" />
-                <Kpi label="MD groups" value={String(d.cx_groups.length)} sub="each led by a Partner MD" />
+                <Kpi label="FY26 revenue (firm)" info="revenue_firm" value={fmt.usd(f.revenue)} sub={`margin ${fmt.pct(f.margin_pct)}`} />
+                <Kpi label="People (end FY26)" info="people_firm" value={fmt.num(f.headcount_end)} sub={`voluntary attrition ${fmt.pct(f.attrition_pct)}`} />
+                <Kpi label="Delivery share" info="delivery_share" value={fmt.pct(f.delivery_pct)} sub="target ~70 % (headcount mix)" />
+                <Kpi label="Win-rate FY26" info="win_rate" value={fmt.pct(f.win_rate_pct)} sub="decided bids" />
+                <Kpi label="Business Groups" info="business_groups" value={String(d.cx_groups.length)} sub="each led by a Partner MD" />
               </Grid>
-              <Card title="The six MD groups (FY26)" subtitle="Live from ACOCO_L2.SERVING.VW_SCORECARD_FY">
+              <Card title="The six Business Groups (FY26)" info="groups_table" subtitle="Live from ACOCO_L2.SERVING.VW_SCORECARD_FY">
                 <Table rows={d.cx_groups} cols={[
-                  { key: 'md_group_name', label: 'Group' },
+                  { key: 'md_group_name', label: 'Business Group' },
                   { key: 'managing_director_name', label: 'Partner MD' },
                   { key: 'revenue', label: 'Revenue', format: fmt.usd, align: 'right' },
                   { key: 'margin_pct', label: 'Margin', format: fmt.pct, align: 'right' },
@@ -82,7 +82,7 @@ export function DashboardOverview({ nav }: { nav: Navigate }) {
       </Card>
       <Grid cols={3}>
         <Card title="Filters">
-          <p className="text-sm text-gray-600">MD group (default Financial Services, or Firm-wide), fiscal-year range and size class sit in the left rail. They are bound into the SQL on the server (WHERE clauses on <code>SEMANTIC_VIEW()</code> and SERVING views) - never filtered in the browser.</p>
+          <p className="text-sm text-gray-600">Business Group (default Financial Services, or Firm-wide), fiscal-year range and size class sit in the left rail. They are bound into the SQL on the server (WHERE clauses on <code>SEMANTIC_VIEW()</code> and SERVING views) - never filtered in the browser.</p>
         </Card>
         <Card title="Ask Cortex and the Advisor">
           <p className="text-sm text-gray-600"><b>Ask Cortex</b> re-runs the page's registry statements and asks <code>AI_COMPLETE</code> to explain exactly those figures. The <b>Advisor</b> (P10) is the Cortex Agent <code>ACOCO_ADVISOR</code> over five Semantic Views, two Cortex Search services and the reasoning views.</p>
@@ -133,10 +133,10 @@ export function DemoOverview({ nav }: { nav: Navigate }) {
           return s ? (
             <Card title={`The story project: ${s.project_id} - ${s.customer_name}`} subtitle="Seeded at-risk FS fixed-price project (live figures)">
               <Grid cols={4}>
-                <Kpi label="Contract" value={fmt.usd(s.contract_value)} sub={`${s.size_class} - ${s.contract_type}`} />
-                <Kpi label="CPI / SPI" value={`${fmt.ratio(s.cpi)} / ${fmt.ratio(s.spi)}`} tone="bad" />
-                <Kpi label="Forecast margin" value={fmt.pct(s.forecast_margin_pct)} tone="bad" />
-                <Kpi label="LD exposure" value={fmt.usd(s.ld_exposure)} />
+                <Kpi label="Contract" info="contract_value" value={fmt.usd(s.contract_value)} sub={`${s.size_class} - ${s.contract_type}`} />
+                <Kpi label="CPI / SPI" info="cpi_spi" value={`${fmt.ratio(s.cpi)} / ${fmt.ratio(s.spi)}`} tone="bad" />
+                <Kpi label="Forecast margin" info="forecast_margin" value={fmt.pct(s.forecast_margin_pct)} tone="bad" />
+                <Kpi label="LD exposure" info="ld_exposure" value={fmt.usd(s.ld_exposure)} />
               </Grid>
             </Card>
           ) : null;

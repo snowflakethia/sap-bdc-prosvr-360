@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Info, Loader2 } from 'lucide-react';
 import Chart from '@/components/Chart';
 import AskCortex from '@/components/AskCortex';
 import { useFilters } from '@/hooks/useFilters';
 import { useQuery } from '@/hooks/useQuery';
 import { getPage, type PageData, type Rows } from '@/lib/api';
+import { GLOSSARY } from '@/lib/glossary';
 import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -96,14 +97,39 @@ export function Grid({ cols = 3, children }: { cols?: number; children: ReactNod
   return <div className={cn('grid grid-cols-1 gap-4 md:grid-cols-2', c)}>{children}</div>;
 }
 
-export function Card({ title, subtitle, children, className, right }: {
-  title: string; subtitle?: ReactNode; children: ReactNode; className?: string; right?: ReactNode;
+/** (i) marker with a hover / focus popover; `term` is a GLOSSARY key. */
+export function InfoTip({ term, align = 'left' }: { term: string; align?: 'left' | 'right' }) {
+  const t = GLOSSARY[term];
+  if (!t) return null;
+  return (
+    <span className="group/info relative ml-1 inline-flex align-middle normal-case tracking-normal">
+      <span tabIndex={0} aria-label={`About ${t.title}`}
+        className="cursor-help text-gray-400 outline-none hover:text-sf-primary focus:text-sf-primary">
+        <Info className="h-3.5 w-3.5" />
+      </span>
+      <span role="tooltip" className={cn(
+        'pointer-events-none invisible absolute top-5 z-50 w-72 rounded-lg border border-gray-200 bg-white p-3 text-left font-normal shadow-lg',
+        'opacity-0 transition-opacity group-focus-within/info:visible group-focus-within/info:opacity-100 group-hover/info:visible group-hover/info:opacity-100',
+        align === 'right' ? 'right-0' : 'left-0')}>
+        <span className="block text-xs font-semibold text-gray-900">{t.title}</span>
+        <span className="mt-1 block text-xs leading-snug text-gray-600">{t.what}</span>
+        {t.calc && (
+          <span className="mt-2 block whitespace-pre-line rounded bg-slate-50 px-2 py-1.5 font-mono text-[11px] leading-snug text-slate-700">{t.calc}</span>
+        )}
+        {t.note && <span className="mt-2 block text-[11px] leading-snug text-gray-500">{t.note}</span>}
+      </span>
+    </span>
+  );
+}
+
+export function Card({ title, subtitle, children, className, right, info }: {
+  title: string; subtitle?: ReactNode; children: ReactNode; className?: string; right?: ReactNode; info?: string;
 }) {
   return (
     <div className={cn('rounded-xl border border-gray-200 bg-white p-5 shadow-sm', className)}>
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <h3 className="text-base font-bold text-gray-900">{title}</h3>
+          <h3 className="text-base font-bold text-gray-900">{title}{info && <InfoTip term={info} />}</h3>
           {subtitle && <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>}
         </div>
         {right}
@@ -114,11 +140,13 @@ export function Card({ title, subtitle, children, className, right }: {
 }
 
 export type Tone = 'good' | 'bad' | 'neutral';
-export function Kpi({ label, value, sub, tone = 'neutral' }: { label: string; value: string; sub?: ReactNode; tone?: Tone }) {
+export function Kpi({ label, value, sub, tone = 'neutral', info, infoAlign }: {
+  label: string; value: string; sub?: ReactNode; tone?: Tone; info?: string; infoAlign?: 'left' | 'right';
+}) {
   return (
     <div className={cn('rounded-xl border p-4 shadow-sm',
       tone === 'good' ? 'border-emerald-200 bg-emerald-50/60' : tone === 'bad' ? 'border-rose-200 bg-rose-50/60' : 'border-sf-primary/30 bg-gradient-to-br from-blue-50 to-sky-50')}>
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{label}{info && <InfoTip term={info} align={infoAlign} />}</p>
       <p className="mt-1.5 text-2xl font-extrabold text-gray-900">{value}</p>
       {sub && <p className="mt-1 text-xs text-gray-500">{sub}</p>}
     </div>

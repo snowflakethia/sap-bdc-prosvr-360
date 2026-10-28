@@ -19,12 +19,12 @@ export default function Portfolio({ openProject }: { openProject: (id: string) =
           return (
             <>
               <Grid cols={2}>
-                <Card title="Revenue by size class" subtitle="Per fiscal year, from SV_PROJECT_DELIVERY">
+                <Card title="Revenue by size class" info="revenue_by_size" subtitle="Per fiscal year, from SV_PROJECT_DELIVERY">
                   <EChart height={320} option={bars(years.map(fmt.fy), sizes.map((s) => ({
                     name: s, stack: 'rev', data: years.map((y) => d.pf_size.find((r) => r.fiscal_year === y && r.size_class === s)?.total_revenue ?? 0),
                   })), { unit: 'usd' })} />
                 </Card>
-                <Card title={`Pareto of project revenue, ${fmt.fy(filters.fy1)}`}
+                <Card title={`Pareto of project revenue, ${fmt.fy(filters.fy1)}`} info="pareto"
                   subtitle={top20 ? `The top 20 % of projects (${top20.rank_no}) earn ${fmt.pct(top20.cum_revenue_pct)} of revenue` : undefined}>
                   <EChart height={320} option={{
                     tooltip: { trigger: 'axis' }, legend: { top: 0 },
@@ -38,9 +38,9 @@ export default function Portfolio({ openProject }: { openProject: (id: string) =
                   }} onClick={(p) => p.name && openProject(p.name)} />
                 </Card>
               </Grid>
-              <Card title="Fixed-price projects below 10 % forecast margin" subtitle="Active projects; click a row to open Project Health (P2)">
+              <Card title="Fixed-price projects below 10 % forecast margin" info="fp_watch" subtitle="Active projects; click a row to open Project Health (P2)">
                 <Table rows={d.pf_fp_watch} onRow={(r) => openProject(r.project_id)} highlight={(r) => r.is_story_project} cols={[
-                  { key: 'project_id', label: 'Project' }, { key: 'customer_name', label: 'Customer' }, { key: 'md_group_id', label: 'Group' },
+                  { key: 'project_id', label: 'Project' }, { key: 'customer_name', label: 'Customer' }, { key: 'md_group_id', label: 'Business Group' },
                   { key: 'size_class', label: 'Size' }, { key: 'contract_value', label: 'Contract', format: fmt.usd, align: 'right' },
                   { key: 'cpi', label: 'CPI', format: fmt.ratio, align: 'right' }, { key: 'spi', label: 'SPI', format: fmt.ratio, align: 'right' },
                   { key: 'eac', label: 'EAC', format: fmt.usd, align: 'right' },

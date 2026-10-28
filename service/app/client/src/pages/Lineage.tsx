@@ -60,12 +60,12 @@ function LineageBody({ objs, layers }: { objs: Rows; layers: Rows }) {
   return (
     <>
       <Grid cols={4}>
-        <Kpi label="CLD tables read (L0)" value={String(l0.filter((o) => o.source_system === 'BDC_CLD').length)} sub="via connector SNOWFLAKE_APJ, read only" />
-        <Kpi label="Simulated tables (L0)" value={String(l0.filter((o) => o.source_system !== 'BDC_CLD').length)} sub="ACOCO_SIM, shaped like the BDC products" />
-        <Kpi label="Rows from BDC CLDs" value={fmt.pct((100 * cldRows) / (allRows || 1))} sub={`${fmt.num(cldRows)} of ${fmt.num(allRows)} L0 rows`} />
-        <Kpi label="L1 views / L2 tables" value={`${objs.filter((o) => o.layer === 'L1').length} / ${objs.filter((o) => o.layer === 'L2').length}`} sub={`${sankey._domains} L1 domains`} />
+        <Kpi label="CLD tables read (L0)" info="cld_tables" value={String(l0.filter((o) => o.source_system === 'BDC_CLD').length)} sub="via connector SNOWFLAKE_APJ, read only" />
+        <Kpi label="Simulated tables (L0)" info="sim_tables" value={String(l0.filter((o) => o.source_system !== 'BDC_CLD').length)} sub="ACOCO_SIM, shaped like the BDC products" />
+        <Kpi label="Rows from BDC CLDs" info="cld_rows" value={fmt.pct((100 * cldRows) / (allRows || 1))} sub={`${fmt.num(cldRows)} of ${fmt.num(allRows)} L0 rows`} />
+        <Kpi label="L1 views / L2 tables" info="l1_l2" value={`${objs.filter((o) => o.layer === 'L1').length} / ${objs.filter((o) => o.layer === 'L2').length}`} sub={`${sankey._domains} L1 domains`} />
       </Grid>
-      <Card title="Lineage in medallion order" subtitle="L0 source -> L1 domain views -> L2 schemas (rows); the app reads only SERVING, SEMANTIC and ONTOLOGY">
+      <Card title="Lineage in medallion order" info="lineage_sankey" subtitle="L0 source -> L1 domain views -> L2 schemas (rows); the app reads only SERVING, SEMANTIC and ONTOLOGY">
         <EChart height={420} option={sankey} />
       </Card>
       <Grid cols={2}>
