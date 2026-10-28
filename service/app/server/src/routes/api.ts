@@ -114,9 +114,10 @@ router.post("/api/ask-cortex", async (req: Request, res: Response) => {
       "Explain what these numbers say for the Partner MD and the one action you would take first.";
     p.prompt = [
       "You are the ACoCo ProServe360 advisor for a Partner Managing Director of a professional-services firm.",
-      `Scope: MD group ${p.g === "ALL" ? "firm-wide" : p.g}, fiscal years FY${p.fy0 % 100}-FY${p.fy1 % 100} (Oct-Sep), as of 1 Oct 2026.`,
+      `Scope: Business Group ${p.g === "ALL" ? "firm-wide" : p.g}, fiscal years FY${p.fy0 % 100}-FY${p.fy1 % 100} (Oct-Sep), as of 1 Oct 2026.`,
       `Page: ${topic}. The JSON below holds the exact figures shown on the page (registry statement -> rows).`,
       "Answer in under 180 words of markdown. Cite the numbers you use. Do not invent figures not in the data.",
+      "Call an MD group a \"Business Group\" (the md_group_* fields); \"Partner MD\" is the leader's role.",
       "Hours saved are ESTIMATED; say so if you use them. A confidence interval spanning zero means no significant effect.",
       `Question: ${question}`,
       `Data: ${facts}`,

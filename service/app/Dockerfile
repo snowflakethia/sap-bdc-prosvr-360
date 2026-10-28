@@ -22,6 +22,8 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/server/package.json ./server/package.json
 COPY --from=build /app/server/dist ./server/dist
+# The SQL registry is read at start-up next to the compiled server (registry.ts)
+COPY --from=build /app/server/src/registry.sql ./server/dist/registry.sql
 COPY --from=build /app/client/dist ./client/dist
 
 # SPCS listens on this port; align with service_spec.yml + readinessProbe

@@ -7,12 +7,15 @@ dotenv.config({ path: path.resolve(import.meta.dirname, "../../.env") });
 
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import apiRouter from "./routes/api.js";
 
 const app = express();
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 
 app.use(cors());
+// gzip the 1.5 MB client bundle and JSON (the SPCS proxy forwards it as-is). SSE (Advisor) is not buffered.
+app.use(compression({ filter: (req, res) => req.path !== "/api/advisor" && compression.filter(req, res) }));
 app.use(express.json());
 
 // Liveness/readiness probe for SPCS.
@@ -24,7 +27,9 @@ app.use(apiRouter);
 // CLIENT_DIST is set in the Dockerfile to the client/dist output directory.
 const clientDist = process.env.CLIENT_DIST;
 if (clientDist) {
-  app.use(express.static(clientDist));
+  // Hashed bundles never change for a given name; index.html is always revalidated.
+  app.use("/assets", express.static(path.join(clientDist, "assets"), { immutable: true, maxAge: "30d" }));
+  app.use(express.static(clientDist, { maxAge: 0 }));
   // SPA fallback: any non-API GET returns index.html.
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api/")) return next();

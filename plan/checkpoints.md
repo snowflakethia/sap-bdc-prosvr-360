@@ -72,7 +72,7 @@ plan/checkpoints.md   this file (status column updated at each CP)
 | 07 | Semantic Views and ontology registry | 5.3, 7.2 | `SEMANTIC` (5 SVs), `ONTOLOGY.ONT_*` | `ACOCO_L2` + SV DDL |
 | 08 | Cortex Agent and regression | 10, B5 | `ACOCO_DB.AGENT.ACOCO_ADVISOR` | agent DDL |
 | 09 | Command Center app (local) | 8, B6 | nothing new | - (git only) |
-| 10 | SPCS deployment | 8.5, B7 | image, service, endpoint | service spec |
+| 10 | awaiting validation | cp-10 | SPCS v5, gate 8/8 |
 | 11 | Demo readiness | 6.3, 11, B8 | nothing new | final tag `v1.0-demo` |
 
 ---

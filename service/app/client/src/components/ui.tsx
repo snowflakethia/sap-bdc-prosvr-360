@@ -1,6 +1,5 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { Info, Loader2 } from 'lucide-react';
-import Chart from '@/components/Chart';
 import AskCortex from '@/components/AskCortex';
 import { useFilters } from '@/hooks/useFilters';
 import { useQuery } from '@/hooks/useQuery';
@@ -200,10 +199,17 @@ export function Table({ cols, rows, onRow, max = 400, highlight }: {
 // ---------------------------------------------------------------------------
 // Charts (ECharts option builders; category order is always the data order)
 // ---------------------------------------------------------------------------
+// ECharts (~1 MB) loads on the first chart, not with the shell: C1 paints without it.
+const Chart = lazy(() => import('@/components/Chart'));
+
 export function EChart({ option, height = 300, onClick }: { option: any; height?: number; onClick?: (p: any) => void }) {
   // No animation: options carry fresh formatter functions on every render, and a restarted grow-in animation
   // would leave bars invisible while a page re-renders (seen on P5).
-  return <Chart option={{ animation: false, ...option }} keepOrder noPieConversion style={{ height }} onEvents={onClick ? { click: onClick } : undefined} />;
+  return (
+    <Suspense fallback={<div style={{ height }} />}>
+      <Chart option={{ animation: false, ...option }} keepOrder noPieConversion style={{ height }} onEvents={onClick ? { click: onClick } : undefined} />
+    </Suspense>
+  );
 }
 
 const axisPct = { type: 'value', axisLabel: { formatter: '{value} %' } };

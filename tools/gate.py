@@ -610,9 +610,80 @@ def gate_cp09():
     return checks
 
 
+def gate_cp10():
+    """SPCS deployment: service READY, public endpoint, every page < 3 s warm through ingress, first paint < 2 s."""
+    import re
+    import time
+    import sf
+    from spcs_ingress import Ingress
+    checks = []
+    svc = "ACOCO_DB.APP.ACOCO_COMMAND_CENTER"
+    st = json.loads(sf.query(f"SELECT SYSTEM$GET_SERVICE_STATUS('{svc}') S")[0]["S"])
+    checks.append(("CP10-01", f"{svc} status", "READY", f"{st[0]['status']} ({st[0]['image'].rsplit('/', 1)[-1]})",
+                   all(c["status"] == "READY" for c in st)))
+    eps = sf.query(f"SHOW ENDPOINTS IN SERVICE {svc}")
+    pub = [e for e in eps if str(e.get("is_public")).lower() == "true" and "snowflakecomputing.app" in str(e.get("ingress_url"))]
+    checks.append(("CP10-02", "one public 'ui' endpoint with an ingress URL", "1", f"{len(pub)}: {pub[0]['ingress_url'] if pub else '-'}",
+                   len(pub) == 1 and pub[0]["name"] == "ui"))
+    if not pub:
+        return checks
+    ig = Ingress(pub[0]["ingress_url"])
+    hc = ig.request("/healthcheck")
+    checks.append(("CP10-03", "GET /healthcheck through the endpoint", "200", str(hc[0]), hc[0] == 200 and hc[2] == b"ok"))
+
+    # First paint: index.html + the shell's JS / CSS over one kept-alive gzip connection (as a browser loads it).
+    # Each request through the SPCS proxy costs ~1.1-1.4 s of fixed latency, so the shell bundle excludes ECharts.
+    from spcs_paint import first_paint
+    runs = first_paint(pub[0]["ingress_url"], runs=4)
+    warm = sorted(r[0] for r in runs[1:])[len(runs[1:]) // 2]
+    kb = sum(b for _, b, _ in runs[0][1]) // 1024
+    checks.append(("CP10-04", "first paint: index.html + shell JS / CSS (gzip, keep-alive), warm median", "< 2 s",
+                   f"{warm:.2f} s (first load {runs[0][0]:.2f} s, {kb} KB transferred)", warm < 2))
+
+    routes = ["filters", "overview", "portfolio", "project/P-0615", "workforce", "people", "pipeline", "ai", "assets",
+              "reasoning", "ontology", "lineage", "trust", "context/c1", "context/c2", "context/c3",
+              "assets/search?q=data%20migration", "overview?group=ALL&fy0=2024&fy1=2025"]
+    for r in routes:  # warm-up pass (opens the service session, fills the 10-min result cache)
+        try:
+            ig.request("/api/" + r, timeout=120)
+        except Exception:
+            pass
+    res, bad = [], []
+    for r in routes:
+        try:
+            code, sec, body = ig.request("/api/" + r)
+            empty = [k for k, v in json.loads(body).get("data", {}).items() if not v]
+            res.append((r, round(sec, 2)))
+            if code != 200 or sec >= 3 or empty:
+                bad.append((r, code, round(sec, 2), empty))
+        except Exception as e:
+            bad.append((r, "ERR", str(e)[:80]))
+    slow = max(res, key=lambda x: x[1]) if res else None
+    checks.append(("CP10-05", f"every /api/* route ({len(routes)}) 200 with data, warm, through the endpoint", "< 3 s, 0 failures",
+                   f"failures {bad}; slowest {slow}", not bad))
+
+    t = time.time()
+    stream = ig.request("/api/advisor", {"messages": [{"role": "user", "text": "What was the FS margin % in FY26?"}]}, timeout=240)[2].decode(errors="ignore")
+    events = {ln[6:].strip() for ln in stream.splitlines() if ln.startswith("event:")}
+    checks.append(("CP10-06", "Advisor streams the agent :run from inside SPCS (service OAuth token)", "tool use + text deltas",
+                   f"{len(stream)} bytes, {round(time.time() - t)} s, {sorted(events)[:5]}",
+                   {"response.text.delta", "response.tool_use"} <= events and "error" not in events))
+    ans = json.loads(ig.request("/api/ask-cortex", {"topic": "overview", "args": {"group": "FS"}}, timeout=120)[2]).get("answer", "")
+    checks.append(("CP10-07", "Ask Cortex (AI_COMPLETE) from the service", "answer cites figures", ans[:80].replace("\n", " "),
+                   len(ans) > 100 and any(ch.isdigit() for ch in ans)))
+
+    rows = sf.query("SELECT QUERY_TEXT, ROLE_NAME FROM TABLE(ACOCO_DB.INFORMATION_SCHEMA.QUERY_HISTORY(RESULT_LIMIT => 10000)) "
+                    "WHERE USER_NAME = 'ACOCO_COMMAND_CENTER' AND QUERY_TAG = 'ACOCO_APP' AND START_TIME > DATEADD(hour, -6, CURRENT_TIMESTAMP())")
+    leak = [r["QUERY_TEXT"][:80] for r in rows if re.search(r"ACOCO_SIM\.|ACOCO_L1\.|_V1\b|ACOCO_L2\.(?!SERVING|SEMANTIC|ONTOLOGY|REASONING\.CSS_)", r["QUERY_TEXT"])]
+    roles = sorted({r["ROLE_NAME"] for r in rows})
+    checks.append(("CP10-08", "service-user statements: tagged ACOCO_APP, role ACOCO_APP_ROLE, allowed interface only",
+                   "> 0, 0 outside", f"{len(rows)} tagged, roles {roles}, {len(leak)} outside", len(rows) > 0 and not leak and roles == ["ACOCO_APP_ROLE"]))
+    return checks
+
+
 GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03, "cp04": gate_cp04,
          "cp05": gate_cp05, "cp06": gate_cp06,
-         "cp07": gate_cp07, "cp08": gate_cp08, "cp09": gate_cp09}
+         "cp07": gate_cp07, "cp08": gate_cp08, "cp09": gate_cp09, "cp10": gate_cp10}
 
 
 def log_to_quality(cp, run_at, rows):

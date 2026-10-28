@@ -21,6 +21,7 @@ export function resolveHome(filePath: string): string {
 
 function buildConnectionOptions(): snowflake.ConnectionOptions {
   const common = {
+    clientSessionKeepAlive: true,
     account: process.env.SNOWFLAKE_ACCOUNT!,
     warehouse: process.env.SNOWFLAKE_WAREHOUSE ?? "WH_ACOCO_APP",
     application: "ACOCO_APP",
