@@ -1,185 +1,134 @@
-// Data access layer. Two modes:
-//   - Live (default): fetch from the Express server at /api/*
-//   - Static (VITE_STATIC=1): read pre-baked JSON snapshots from <base>/data/*
-//     and route the Cortex agent to VITE_AGENT_URL (a serverless function).
-const STATIC = import.meta.env.VITE_STATIC === '1';
-const AGENT_BASE = (import.meta.env.VITE_AGENT_URL ?? '').replace(/\/$/, '');
-const DATA_BASE = `${import.meta.env.BASE_URL}data`;
+// Data access: every call goes to the Express server, which runs named registry statements (PRD 8.4).
 const BASE = '/api';
 
-/** Canonical filter key — MUST match filterKey() in scripts/export-static.mjs. */
-function plantKey(plants: string[]): string {
-  return [...plants].sort().join(',');
+export interface Filters {
+  group: string; // MD group id or 'ALL'
+  fy0: number;
+  fy1: number;
+  size: string; // size class or 'ALL'
 }
 
-async function liveGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  return res.json();
+export type Rows = Record<string, any>[];
+export type PageData = Record<string, Rows>;
+
+function qs(f: Filters, extra: Record<string, string> = {}): string {
+  const p = new URLSearchParams({ group: f.group, fy0: String(f.fy0), fy1: String(f.fy1), size: f.size, ...extra });
+  return p.toString();
 }
 
-const fileCache = new Map<string, Promise<any>>();
-function loadStaticFile(file: string): Promise<any> {
-  let p = fileCache.get(file);
-  if (!p) {
-    p = fetch(`${DATA_BASE}/${file}.json`).then((res) => {
-      if (!res.ok) throw new Error(`Static data error: ${res.status} ${file}`);
-      return res.json();
-    });
-    fileCache.set(file, p);
-  }
-  return p;
+export async function getPage(path: string, f: Filters, extra: Record<string, string> = {}): Promise<PageData> {
+  const res = await fetch(`${BASE}/${path}?${qs(f, extra)}`);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? `API error ${res.status}`);
+  return body.data as PageData;
 }
 
-/** Plant-filtered endpoint: live /api call or a keyed static snapshot. */
-async function getKeyed<T>(livePath: string, staticFile: string, plants: string[]): Promise<T> {
-  if (STATIC) {
-    const map = await loadStaticFile(staticFile);
-    return (map[plantKey(plants)] ?? {}) as T;
-  }
-  return liveGet<T>(`${livePath}?plants=${encodeURIComponent(plants.join(','))}`);
+export async function searchAssets(text: string): Promise<Rows> {
+  const res = await fetch(`${BASE}/assets/search?q=${encodeURIComponent(text)}`);
+  if (!res.ok) throw new Error(`search error ${res.status}`);
+  return (await res.json()).data.as_search;
 }
 
-/** Unfiltered endpoint: live /api call or a single static snapshot file. */
-async function getSingle<T>(livePath: string, staticFile: string): Promise<T> {
-  if (STATIC) return loadStaticFile(staticFile) as Promise<T>;
-  return liveGet<T>(livePath);
-}
-
-export function fetchPlants(): Promise<string[]> {
-  return getSingle<string[]>('/plants', 'plants');
-}
-
-export function fetchOverview(plants: string[]): Promise<any> {
-  return getKeyed<any>('/overview', 'overview', plants);
-}
-
-export function fetchProduction(plants: string[]): Promise<any> {
-  return getKeyed<any>('/production', 'production', plants);
-}
-
-export function fetchBom(plants: string[]): Promise<any> {
-  return getKeyed<any>('/bom', 'bom', plants);
-}
-
-export function fetchInventory(plants: string[]): Promise<any> {
-  return getKeyed<any>('/inventory', 'inventory', plants);
-}
-
-export function fetchLogistics(plants: string[]): Promise<any> {
-  return getKeyed<any>('/logistics', 'logistics', plants);
-}
-
-export function fetchWorkCenter(plants: string[]): Promise<any> {
-  return getKeyed<any>('/workcenter', 'workcenter', plants);
-}
-
-export function fetchProjects(plants: string[]): Promise<any> {
-  return getKeyed<any>('/projects', 'projects', plants);
-}
-
-export function fetchSupplyChainMap(plants: string[]): Promise<any> {
-  return getKeyed<any>('/geography', 'geography', plants);
-}
-
-export function fetchLineage(): Promise<any> {
-  return getSingle<any>('/lineage', 'lineage');
-}
-
-export function fetchOntology(): Promise<any> {
-  return getSingle<any>('/ontology', 'ontology');
-}
-
-export interface SemanticModel {
-  tables: { name: string; base: string; primaryKey: string[]; comment: string }[];
-  relationships: { name: string; from: string; to: string; fromKeys: string[]; toKeys: string[] }[];
-}
-
-/** Logical tables + relationships declared in the semantic view (DESCRIBE SEMANTIC VIEW). */
-export function fetchSemanticModel(): Promise<SemanticModel> {
-  return getSingle<SemanticModel>('/semantic-model', 'semantic-model');
-}
-
-export function fetchOptimization(plants: string[]): Promise<any> {
-  return getKeyed<any>('/optimization', 'optimization', plants);
-}
-
-export function fetchForecasting(plants: string[]): Promise<any> {
-  return getKeyed<any>('/forecasting', 'forecasting', plants);
-}
-
-export async function fetchAnalyst(messages: { role: string; content: string }[]): Promise<any> {
-  const base = STATIC ? AGENT_BASE : BASE;
-  const res = await fetch(`${base}/analyst`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages }),
-  });
-  if (!res.ok) throw new Error(`API /analyst: ${res.status}`);
-  return res.json();
-}
-
-// ── Operations extension ────────────────────────────────────────────────────
-export function fetchFulfillment(plants: string[]): Promise<any> {
-  return getKeyed<any>('/fulfillment', 'fulfillment', plants);
-}
-
-export function fetchEquipment(plants: string[]): Promise<any> {
-  return getKeyed<any>('/equipment', 'equipment', plants);
-}
-
-export function fetchComponents(plants: string[]): Promise<any> {
-  return getKeyed<any>('/components', 'components', plants);
-}
-
-export function fetchSerials(plants: string[]): Promise<any[]> {
-  return getKeyed<any[]>('/thread/serials', 'thread_serials', plants);
-}
-
-export async function fetchThread(serial: string): Promise<any> {
-  if (STATIC) return ((await loadStaticFile('thread')) as Record<string, any>)[serial] ?? null;
-  return liveGet<any>(`/thread/${encodeURIComponent(serial)}`);
-}
-
-// ── Ask Cortex ──────────────────────────────────────────────────────────────
-// Live: POST starts a background job, then poll until done.
-// Static: answers for each topic's default question are baked at export time;
-// free-text questions are routed to the agent endpoint when one is configured.
 export interface AskCortexRequest {
   topic: string;
   args?: Record<string, string>;
   question?: string;
 }
 
-export function askKey(r: AskCortexRequest): string {
-  const a = Object.entries(r.args ?? {}).sort().map(([k, v]) => `${k}=${v}`).join('&');
-  return a ? `${r.topic}?${a}` : r.topic;
+export async function askCortex(r: AskCortexRequest, signal?: AbortSignal): Promise<string> {
+  const res = await fetch(`${BASE}/ask-cortex`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(r),
+    signal,
+  }).catch((e) => {
+    throw new Error(e.name === 'AbortError' ? 'cancelled' : String(e));
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? `Ask Cortex error ${res.status}`);
+  return body.answer as string;
 }
 
-export async function askCortex(r: AskCortexRequest, signal?: AbortSignal): Promise<string> {
-  if (STATIC) {
-    const baked = (await loadStaticFile('ask_cortex')) as Record<string, string>;
-    if (!r.question && baked[askKey(r)]) return baked[askKey(r)];
-    if (AGENT_BASE && r.question) {
-      const res = await fetch(`${AGENT_BASE}/ask-cortex`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(r), signal,
-      });
-      if (res.ok) return (await res.json()).answer;
-    }
-    return baked[askKey(r)] ??
-      '_Live Cortex analysis is not available in this static build. Run the app against Snowflake to ask your own question._';
+/** One turn of the advisor stream, folded from the agent's SSE events. */
+export interface AdvisorTurn {
+  text: string;
+  status: string;
+  tools: { name: string; type: string }[];
+  sql: string[];
+  tables: { columns: string[]; rows: any[][] }[];
+  suggestions: string[];
+  error?: string;
+  done: boolean;
+}
+
+export function emptyTurn(): AdvisorTurn {
+  return { text: '', status: 'Starting…', tools: [], sql: [], tables: [], suggestions: [], done: false };
+}
+
+function collectSql(node: any, out: string[]) {
+  if (!node || typeof node !== 'object') return;
+  for (const [k, v] of Object.entries(node)) {
+    if (k === 'sql' && typeof v === 'string' && v.trim()) out.push(v.trim());
+    else if (typeof v === 'object') collectSql(v, out);
   }
-  const start = await fetch(`${BASE}/ask-cortex`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(r), signal,
+}
+
+/** POST /api/advisor and fold the streamed events into a turn; calls onUpdate as events arrive. */
+export async function streamAdvisor(
+  messages: { role: 'user' | 'assistant'; text: string }[],
+  onUpdate: (t: AdvisorTurn) => void,
+  signal?: AbortSignal,
+): Promise<AdvisorTurn> {
+  const turn = emptyTurn();
+  const res = await fetch(`${BASE}/advisor`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages }),
+    signal,
   });
-  if (!start.ok) throw new Error(`Ask Cortex: ${start.status}`);
-  const { id } = await start.json();
-  for (let i = 0; i < 90; i++) {
-    await new Promise((res) => setTimeout(res, 2000));
-    if (signal?.aborted) throw new Error('cancelled');
-    const j = await liveGet<any>(`/ask-cortex/${id}`);
-    if (j.status === 'done') return j.answer;
-    if (j.status === 'error') throw new Error(j.error);
+  if (!res.ok || !res.body) {
+    const body = await res.json().catch(() => ({}));
+    turn.error = body.error ?? `advisor error ${res.status}`;
+    turn.done = true;
+    onUpdate({ ...turn });
+    return turn;
   }
-  throw new Error('Ask Cortex timed out');
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  let event = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl).replace(/\r$/, '');
+      buf = buf.slice(nl + 1);
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('data:')) {
+        let d: any;
+        try {
+          d = JSON.parse(line.slice(5));
+        } catch {
+          continue;
+        }
+        if (event === 'response.text.delta') turn.text += d.text ?? '';
+        else if (event === 'response.status') turn.status = d.message ?? turn.status;
+        else if (event === 'response.tool_use') turn.tools.push({ name: d.name, type: d.type });
+        else if (event === 'response.tool_result') collectSql(d.content, turn.sql);
+        else if (event === 'response.table' && d.result_set) {
+          turn.tables.push({
+            columns: (d.result_set.resultSetMetaData?.rowType ?? []).map((c: any) => c.name),
+            rows: d.result_set.data ?? [],
+          });
+        } else if (event === 'response.suggested_queries') turn.suggestions = (d.suggested_queries ?? []).map((q: any) => q.query);
+        else if (event === 'error') turn.error = d.message ?? JSON.stringify(d);
+        onUpdate({ ...turn });
+      }
+    }
+  }
+  turn.done = true;
+  onUpdate({ ...turn });
+  return turn;
 }

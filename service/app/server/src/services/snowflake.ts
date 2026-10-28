@@ -6,13 +6,13 @@ let connection: snowflake.Connection | null = null;
 let connectPromise: Promise<snowflake.Connection> | null = null;
 
 /** SPCS injects an OAuth session token at this path when running inside a service. */
-const SPCS_TOKEN_PATH = "/snowflake/session/token";
+export const SPCS_TOKEN_PATH = "/snowflake/session/token";
 
 export function isSpcs(): boolean {
   return fs.existsSync(SPCS_TOKEN_PATH);
 }
 
-function resolveHome(filePath: string): string {
+export function resolveHome(filePath: string): string {
   if (filePath.startsWith("~/")) {
     return path.join(process.env.HOME ?? "", filePath.slice(2));
   }
@@ -20,41 +20,32 @@ function resolveHome(filePath: string): string {
 }
 
 function buildConnectionOptions(): snowflake.ConnectionOptions {
-  if (isSpcs()) {
-    // Running inside Snowpark Container Services (Native App).
-    // Authenticate with the injected OAuth session token — the connection
-    // runs in the application's context, so reference('...') resolves the
-    // consumer-bound objects. A warehouse is required for queries.
-    const token = fs.readFileSync(SPCS_TOKEN_PATH, "ascii");
-    return {
-      account: process.env.SNOWFLAKE_ACCOUNT!,
-      host: process.env.SNOWFLAKE_HOST!,
-      authenticator: "OAUTH",
-      token,
-      warehouse: process.env.SNOWFLAKE_WAREHOUSE,
-    } as snowflake.ConnectionOptions;
-  }
-
-  // Local development: external key-pair (JWT) auth.
-  const keyPath = resolveHome(process.env.SNOWFLAKE_PRIVATE_KEY_PATH ?? "");
-  const privateKey = fs.readFileSync(keyPath, "utf-8");
-  return {
+  const common = {
     account: process.env.SNOWFLAKE_ACCOUNT!,
+    warehouse: process.env.SNOWFLAKE_WAREHOUSE ?? "WH_ACOCO_APP",
+    application: "ACOCO_APP",
+  };
+  if (isSpcs()) {
+    // Snowpark Container Services: the injected OAuth token runs as the service's owner role.
+    const token = fs.readFileSync(SPCS_TOKEN_PATH, "ascii");
+    return { ...common, host: process.env.SNOWFLAKE_HOST!, authenticator: "OAUTH", token } as snowflake.ConnectionOptions;
+  }
+  // Local development: key-pair (JWT) auth with the settings of connection sfseapac_kp (see .env.example).
+  const privateKey = fs.readFileSync(resolveHome(process.env.SNOWFLAKE_PRIVATE_KEY_PATH ?? ""), "utf-8");
+  return {
+    ...common,
     username: process.env.SNOWFLAKE_USER!,
     privateKey,
     authenticator: "SNOWFLAKE_JWT",
-    warehouse: process.env.SNOWFLAKE_WAREHOUSE,
-    database: process.env.SNOWFLAKE_DATABASE,
-    schema: process.env.SNOWFLAKE_SCHEMA,
     role: process.env.SNOWFLAKE_ROLE,
   };
 }
 
-/** Execute a statement and return rows (used during connection warm-up). */
-function execRows(conn: snowflake.Connection, sqlText: string): Promise<Record<string, unknown>[]> {
+function exec(conn: snowflake.Connection, sqlText: string, binds?: snowflake.Binds): Promise<Record<string, unknown>[]> {
   return new Promise((resolve, reject) => {
     conn.execute({
       sqlText,
+      binds,
       complete(err, _stmt, rows) {
         if (err) reject(err);
         else resolve((rows ?? []) as Record<string, unknown>[]);
@@ -63,45 +54,8 @@ function execRows(conn: snowflake.Connection, sqlText: string): Promise<Record<s
   });
 }
 
-/**
- * In SPCS the app owns a warehouse (named <app_db>_WH) and its data views live
- * in <app_db>.APP_DATA. Neither name is known at spec-build time, so discover
- * the warehouse (SHOW WAREHOUSES needs none) and the app database
- * (CURRENT_DATABASE), then USE them so view queries resolve.
- */
-async function ensureSession(conn: snowflake.Connection): Promise<void> {
-  if (!isSpcs()) return;
-  const tryExec = async (sql: string): Promise<Record<string, unknown>[]> => {
-    try {
-      return await execRows(conn, sql);
-    } catch (e) {
-      console.error(`ensureSession step failed [${sql}]:`, String(e));
-      return [];
-    }
-  };
-
-  if (!process.env.SNOWFLAKE_WAREHOUSE) {
-    const whRows = await tryExec("SHOW WAREHOUSES");
-    const names = whRows.map((r) => String(r["name"] ?? r["NAME"] ?? ""));
-    const wh = names.find((n) => n.toUpperCase().endsWith("_WH")) ?? names[0];
-    if (wh) await tryExec(`USE WAREHOUSE IDENTIFIER('${wh}')`);
-  }
-
-  const dbRows = await tryExec("SELECT CURRENT_DATABASE() AS DB, CURRENT_ROLE() AS ROLE");
-  console.log("ensureSession context: " + JSON.stringify(dbRows[0] ?? {}));
-  // In a Native App the application's database name equals the app (role) name.
-  // The container session has a null CURRENT_DATABASE, so fall back to the role.
-  let db = String(dbRows[0]?.["DB"] ?? dbRows[0]?.["db"] ?? "");
-  if (!db) db = String(dbRows[0]?.["ROLE"] ?? dbRows[0]?.["role"] ?? "");
-  if (db) {
-    await tryExec(`USE DATABASE IDENTIFIER('${db}')`);
-    await tryExec("USE SCHEMA APP_DATA");
-  }
-}
-
 function getConnection(): Promise<snowflake.Connection> {
   if (connectPromise) return connectPromise;
-
   connectPromise = new Promise((resolve, reject) => {
     const conn = snowflake.createConnection(buildConnectionOptions());
     conn.connect((err) => {
@@ -110,7 +64,8 @@ function getConnection(): Promise<snowflake.Connection> {
         reject(err);
         return;
       }
-      ensureSession(conn)
+      // Every app statement carries QUERY_TAG = 'ACOCO_APP' (fee-boundary evidence, PRD 8.2).
+      exec(conn, "ALTER SESSION SET QUERY_TAG = 'ACOCO_APP'")
         .then(() => {
           connection = conn;
           resolve(conn);
@@ -121,54 +76,26 @@ function getConnection(): Promise<snowflake.Connection> {
         });
     });
   });
-
   return connectPromise;
 }
 
 /** Lowercase all column keys in a row object. */
 function lowercaseKeys(row: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const key of Object.keys(row)) {
-    out[key.toLowerCase()] = row[key];
-  }
+  for (const key of Object.keys(row)) out[key.toLowerCase()] = row[key];
   return out;
 }
 
-export async function runQuery(
-  sql: string,
-  binds?: snowflake.Binds
-): Promise<Record<string, unknown>[]> {
-  const conn = await getConnection();
-  return new Promise((resolve, reject) => {
-    conn.execute({
-      sqlText: sql,
-      binds,
-      complete(err, _stmt, rows) {
-        if (err) {
-          if (String(err).includes("terminated")) {
-            connection = null;
-            connectPromise = null;
-            getConnection()
-              .then((newConn) => {
-                newConn.execute({
-                  sqlText: sql,
-                  binds,
-                  complete(retryErr, _s, retryRows) {
-                    if (retryErr) return reject(retryErr);
-                    resolve((retryRows ?? []).map(lowercaseKeys));
-                  },
-                });
-              })
-              .catch(reject);
-          } else {
-            reject(err);
-          }
-        } else {
-          resolve((rows ?? []).map(lowercaseKeys));
-        }
-      },
-    });
-  });
+/** Execute one statement with positional binds. Only the registry runner calls this. */
+export async function runQuery(sql: string, binds?: snowflake.Binds): Promise<Record<string, unknown>[]> {
+  try {
+    return (await exec(await getConnection(), sql, binds)).map(lowercaseKeys);
+  } catch (err) {
+    if (!String(err).includes("terminated")) throw err;
+    connection = null;
+    connectPromise = null;
+    return (await exec(await getConnection(), sql, binds)).map(lowercaseKeys);
+  }
 }
 
 export async function destroy(): Promise<void> {

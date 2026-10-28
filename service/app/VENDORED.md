@@ -10,3 +10,8 @@ enforces that with `tools/lint_app.py`.
 
 Credentials: the server reads `SNOWFLAKE_PRIVATE_KEY_PATH` (local dev) or the SPCS OAuth token at runtime; no
 secret is stored in this tree.
+
+## CP-09 (2026-10-28)
+
+Pages, routes and registry replaced: 16 ACoCo pages (C1-C4, P0-P11) over `server/src/registry.sql`; SC360 pages, routes, tour and
+presenter notes removed. Kept from the skeleton: `Chart`, `AskCortex`, `useQuery`, the Snowflake session wrapper, Dockerfile layout.

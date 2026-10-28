@@ -173,6 +173,10 @@ tables:
     expr: VOLUNTARY_LEAVERS
     data_type: NUMBER
     description: Voluntary leavers
+  - name: month_key
+    expr: MONTH_START
+    data_type: DATE
+    description: Month of the row (counts months for averages)
   metrics:
   - name: total_revenue
     expr: SUM(revenue)
@@ -222,8 +226,9 @@ tables:
     expr: SUM(bench_cost)
     description: Bench hours x level cost rate (USD)
   - name: voluntary_attrition_pct
-    expr: 100 * SUM(voluntary_leavers) / NULLIF(AVG(closing_headcount), 0)
-    description: Voluntary leavers / average headcount (annual when over one fiscal year)
+    expr: 100 * SUM(voluntary_leavers) / NULLIF(SUM(closing_headcount) / COUNT(DISTINCT month_key), 0)
+    description: Voluntary leavers / average monthly headcount (annual when over one fiscal year; correct for any group or
+      firm-wide)
     synonyms:
     - attrition rate
     - turnover

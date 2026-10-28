@@ -180,12 +180,24 @@ def registry():
             "skill": "A skill in the People Intelligence catalogue (incl. the Agentic-AI family)",
             "learning_item": "A course in the AI or core curriculum", "asset": "A reusable delivery asset harvested from a project",
             "ai_tool": "An AI assistant people use, or an AI agent charged to projects", "time_category": "One of the five uses of time"}
+    # entity -> L1 owning object (from its key-count query) and that object's L0 sources (l1_map.yml), for C4 lineage.
+    import yaml
+    l1map = yaml.safe_load((ROOT / "tools" / "l1_map.yml").read_text())["domains"]
+    l0_of = {f"ACOCO_L1.{dom}.{obj}": "; ".join(f"{src['system']}: {src['from'].split()[0].replace(chr(34), '')}" for src in spec["sources"])
+             for dom, x in l1map.items() for obj, spec in x["objects"].items()}
+    l1_of = {"fiscal_month": "ACOCO_L1.ORGANISATION.FISCAL_PERIOD", "time_category": "ACOCO_L1.TIME.TIMESHEET_RECORD"}
+    for t, (_, src) in ENTITIES.items():
+        m = re.search(r"FROM (ACOCO_L1\.[A-Z_]+\.[A-Z_]+)", src)
+        ent = next((e for e, v in gs.ENTITIES.items() if v[0].endswith("." + t)), None)
+        if m and ent:
+            l1_of[ent] = m.group(1)
     ent_rows = []
     for ent, (tbl, pk, _, owner) in gs.ENTITIES.items():
         n, c = share[ent]
         ent_rows.append(dict(ENTITY=ent, DEFINITION=defs[ent], OWNING_SYSTEM=owner, L2_TABLE=f"ACOCO_L2.{tbl}", PRIMARY_KEY=pk,
                              ROW_COUNT=n, BDC_CLD_SHARE_PCT=round(100 * c / n, 1) if n else 0.0,
-                             SEMANTIC_VIEWS=", ".join(sv for sv, x in d.items() if ent in x["tables"])))
+                             SEMANTIC_VIEWS=", ".join(sv for sv, x in d.items() if ent in x["tables"]),
+                             L1_SOURCE=l1_of.get(ent), L0_SOURCES=l0_of.get(l1_of.get(ent), "")))
 
     met_rows = []
     for sv, x in d.items():

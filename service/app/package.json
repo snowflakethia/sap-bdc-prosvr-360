@@ -1,5 +1,5 @@
 {
-  "name": "sap-supply-chain-360",
+  "name": "acoco-proserve360",
   "private": true,
   "workspaces": ["client", "server"],
   "scripts": {

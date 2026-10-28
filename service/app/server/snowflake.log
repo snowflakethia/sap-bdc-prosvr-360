@@ -1,0 +1,88 @@
+{"level":"INFO","message":"[10:08:27.571 AM]: Creating new connection object"}
+{"level":"INFO","message":"[10:08:27.580 AM]: Creating Connection[id: 63a0fc53-f079-49e1-9ebf-2382cba5284b] with host: SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, account: SFSEAPAC-SNOWFLAKE_SAP_APJ, accessUrl: https://SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, user: BTHIA, password is not provided, role: ACCOUNTADMIN, database: undefined, schema: undefined, warehouse: WH_ACOCO_APP, region: undefined, authenticator: SNOWFLAKE_JWT, ocsp mode: FAIL_OPEN, os: darwin, os version: 25.6.0"}
+{"level":"INFO","message":"[10:08:27.580 AM]: Connection[id: 63a0fc53-f079-49e1-9ebf-2382cba5284b] additional details: passcode in password is provided, passcode is not provided, private key is provided, application: ACOCO_APP, client name: snowflake-sdk, client version: 1.15.0, retry timeout: 300, private key path: undefined, private key pass is not provided, client store temporary credential: false, browser response timeout: 120000"}
+{"level":"INFO","message":"[10:08:27.580 AM]: Connection[id: 63a0fc53-f079-49e1-9ebf-2382cba5284b] - connection object created successfully."}
+{"level":"INFO","message":"[10:08:27.580 AM]: Connection[id: 63a0fc53-f079-49e1-9ebf-2382cba5284b] - connecting. Associated Snowflake domain: GLOBAL"}
+{"level":"INFO","message":"[10:08:27.585 AM]: Connection[id: 63a0fc53-f079-49e1-9ebf-2382cba5284b] - authentication successful using: SNOWFLAKE_JWT"}
+{"level":"INFO","message":"[10:08:27.586 AM]: Trying to initialize Easy Logging"}
+{"level":"INFO","message":"[10:08:27.586 AM]: No client config detected."}
+{"level":"INFO","message":"[10:08:27.590 AM]: No config file path found. Client config will not be used."}
+{"level":"INFO","message":"[10:08:27.590 AM]: Easy Logging is disabled as no config has been found"}
+{"level":"INFO","message":"[10:08:27.592 AM]: Connection[id: 63a0fc53-f079-49e1-9ebf-2382cba5284b] - connected successfully after 11.319790999998077 milliseconds"}
+{"level":"INFO","message":"[10:23:21.272 AM]: Creating new connection object"}
+{"level":"INFO","message":"[10:23:21.300 AM]: Creating Connection[id: b991d086-7418-4e8d-8cc2-2d0e16a6ad1c] with host: SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, account: SFSEAPAC-SNOWFLAKE_SAP_APJ, accessUrl: https://SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, user: BTHIA, password is not provided, role: ACCOUNTADMIN, database: undefined, schema: undefined, warehouse: WH_ACOCO_APP, region: undefined, authenticator: SNOWFLAKE_JWT, ocsp mode: FAIL_OPEN, os: darwin, os version: 25.6.0"}
+{"level":"INFO","message":"[10:23:21.301 AM]: Connection[id: b991d086-7418-4e8d-8cc2-2d0e16a6ad1c] additional details: passcode in password is provided, passcode is not provided, private key is provided, application: ACOCO_APP, client name: snowflake-sdk, client version: 1.15.0, retry timeout: 300, private key path: undefined, private key pass is not provided, client store temporary credential: false, browser response timeout: 120000"}
+{"level":"INFO","message":"[10:23:21.301 AM]: Connection[id: b991d086-7418-4e8d-8cc2-2d0e16a6ad1c] - connection object created successfully."}
+{"level":"INFO","message":"[10:23:21.301 AM]: Connection[id: b991d086-7418-4e8d-8cc2-2d0e16a6ad1c] - connecting. Associated Snowflake domain: GLOBAL"}
+{"level":"INFO","message":"[10:23:21.305 AM]: Connection[id: b991d086-7418-4e8d-8cc2-2d0e16a6ad1c] - authentication successful using: SNOWFLAKE_JWT"}
+{"level":"INFO","message":"[10:23:21.305 AM]: Trying to initialize Easy Logging"}
+{"level":"INFO","message":"[10:23:21.307 AM]: No client config detected."}
+{"level":"INFO","message":"[10:23:21.307 AM]: No config file path found. Client config will not be used."}
+{"level":"INFO","message":"[10:23:21.307 AM]: Easy Logging is disabled as no config has been found"}
+{"level":"INFO","message":"[10:23:21.309 AM]: Connection[id: b991d086-7418-4e8d-8cc2-2d0e16a6ad1c] - connected successfully after 7.547584000043571 milliseconds"}
+{"level":"INFO","message":"[10:41:57.056 AM]: Creating new connection object"}
+{"level":"INFO","message":"[10:41:57.069 AM]: Creating Connection[id: 2206c076-9b20-43ed-aece-eef99dd193d1] with host: SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, account: SFSEAPAC-SNOWFLAKE_SAP_APJ, accessUrl: https://SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, user: BTHIA, password is not provided, role: ACCOUNTADMIN, database: undefined, schema: undefined, warehouse: WH_ACOCO_APP, region: undefined, authenticator: SNOWFLAKE_JWT, ocsp mode: FAIL_OPEN, os: darwin, os version: 25.6.0"}
+{"level":"INFO","message":"[10:41:57.070 AM]: Connection[id: 2206c076-9b20-43ed-aece-eef99dd193d1] additional details: passcode in password is provided, passcode is not provided, private key is provided, application: ACOCO_APP, client name: snowflake-sdk, client version: 1.15.0, retry timeout: 300, private key path: undefined, private key pass is not provided, client store temporary credential: false, browser response timeout: 120000"}
+{"level":"INFO","message":"[10:41:57.070 AM]: Connection[id: 2206c076-9b20-43ed-aece-eef99dd193d1] - connection object created successfully."}
+{"level":"INFO","message":"[10:41:57.070 AM]: Connection[id: 2206c076-9b20-43ed-aece-eef99dd193d1] - connecting. Associated Snowflake domain: GLOBAL"}
+{"level":"INFO","message":"[10:41:57.073 AM]: Connection[id: 2206c076-9b20-43ed-aece-eef99dd193d1] - authentication successful using: SNOWFLAKE_JWT"}
+{"level":"INFO","message":"[10:41:57.073 AM]: Trying to initialize Easy Logging"}
+{"level":"INFO","message":"[10:41:57.074 AM]: No client config detected."}
+{"level":"INFO","message":"[10:41:57.074 AM]: No config file path found. Client config will not be used."}
+{"level":"INFO","message":"[10:41:57.074 AM]: Easy Logging is disabled as no config has been found"}
+{"level":"INFO","message":"[10:41:57.075 AM]: Connection[id: 2206c076-9b20-43ed-aece-eef99dd193d1] - connected successfully after 5.004874999998719 milliseconds"}
+{"level":"INFO","message":"[11:26:53.202 AM]: Creating new connection object"}
+{"level":"INFO","message":"[11:26:53.208 AM]: Creating Connection[id: 2678d31d-f458-43d7-99ee-776d6926facc] with host: SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, account: SFSEAPAC-SNOWFLAKE_SAP_APJ, accessUrl: https://SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, user: BTHIA, password is not provided, role: ACCOUNTADMIN, database: undefined, schema: undefined, warehouse: WH_ACOCO_APP, region: undefined, authenticator: SNOWFLAKE_JWT, ocsp mode: FAIL_OPEN, os: darwin, os version: 25.6.0"}
+{"level":"INFO","message":"[11:26:53.208 AM]: Connection[id: 2678d31d-f458-43d7-99ee-776d6926facc] additional details: passcode in password is provided, passcode is not provided, private key is provided, application: ACOCO_APP, client name: snowflake-sdk, client version: 1.15.0, retry timeout: 300, private key path: undefined, private key pass is not provided, client store temporary credential: false, browser response timeout: 120000"}
+{"level":"INFO","message":"[11:26:53.208 AM]: Connection[id: 2678d31d-f458-43d7-99ee-776d6926facc] - connection object created successfully."}
+{"level":"INFO","message":"[11:26:53.208 AM]: Connection[id: 2678d31d-f458-43d7-99ee-776d6926facc] - connecting. Associated Snowflake domain: GLOBAL"}
+{"level":"INFO","message":"[11:26:53.211 AM]: Connection[id: 2678d31d-f458-43d7-99ee-776d6926facc] - authentication successful using: SNOWFLAKE_JWT"}
+{"level":"INFO","message":"[11:26:53.211 AM]: Trying to initialize Easy Logging"}
+{"level":"INFO","message":"[11:26:53.212 AM]: No client config detected."}
+{"level":"INFO","message":"[11:26:53.212 AM]: No config file path found. Client config will not be used."}
+{"level":"INFO","message":"[11:26:53.212 AM]: Easy Logging is disabled as no config has been found"}
+{"level":"INFO","message":"[11:26:53.213 AM]: Connection[id: 2678d31d-f458-43d7-99ee-776d6926facc] - connected successfully after 4.451541999999961 milliseconds"}
+{"level":"INFO","message":"[11:30:05.895 AM]: Creating new connection object"}
+{"level":"INFO","message":"[11:30:05.901 AM]: Creating Connection[id: a3cbd264-4d10-4e44-9674-e3bb0593048f] with host: SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, account: SFSEAPAC-SNOWFLAKE_SAP_APJ, accessUrl: https://SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, user: BTHIA, password is not provided, role: ACCOUNTADMIN, database: undefined, schema: undefined, warehouse: WH_ACOCO_APP, region: undefined, authenticator: SNOWFLAKE_JWT, ocsp mode: FAIL_OPEN, os: darwin, os version: 25.6.0"}
+{"level":"INFO","message":"[11:30:05.901 AM]: Connection[id: a3cbd264-4d10-4e44-9674-e3bb0593048f] additional details: passcode in password is provided, passcode is not provided, private key is provided, application: ACOCO_APP, client name: snowflake-sdk, client version: 1.15.0, retry timeout: 300, private key path: undefined, private key pass is not provided, client store temporary credential: false, browser response timeout: 120000"}
+{"level":"INFO","message":"[11:30:05.901 AM]: Connection[id: a3cbd264-4d10-4e44-9674-e3bb0593048f] - connection object created successfully."}
+{"level":"INFO","message":"[11:30:05.901 AM]: Connection[id: a3cbd264-4d10-4e44-9674-e3bb0593048f] - connecting. Associated Snowflake domain: GLOBAL"}
+{"level":"INFO","message":"[11:30:05.904 AM]: Connection[id: a3cbd264-4d10-4e44-9674-e3bb0593048f] - authentication successful using: SNOWFLAKE_JWT"}
+{"level":"INFO","message":"[11:30:05.904 AM]: Trying to initialize Easy Logging"}
+{"level":"INFO","message":"[11:30:05.904 AM]: No client config detected."}
+{"level":"INFO","message":"[11:30:05.904 AM]: No config file path found. Client config will not be used."}
+{"level":"INFO","message":"[11:30:05.904 AM]: Easy Logging is disabled as no config has been found"}
+{"level":"INFO","message":"[11:30:05.905 AM]: Connection[id: a3cbd264-4d10-4e44-9674-e3bb0593048f] - connected successfully after 3.6587089999999307 milliseconds"}
+{"level":"INFO","message":"[11:36:00.715 AM]: Creating new connection object"}
+{"level":"INFO","message":"[11:36:00.742 AM]: Creating Connection[id: 3f700b94-c4f0-4c21-a81b-3ad79b6d7349] with host: SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, account: SFSEAPAC-SNOWFLAKE_SAP_APJ, accessUrl: https://SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, user: BTHIA, password is not provided, role: ACCOUNTADMIN, database: undefined, schema: undefined, warehouse: WH_ACOCO_APP, region: undefined, authenticator: SNOWFLAKE_JWT, ocsp mode: FAIL_OPEN, os: darwin, os version: 25.6.0"}
+{"level":"INFO","message":"[11:36:00.742 AM]: Connection[id: 3f700b94-c4f0-4c21-a81b-3ad79b6d7349] additional details: passcode in password is provided, passcode is not provided, private key is provided, application: ACOCO_APP, client name: snowflake-sdk, client version: 1.15.0, retry timeout: 300, private key path: undefined, private key pass is not provided, client store temporary credential: false, browser response timeout: 120000"}
+{"level":"INFO","message":"[11:36:00.742 AM]: Connection[id: 3f700b94-c4f0-4c21-a81b-3ad79b6d7349] - connection object created successfully."}
+{"level":"INFO","message":"[11:36:00.742 AM]: Connection[id: 3f700b94-c4f0-4c21-a81b-3ad79b6d7349] - connecting. Associated Snowflake domain: GLOBAL"}
+{"level":"INFO","message":"[11:36:00.749 AM]: Connection[id: 3f700b94-c4f0-4c21-a81b-3ad79b6d7349] - authentication successful using: SNOWFLAKE_JWT"}
+{"level":"INFO","message":"[11:36:00.749 AM]: Trying to initialize Easy Logging"}
+{"level":"INFO","message":"[11:36:00.750 AM]: No client config detected."}
+{"level":"INFO","message":"[11:36:00.750 AM]: No config file path found. Client config will not be used."}
+{"level":"INFO","message":"[11:36:00.750 AM]: Easy Logging is disabled as no config has been found"}
+{"level":"INFO","message":"[11:36:00.751 AM]: Connection[id: 3f700b94-c4f0-4c21-a81b-3ad79b6d7349] - connected successfully after 8.647584000005736 milliseconds"}
+{"level":"INFO","message":"[11:37:11.606 AM]: Creating new connection object"}
+{"level":"INFO","message":"[11:37:11.616 AM]: Creating Connection[id: 608998ca-24d8-4428-bcac-a307581d23ef] with host: SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, account: SFSEAPAC-SNOWFLAKE_SAP_APJ, accessUrl: https://SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, user: BTHIA, password is not provided, role: ACCOUNTADMIN, database: undefined, schema: undefined, warehouse: WH_ACOCO_APP, region: undefined, authenticator: SNOWFLAKE_JWT, ocsp mode: FAIL_OPEN, os: darwin, os version: 25.6.0"}
+{"level":"INFO","message":"[11:37:11.616 AM]: Connection[id: 608998ca-24d8-4428-bcac-a307581d23ef] additional details: passcode in password is provided, passcode is not provided, private key is provided, application: ACOCO_APP, client name: snowflake-sdk, client version: 1.15.0, retry timeout: 300, private key path: undefined, private key pass is not provided, client store temporary credential: false, browser response timeout: 120000"}
+{"level":"INFO","message":"[11:37:11.616 AM]: Connection[id: 608998ca-24d8-4428-bcac-a307581d23ef] - connection object created successfully."}
+{"level":"INFO","message":"[11:37:11.617 AM]: Connection[id: 608998ca-24d8-4428-bcac-a307581d23ef] - connecting. Associated Snowflake domain: GLOBAL"}
+{"level":"INFO","message":"[11:37:11.622 AM]: Connection[id: 608998ca-24d8-4428-bcac-a307581d23ef] - authentication successful using: SNOWFLAKE_JWT"}
+{"level":"INFO","message":"[11:37:11.622 AM]: Trying to initialize Easy Logging"}
+{"level":"INFO","message":"[11:37:11.623 AM]: No client config detected."}
+{"level":"INFO","message":"[11:37:11.623 AM]: No config file path found. Client config will not be used."}
+{"level":"INFO","message":"[11:37:11.623 AM]: Easy Logging is disabled as no config has been found"}
+{"level":"INFO","message":"[11:37:11.625 AM]: Connection[id: 608998ca-24d8-4428-bcac-a307581d23ef] - connected successfully after 8.151834000000008 milliseconds"}
+{"level":"INFO","message":"[11:39:50.547 AM]: Creating new connection object"}
+{"level":"INFO","message":"[11:39:50.554 AM]: Creating Connection[id: c9ace60f-95a2-47b9-8c65-bfc6989cc59b] with host: SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, account: SFSEAPAC-SNOWFLAKE_SAP_APJ, accessUrl: https://SFSEAPAC-SNOWFLAKE_SAP_APJ.snowflakecomputing.com, user: BTHIA, password is not provided, role: ACCOUNTADMIN, database: undefined, schema: undefined, warehouse: WH_ACOCO_APP, region: undefined, authenticator: SNOWFLAKE_JWT, ocsp mode: FAIL_OPEN, os: darwin, os version: 25.6.0"}
+{"level":"INFO","message":"[11:39:50.554 AM]: Connection[id: c9ace60f-95a2-47b9-8c65-bfc6989cc59b] additional details: passcode in password is provided, passcode is not provided, private key is provided, application: ACOCO_APP, client name: snowflake-sdk, client version: 1.15.0, retry timeout: 300, private key path: undefined, private key pass is not provided, client store temporary credential: false, browser response timeout: 120000"}
+{"level":"INFO","message":"[11:39:50.554 AM]: Connection[id: c9ace60f-95a2-47b9-8c65-bfc6989cc59b] - connection object created successfully."}
+{"level":"INFO","message":"[11:39:50.555 AM]: Connection[id: c9ace60f-95a2-47b9-8c65-bfc6989cc59b] - connecting. Associated Snowflake domain: GLOBAL"}
+{"level":"INFO","message":"[11:39:50.557 AM]: Connection[id: c9ace60f-95a2-47b9-8c65-bfc6989cc59b] - authentication successful using: SNOWFLAKE_JWT"}
+{"level":"INFO","message":"[11:39:50.558 AM]: Trying to initialize Easy Logging"}
+{"level":"INFO","message":"[11:39:50.558 AM]: No client config detected."}
+{"level":"INFO","message":"[11:39:50.558 AM]: No config file path found. Client config will not be used."}
+{"level":"INFO","message":"[11:39:50.558 AM]: Easy Logging is disabled as no config has been found"}
+{"level":"INFO","message":"[11:39:50.559 AM]: Connection[id: c9ace60f-95a2-47b9-8c65-bfc6989cc59b] - connected successfully after 4.5502500000000055 milliseconds"}

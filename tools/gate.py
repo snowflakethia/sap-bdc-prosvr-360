@@ -523,9 +523,96 @@ def gate_cp08():
     return checks
 
 
+def gate_cp09():
+    """Command Center app (local): lint, build, every /api/* route 200 with data < 3 s, advisor stream, query tag."""
+    import os
+    import signal
+    import subprocess
+    import time
+    import urllib.request
+    import sf
+    checks = []
+    app = ROOT / "service" / "app"
+    py = str(ROOT / ".venv" / "bin" / "python")
+    lint = subprocess.run([py, str(ROOT / "tools" / "lint_app.py")], capture_output=True, text=True)
+    last = (lint.stdout.strip().splitlines() or [""])[-1]
+    checks.append(("CP09-01", "tools/lint_app.py: allowed schemas only, registry == tools/demo_queries.sql, binds only",
+                   "0 violations", last, lint.returncode == 0 and last.startswith("lint: 0 violations")))
+    build = subprocess.run(["npm", "run", "build"], cwd=app, capture_output=True, text=True)
+    checks.append(("CP09-02", "npm run build (client tsc + vite, server tsc)", "exit 0",
+                   f"exit {build.returncode}", build.returncode == 0))
+
+    # A fresh server on a spare port with the result cache off, so every timing is a real Snowflake round-trip.
+    port = 3099
+    env = dict(os.environ, PORT=str(port), ACOCO_CACHE_MS="0")
+    srv = subprocess.Popen(["node", "dist/index.js"], cwd=app / "server", env=env, stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, start_new_session=True)
+    base = f"http://localhost:{port}"
+
+    def get(path, timeout=60):
+        t = time.time()
+        with urllib.request.urlopen(base + path, timeout=timeout) as r:
+            body = r.read()
+            return r.status, time.time() - t, body
+
+    try:
+        for _ in range(40):
+            try:
+                if get("/healthcheck", 2)[0] == 200:
+                    break
+            except Exception:
+                time.sleep(0.5)
+        hc = get("/healthcheck")[0]
+        checks.append(("CP09-03", "GET /healthcheck", "200", str(hc), hc == 200))
+        get("/api/filters")  # first call opens the Snowflake session (login), not counted
+        routes = ["filters", "overview", "portfolio", "project/P-0615", "workforce", "people", "pipeline", "ai", "assets",
+                  "reasoning", "ontology", "lineage", "trust", "context/c1", "context/c2", "context/c3",
+                  "assets/search?q=data%20migration", "overview?group=ALL&fy0=2024&fy1=2025"]
+        res, bad = [], []
+        for r in routes:
+            try:
+                st, sec, body = get("/api/" + r)
+                data = json.loads(body).get("data", {})
+                empty = [k for k, v in data.items() if not v]
+                res.append((r, st, round(sec, 2), empty))
+                if st != 200 or sec >= 3 or empty:
+                    bad.append((r, st, round(sec, 2), empty))
+            except Exception as e:
+                bad.append((r, "ERR", str(e)[:80]))
+        slowest = max(res, key=lambda x: x[2]) if res else None
+        checks.append(("CP09-04", f"every /api/* GET route ({len(routes)}) returns 200 with data in < 3 s (cache off)",
+                       "0 failures", f"failures {bad}; slowest {slowest[0]} {slowest[2]} s" if slowest else str(bad), not bad))
+        req = urllib.request.Request(base + "/api/advisor", method="POST", headers={"Content-Type": "application/json"},
+                                     data=json.dumps({"messages": [{"role": "user", "text": "What was the FS margin % in FY26?"}]}).encode())
+        t = time.time()
+        with urllib.request.urlopen(req, timeout=240) as r:
+            stream = r.read().decode(errors="ignore")
+        events = {ln[6:].strip() for ln in stream.splitlines() if ln.startswith("event:")}
+        ok = {"response.text.delta", "response.tool_use"} <= events and "error" not in events
+        checks.append(("CP09-05", "POST /api/advisor streams the agent :run (tool use + text deltas)", "streamed",
+                       f"{len(stream)} bytes, {round(time.time() - t)} s, events {sorted(events)[:6]}", ok))
+        req = urllib.request.Request(base + "/api/ask-cortex", method="POST", headers={"Content-Type": "application/json"},
+                                     data=json.dumps({"topic": "overview", "args": {"group": "FS"}}).encode())
+        with urllib.request.urlopen(req, timeout=120) as r:
+            ans = json.loads(r.read()).get("answer", "")
+        checks.append(("CP09-06", "POST /api/ask-cortex answers over the page's registry facts", "answer cites figures",
+                       ans[:90].replace("\n", " "), len(ans) > 100 and any(ch.isdigit() for ch in ans)))
+    finally:
+        os.killpg(srv.pid, signal.SIGTERM)
+
+    # Every statement the app ran today carries QUERY_TAG ACOCO_APP and names only the allowed interface.
+    rows = sf.query("SELECT QUERY_TEXT FROM TABLE(ACOCO_DB.INFORMATION_SCHEMA.QUERY_HISTORY_BY_USER(RESULT_LIMIT => 10000)) "
+                    "WHERE QUERY_TAG = 'ACOCO_APP' AND START_TIME > DATEADD(hour, -6, CURRENT_TIMESTAMP())")
+    import re
+    leak = [r["QUERY_TEXT"][:80] for r in rows if re.search(r"ACOCO_SIM\.|ACOCO_L1\.|_V1\b|ACOCO_L2\.(?!SERVING|SEMANTIC|ONTOLOGY|REASONING\.CSS_)", r["QUERY_TEXT"])]
+    checks.append(("CP09-07", "QUERY_TAG ACOCO_APP statements (last 6 h) reference only SERVING / SEMANTIC / ONTOLOGY (+ the 2 search services)",
+                   "> 0 tagged, 0 outside", f"{len(rows)} tagged, {len(leak)} outside {leak[:2]}", len(rows) > 0 and not leak))
+    return checks
+
+
 GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03, "cp04": gate_cp04,
          "cp05": gate_cp05, "cp06": gate_cp06,
-         "cp07": gate_cp07, "cp08": gate_cp08}
+         "cp07": gate_cp07, "cp08": gate_cp08, "cp09": gate_cp09}
 
 
 def log_to_quality(cp, run_at, rows):

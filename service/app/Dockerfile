@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Multi-stage build for the Supply Chain 360 Native App container.
+# Multi-stage build for the ACoCo ProServe360 Command Center container (SPCS, CP-10).
 # Stage 1 builds the Vite React client and compiles the Express server;
 # stage 2 is a slim runtime that serves both the API and the static client.
 

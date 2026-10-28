@@ -1,129 +1,135 @@
-import { ArrowDown, ShieldCheck } from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { Card, EChart, Grid, PageFrame, Table, WithData, fmt, usePage } from '@/components/ui';
+import type { Rows } from '@/lib/api';
 
-// Technology Architecture — the ideal zero-copy path from SAP BDC to the app.
-// Each layer lists the real objects this demo builds (sql/00–07b).
-
-interface Layer {
-  name: string;
-  tag: string;
-  tone: string;
-  what: string;
-  objects: string[];
+/** Owning-system class for colouring (PRD 5.3): S/4HANA, People Intelligence, or non-SAP / derived. */
+function systemClass(owning: string): { key: string; color: string } {
+  if (/People Intelligence/i.test(owning)) return { key: 'SAP People Intelligence', color: '#7D44CF' };
+  if (/S\/4HANA/i.test(owning)) return { key: 'SAP S/4HANA', color: '#11567F' };
+  return { key: 'Non-SAP / derived', color: '#FF9F36' };
 }
 
-const LAYERS: Layer[] = [
-  { name: 'SAP S/4HANA → SAP Business Data Cloud', tag: 'SAP', tone: 'border-blue-300 bg-blue-50',
-    what: 'SAP curates Standard Data Products with business semantics (CSN metadata, keys, units, statuses).',
-    objects: ['Production orders', 'BOM', 'Stock', 'Deliveries', 'Suppliers', 'Projects / WBS'] },
-  { name: 'BDC Connect → Catalog-Linked Database (L0 bronze)', tag: 'Zero-copy', tone: 'border-cyan-300 bg-cyan-50',
-    what: 'Data products are shared into Snowflake as a catalog-linked database — no extraction, no pipeline, no copy to reconcile.',
-    objects: ['SAP_SUPPLY_CHAIN.<data product schemas> (21 A_* tables)', 'Tag-based PII masking (UNMASK_PII)'] },
-  { name: 'Dynamic Tables (L2 gold)', tag: 'Declarative', tone: 'border-emerald-300 bg-emerald-50',
-    what: 'Business-ready facts built declaratively; Snowflake manages incremental refresh to a target lag.',
-    objects: ['ANALYTICS.DT_PRODUCTION_ORDER_360', 'DT_MANUFACTURING_KPI', 'DT_SUPPLIER_QUALITY', 'DT_SUPPLY_CHAIN_GEO', '…15 dynamic tables'] },
-  { name: 'Serving views', tag: 'App contract', tone: 'border-teal-300 bg-teal-50',
-    what: 'A stable interface for the application, decoupled from refinement logic.',
-    objects: ['APP_REF.* serving views'] },
-  { name: 'Semantic view — the ontology', tag: 'Semantics', tone: 'border-violet-300 bg-violet-50',
-    what: 'Entities, relationships, dimensions, facts, synonyms and descriptions in one governed schema object.',
-    objects: ['ANALYTICS.SAP_SUPPLY_CHAIN_360 (15 logical tables)'] },
-  { name: 'Cortex AI', tag: 'AI', tone: 'border-fuchsia-300 bg-fuchsia-50',
-    what: 'Cortex Analyst turns questions into SQL over the semantic view; the Cortex Agent orchestrates multi-step reasoning.',
-    objects: ['Cortex Analyst', 'ANALYTICS.SAP_SC360_ANALYST_AGENT', 'SNOWFLAKE.CORTEX.COMPLETE (Ask Cortex)'] },
-  { name: 'Snowflake Native App on SPCS', tag: 'Delivery', tone: 'border-sky-300 bg-sky-50',
-    what: 'React + Express in a container, packaged with its data and semantic view; installable by any account or region.',
-    objects: ['SUPPLY_CHAIN_360_PKG', 'SUPPLY_CHAIN_360_APP / SC360_SERVICE'] },
+const LAYERS = [
+  { id: 'L0', name: 'Sources (L0)', text: 'SAP BDC catalog-linked databases (zero copy, read only) plus ACOCO_SIM for data products not yet shared.' },
+  { id: 'L1', name: 'Domains (L1)', text: 'ACOCO_L1: nine domain schemas of views; one business object per source shape, SOURCE_SYSTEM on every row.' },
+  { id: 'L2', name: 'Assets (L2)', text: 'ACOCO_L2: CORE, ONTOLOGY (ENT_* / REL_* / ONT_*), five marts of dynamic tables, REASONING (ML, embeddings, search).' },
+  { id: 'SEM', name: 'Semantic layer', text: 'Five Semantic Views (one per pillar + portfolio) built on the shared ontology entities.' },
+  { id: 'APP', name: 'Experience', text: 'This Command Center (SERVING / SEMANTIC / ONTOLOGY only) and the Cortex Agent ACOCO_ADVISOR.' },
 ];
 
-const COMPARE = [
-  ['Data movement', 'Copies plus pipelines to build and run', 'Shared in place — nothing to extract or reconcile'],
-  ['SAP business semantics', 'Lost in flat tables, re-derived by hand', 'Preserved in curated data products'],
-  ['Freshness', 'Batch windows; stale between loads', 'As current as the data product SAP publishes'],
-  ['Change handling', 'Schema change breaks pipelines', 'Changes arrive as data product versions'],
-  ['Governance', 'Re-implemented in each target system', 'SAP-curated products + Snowflake Horizon policies'],
-  ['Cost of ownership', 'Integration tooling, storage of copies, ops effort', 'No pipeline layer to own'],
-];
+function Graph({ rows, onPick, picked }: { rows: Rows; onPick: (e: string) => void; picked: string | null }) {
+  const option = useMemo(() => {
+    const nodes = rows.filter((r) => r.item === 'NODE');
+    const edges = rows.filter((r) => r.item === 'EDGE');
+    const classes = ['SAP S/4HANA', 'SAP People Intelligence', 'Non-SAP / derived'];
+    const maxRows = Math.max(...nodes.map((n) => Number(n.row_count) || 1));
+    return {
+      tooltip: { formatter: (p: any) => (p.dataType === 'edge' ? `${p.data.source} <b>${p.data.verb}</b> ${p.data.target}` : `<b>${p.data.name}</b><br/>${p.data.owning}<br/>${fmt.num(p.data.rows)} rows`) },
+      legend: { data: classes, top: 0 },
+      series: [{
+        type: 'graph', layout: 'force', roam: true, draggable: true,
+        force: { repulsion: 520, edgeLength: [90, 170], gravity: 0.08 },
+        categories: classes.map((c) => ({ name: c, itemStyle: { color: systemClass(c === 'SAP S/4HANA' ? 'S/4HANA' : c).color } })),
+        label: { show: true, position: 'bottom', fontSize: 11 },
+        edgeSymbol: ['none', 'arrow'], edgeSymbolSize: 7,
+        edgeLabel: { show: true, formatter: (p: any) => p.data.verb, fontSize: 9, color: '#666' },
+        lineStyle: { color: '#9ca3af', curveness: 0.15 },
+        emphasis: { focus: 'adjacency' },
+        data: nodes.map((n) => ({
+          name: n.from_entity, owning: n.owning_system, rows: n.row_count,
+          category: classes.indexOf(systemClass(String(n.owning_system)).key),
+          symbolSize: 22 + 26 * Math.sqrt((Number(n.row_count) || 1) / maxRows),
+          itemStyle: picked === n.from_entity ? { borderColor: '#111', borderWidth: 3 } : undefined,
+        })),
+        links: edges.map((e) => ({ source: e.from_entity, target: e.to_entity, verb: e.verb })),
+      }],
+    };
+  }, [rows, picked]);
+  return <EChart option={option} height={520} onClick={(p) => p.dataType === 'node' && onPick(p.data.name)} />;
+}
 
-const WHY = [
-  { title: 'Semantics as a first-class object', body: 'The semantic view is a governed schema object — versioned, access-controlled, shareable through listings — not a BI-tool layer.' },
-  { title: 'AI on the same definitions', body: 'Cortex Analyst and Agents use that semantic view directly, so AI answers and dashboards agree by construction.' },
-  { title: 'Declarative pipelines', body: 'Dynamic Tables replace hand-built orchestration for the medallion layers.' },
-  { title: 'One governance plane', body: 'Horizon masking, tags, lineage and RBAC apply from the CLD to the app.' },
-  { title: 'Ship it as a product', body: 'The whole solution packages as a Native App and distributes across accounts and regions.' },
-];
+function EntityDetail({ rows, entity }: { rows: Rows; entity: string }) {
+  const n = rows.find((r) => r.item === 'NODE' && r.from_entity === entity);
+  if (!n) return null;
+  const rels = rows.filter((r) => r.item === 'EDGE' && (r.from_entity === entity || r.to_entity === entity));
+  const l0 = String(n.l0_sources ?? '').split('; ').filter(Boolean);
+  const cls = systemClass(String(n.owning_system));
+  const step = (label: string, body: ReactNode, color: string) => (
+    <div className="rounded-lg border p-3" style={{ borderColor: color }}>
+      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color }}>{label}</p>
+      <div className="mt-1 break-all font-mono text-xs text-gray-800">{body}</div>
+    </div>
+  );
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-lg font-bold text-gray-900">{entity}</p>
+        <p className="text-xs text-gray-500">{n.definition}</p>
+        <p className="mt-1 text-xs"><span className="rounded px-1.5 py-0.5 text-white" style={{ background: cls.color }}>{n.owning_system}</span></p>
+      </div>
+      {step('L0 - SAP data product / source', l0.map((s) => <div key={s}>{s}</div>), '#8A8D91')}
+      <p className="text-center text-gray-400">↓</p>
+      {step('L1 - domain object', n.l1_source, '#29B5E8')}
+      <p className="text-center text-gray-400">↓</p>
+      {step('L2 - ontology entity', <>{n.l2_table}<div className="mt-1 font-sans text-gray-500">key {n.primary_key} - {fmt.num(n.row_count)} rows - {fmt.pct(n.bdc_cld_share_pct)} from BDC CLDs</div></>, '#11567F')}
+      <p className="text-center text-gray-400">↓</p>
+      {step('Semantic Views', n.semantic_views || '-', '#7D44CF')}
+      <Table max={220} rows={rels} cols={[
+        { key: 'from_entity', label: 'From' }, { key: 'verb', label: 'Relationship' }, { key: 'to_entity', label: 'To' }, { key: 'definition', label: 'Cardinality' },
+      ]} />
+    </div>
+  );
+}
 
 export default function Architecture() {
+  const q = usePage('ontology');
+  const [picked, setPicked] = useState<string | null>('project');
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]">
-        <div data-tour="architecture-flow" className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-bold text-sf-dark">SAP BDC → CLD → medallion → ontology → AI → app</h3>
-          <p className="mt-1 text-xs text-gray-500">Target state: SAP BDC data products shared zero-copy into a catalog-linked database.</p>
-          <div className="mt-5 flex gap-4">
-            <div className="flex-1 space-y-1">
-              {LAYERS.map((l, i) => (
-                <div key={l.name}>
-                  <div className={`group relative rounded-lg border-l-4 ${l.tone} px-4 py-3`}>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-sf-dark">{l.name}</p>
-                      <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold uppercase text-gray-600">{l.tag}</span>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-700">{l.what}</p>
-                    <p className="mt-1.5 hidden font-mono text-[11px] text-gray-500 group-hover:block">{l.objects.join(' · ')}</p>
-                  </div>
-                  {i < LAYERS.length - 1 && <ArrowDown className="mx-auto my-0.5 h-4 w-4 text-gray-300" />}
-                </div>
-              ))}
-            </div>
-            <div className="flex w-10 flex-col items-center justify-center rounded-lg bg-gradient-to-b from-amber-100 to-amber-50 py-4">
-              <ShieldCheck className="h-5 w-5 text-amber-700" />
-              <span className="mt-2 text-[11px] font-bold uppercase tracking-widest text-amber-800 [writing-mode:vertical-rl]">
-                Horizon governance · masking · lineage · RBAC
-              </span>
-            </div>
+    <PageFrame id="C4" title="Platform Architecture" subtitle="SAP is the system of record; Snowflake adds context and reasoning. Five layers, one ontology, zero-copy sources and a fee boundary the app never crosses.">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
+        {LAYERS.map((l, i) => (
+          <div key={l.id} className="rounded-xl border border-sf-primary/30 bg-gradient-to-b from-sky-50 to-white p-3">
+            <p className="text-[10px] font-bold uppercase text-sf-primary">{i + 1}. {l.id}</p>
+            <p className="text-sm font-bold text-gray-900">{l.name}</p>
+            <p className="mt-1 text-xs text-gray-600">{l.text}</p>
           </div>
-          <p className="mt-3 text-[11px] text-gray-400">Hover a layer to see the objects this demo creates.</p>
-        </div>
-
-        <div className="space-y-3">
-          <h3 className="text-lg font-bold text-sf-dark">Why Snowflake for SAP BDC</h3>
-          {WHY.map((w) => (
-            <div key={w.title} className="rounded-xl border border-sf-primary/25 bg-white p-4 shadow-sm">
-              <p className="text-sm font-semibold text-sf-primary">{w.title}</p>
-              <p className="mt-1 text-xs text-gray-700">{w.body}</p>
+        ))}
+      </div>
+      <WithData q={q}>
+        {(d) => (
+          <>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <Card className="lg:col-span-2" title="Ontology graph" subtitle="13 entities and 18 relationships from ACOCO_L2.ONTOLOGY (via SERVING.VW_ONTOLOGY_GRAPH); size = rows. Click an entity.">
+                <Graph rows={d.on_graph} picked={picked} onPick={setPicked} />
+              </Card>
+              <Card title="Entity lineage" subtitle="L0 -> L1 -> L2 -> Semantic Views">
+                {picked ? <EntityDetail rows={d.on_graph} entity={picked} /> : <p className="text-sm text-gray-400">Click an entity in the graph.</p>}
+              </Card>
             </div>
-          ))}
-          <p className="text-[11px] text-gray-400">
-            Other platforms also integrate with SAP BDC. Compare on semantics, AI on governed definitions, and
-            packaging — verify current competitor capabilities before positioning.
-          </p>
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h3 className="text-lg font-bold text-sf-dark">Why SAP BDC zero-copy instead of ETL</h3>
-        </div>
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500">
-            <tr><th className="px-6 py-3"></th><th className="px-6 py-3">ETL extract into Snowflake</th><th className="px-6 py-3 text-sf-primary">SAP BDC zero-copy → CLD</th></tr>
-          </thead>
-          <tbody>
-            {COMPARE.map(([k, etl, bdc]) => (
-              <tr key={k} className="border-t border-gray-100">
-                <td className="px-6 py-3 font-semibold text-sf-dark">{k}</td>
-                <td className="px-6 py-3 text-gray-600">{etl}</td>
-                <td className="px-6 py-3 text-gray-800">{bdc}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <p className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 text-xs text-gray-500">
-        This demo build: L0 is bootstrapped from the internal SAP BDC listing (sql/00) and extended with a
-        labelled synthetic SUPPLIER_EXT schema (sql/07a). The diagram shows the target zero-copy state.
-      </p>
-    </div>
+            <Grid cols={2}>
+              <Card title="Medallion contract and fee boundary">
+                <ul className="list-disc space-y-1 pl-5 text-sm text-gray-600">
+                  <li><b>L0</b> is read only: CLDs are shared by SAP BDC with zero copy; nothing is altered on them or on the connector.</li>
+                  <li><b>L1</b> views are the only readers of L0; each domain may read only its declared sources (linted).</li>
+                  <li><b>L2</b> reads only L1; the marts are dynamic tables refreshed hourly.</li>
+                  <li>The <b>app</b> reads only <code>ACOCO_L2.SERVING</code>, <code>SEMANTIC</code> and <code>ONTOLOGY</code> - enforced by <code>tools/lint_app.py</code> and evidenced by <code>ACCESS_HISTORY</code> on P9.</li>
+                </ul>
+              </Card>
+              <Card title="Object inventory" subtitle="Latest lineage snapshot">
+                <Table rows={Object.values(d.on_lineage.reduce((acc: Record<string, any>, r) => {
+                  const k = `${r.layer} ${r.object_kind}`;
+                  acc[k] = acc[k] ?? { layer: r.layer, kind: r.object_kind, objects: 0, rows: 0 };
+                  acc[k].objects += 1; acc[k].rows += Number(r.row_count) || 0;
+                  return acc;
+                }, {}))} cols={[
+                  { key: 'layer', label: 'Layer' }, { key: 'kind', label: 'Kind' },
+                  { key: 'objects', label: 'Objects', align: 'right' }, { key: 'rows', label: 'Rows', format: fmt.num, align: 'right' },
+                ]} />
+              </Card>
+            </Grid>
+          </>
+        )}
+      </WithData>
+    </PageFrame>
   );
 }

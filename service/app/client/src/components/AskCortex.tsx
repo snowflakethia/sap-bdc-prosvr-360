@@ -18,7 +18,7 @@ interface AskCortexProps extends AskCortexRequest {
 /**
  * "Ask Cortex" — analyses the data on screen in context. The server gathers
  * authoritative SQL facts for the topic and asks Cortex COMPLETE to explain
- * them, so answers cite real plants, tools, orders and dollars.
+ * them, so answers cite the figures on the page.
  */
 export default function AskCortex({ topic, args, label = 'Ask Cortex', suggestions = [], className, compact }: AskCortexProps) {
   const [open, setOpen] = useState(false);

@@ -1,97 +1,87 @@
-import { useQuery } from '@/hooks/useQuery';
-import { fetchLineage } from '@/lib/api';
-import { formatNumber } from '@/lib/utils';
-import ChartCard from '@/components/ChartCard';
-import { ChevronRight } from 'lucide-react';
+import { useMemo } from 'react';
+import { Card, EChart, Grid, Kpi, PageFrame, Table, WithData, fmt, usePage } from '@/components/ui';
+import type { Rows } from '@/lib/api';
 
-const TONE: Record<string, string> = {
-  sap: 'border-slate-300 bg-slate-50 text-slate-800',
-  bronze: 'border-amber-300 bg-amber-50 text-amber-900',
-  silver: 'border-sky-300 bg-sky-50 text-sky-900',
-  gold: 'border-emerald-300 bg-emerald-50 text-emerald-900',
-  ai: 'border-purple-300 bg-purple-50 text-purple-900',
+const SOURCE_LABEL: Record<string, string> = {
+  BDC_CLD: 'SAP BDC CLDs (zero copy)', SIMULATED: 'Simulated (ACOCO_SIM)', ACOCO_CONFIG: 'ACoCo configuration',
 };
 
-/** Long Snowflake identifiers break at dots/underscores instead of widening the table. */
-function Ident({ value }: { value: unknown }) {
-  const s = String(value ?? '');
-  return <span className="font-mono text-[11px] leading-snug [overflow-wrap:anywhere]">{s.replace(/([._])/g, '$1\u200b')}</span>;
+/**
+ * Medallion flow as a Sankey: L0 source system -> L1 domain (rows of its views from that source)
+ * -> ACOCO_L2 -> L2 schema (rows of its dynamic tables). Flow widths are row counts (log-damped so small
+ * domains stay visible); the tooltip shows the true rows.
+ */
+function lineageSankey(objs: Rows) {
+  const nodes = new Map<string, { name: string }>();
+  const links = new Map<string, { source: string; target: string; rows: number }>();
+  const add = (name: string) => { if (!nodes.has(name)) nodes.set(name, { name }); };
+  const link = (a: string, b: string, rows: number) => {
+    add(a); add(b);
+    const k = `${a}|${b}`;
+    links.set(k, { source: a, target: b, rows: (links.get(k)?.rows ?? 0) + (Number(rows) || 0) });
+  };
+  const l1Domains = new Set<string>();
+  for (const o of objs) {
+    const parts = String(o.object_name).split('.');
+    if (o.layer === 'L1') {
+      const domain = `L1 ${parts[1]}`;
+      l1Domains.add(domain);
+      link(SOURCE_LABEL[o.source_system] ?? String(o.source_system), domain, o.row_count);
+      link(domain, 'ACOCO_L2', o.row_count);
+    } else if (o.layer === 'L2') {
+      link('ACOCO_L2', `L2 ${parts[1] ?? 'CORE'}`, o.row_count);
+    }
+  }
+  const data = [...links.values()].map((l) => ({ ...l, value: Math.max(1, Math.log10(1 + l.rows)) }));
+  return {
+    tooltip: { trigger: 'item', formatter: (p: any) => (p.dataType === 'edge' ? `${p.data.source} -> ${p.data.target}<br/>${fmt.num(p.data.rows)} rows` : p.name) },
+    series: [{ type: 'sankey', left: 10, right: 130, nodeGap: 8, emphasis: { focus: 'adjacency' }, data: [...nodes.values()], links: data,
+      lineStyle: { color: 'gradient', opacity: 0.35 }, label: { fontSize: 11 } }],
+    _domains: l1Domains.size,
+  };
 }
 
 export default function Lineage() {
-  const { data, loading, error } = useQuery<any>(() => fetchLineage(), []);
-  if (loading) return <div className="h-64 animate-pulse rounded-xl bg-gray-200" />;
-  if (error) return <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">Error: {error}</div>;
-  if (!data) return null;
-  const layers = data.layers ?? [];
-  const products = data.products ?? [];
-  const curated = data.curated ?? [];
-
+  const q = usePage('lineage');
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-sf-primary/30 bg-gradient-to-br from-sky-50 to-cyan-50 p-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-sf-dark/70">Source Systems</p>
-        <p className="mt-1 text-lg font-bold text-sf-deeper">{(data.sourceSystems ?? []).join('  ·  ')}</p>
-        <p className="mt-2 text-sm leading-relaxed text-gray-600">{data.summary}</p>
-        <p className="mt-2 text-xs text-gray-500">Snowflake database: <span className="font-mono">{data.database}</span></p>
-      </div>
+    <PageFrame id="P8" title="BDC Sources & Lineage" subtitle="Which data is real SAP BDC (catalog-linked, zero copy) and which is simulated, and how it flows L0 -> L1 -> L2 into the Semantic Views and this app.">
+      <WithData q={q}>
+        {(d) => <LineageBody objs={d.ln_objects} layers={d.ln_layers} />}
+      </WithData>
+    </PageFrame>
+  );
+}
 
-      <ChartCard tourId="lineage-medallion" title="Medallion Lineage — SAP BDC → Snowflake → Application">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
-          {layers.map((layer: any, i: number) => (
-            <div key={layer.name} className="flex min-w-0 flex-1 items-stretch gap-2">
-              <div className={`min-w-0 flex-1 rounded-xl border p-4 ${TONE[layer.tone] ?? TONE.sap}`}>
-                <p className="text-sm font-bold">{layer.name}</p>
-                <ul className="mt-2 space-y-1">
-                  {(layer.objects ?? []).map((o: string) => (
-                    <li key={o} className="opacity-90"><Ident value={o} /></li>
-                  ))}
-                </ul>
-              </div>
-              {i < layers.length - 1 && (
-                <div className="hidden shrink-0 items-center lg:flex"><ChevronRight className="h-5 w-5 text-gray-400" /></div>
-              )}
-            </div>
-          ))}
-        </div>
-      </ChartCard>
-
-      <ChartCard title="SAP BDC Source Data Products">
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full table-fixed text-sm">
-            <colgroup>
-              <col className="w-[13%]" /><col className="w-[16%]" /><col className="w-[25%]" />
-              <col className="w-[21%]" /><col className="w-[16%]" /><col className="w-[9%]" />
-            </colgroup>
-            <thead>
-              <tr className="bg-sf-dark text-left text-white">
-                <th className="px-3 py-2.5 font-medium">SAP Source System</th>
-                <th className="px-3 py-2.5 font-medium">BDC Data Product</th>
-                <th className="px-3 py-2.5 font-medium">L0 Object (Bronze)</th>
-                <th className="px-3 py-2.5 font-medium">L1 / Curated Object</th>
-                <th className="px-3 py-2.5 font-medium">Used For</th>
-                <th className="px-3 py-2.5 text-right font-medium">Rows</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((p: any, i: number) => (
-                <tr key={`${p.dataProduct}-${i}`} className={`align-top ${i % 2 === 0 ? 'bg-white' : 'bg-sky-50/50'}`}>
-                  <td className="px-3 py-2 text-gray-700">{p.sapSystem}</td>
-                  <td className="px-3 py-2 font-medium text-gray-800">{p.dataProduct}</td>
-                  <td className="px-3 py-2 text-gray-700"><Ident value={p.l0Object} /></td>
-                  <td className="px-3 py-2 text-gray-700"><Ident value={p.l1Object} /></td>
-                  <td className="px-3 py-2 text-xs text-gray-600">{p.usage}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-gray-700">{p.rows == null ? '—' : formatNumber(p.rows)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-3 text-xs leading-relaxed text-gray-500">
-          {curated.length > 0 && <>Curated L2 tables: {curated.map((c: any) => `${c.object} (${formatNumber(c.rows)} rows)`).join(' · ')}. </>}
-          {data.note}
-        </p>
-      </ChartCard>
-    </div>
+function LineageBody({ objs, layers }: { objs: Rows; layers: Rows }) {
+  const sankey = useMemo(() => lineageSankey(objs), [objs]);
+  const l0 = objs.filter((o) => o.layer === 'L0');
+  const cldRows = l0.filter((o) => o.source_system === 'BDC_CLD').reduce((s, o) => s + Number(o.row_count), 0);
+  const allRows = l0.reduce((s, o) => s + Number(o.row_count), 0);
+  return (
+    <>
+      <Grid cols={4}>
+        <Kpi label="CLD tables read (L0)" value={String(l0.filter((o) => o.source_system === 'BDC_CLD').length)} sub="via connector SNOWFLAKE_APJ, read only" />
+        <Kpi label="Simulated tables (L0)" value={String(l0.filter((o) => o.source_system !== 'BDC_CLD').length)} sub="ACOCO_SIM, shaped like the BDC products" />
+        <Kpi label="Rows from BDC CLDs" value={fmt.pct((100 * cldRows) / (allRows || 1))} sub={`${fmt.num(cldRows)} of ${fmt.num(allRows)} L0 rows`} />
+        <Kpi label="L1 views / L2 tables" value={`${objs.filter((o) => o.layer === 'L1').length} / ${objs.filter((o) => o.layer === 'L2').length}`} sub={`${sankey._domains} L1 domains`} />
+      </Grid>
+      <Card title="Lineage in medallion order" subtitle="L0 source -> L1 domain views -> L2 schemas (rows); the app reads only SERVING, SEMANTIC and ONTOLOGY">
+        <EChart height={420} option={sankey} />
+      </Card>
+      <Grid cols={2}>
+        <Card title="Summary by layer and source">
+          <Table rows={layers} cols={[
+            { key: 'layer', label: 'Layer' }, { key: 'object_kind', label: 'Kind' }, { key: 'source_system', label: 'Source' },
+            { key: 'objects', label: 'Objects', align: 'right' }, { key: 'row_count', label: 'Rows', format: fmt.num, align: 'right' },
+          ]} />
+        </Card>
+        <Card title="Object inventory">
+          <Table max={420} rows={objs} cols={[
+            { key: 'layer', label: 'Layer' }, { key: 'object_name', label: 'Object' }, { key: 'source_system', label: 'Source' },
+            { key: 'row_count', label: 'Rows', format: fmt.num, align: 'right' },
+          ]} />
+        </Card>
+      </Grid>
+    </>
   );
 }

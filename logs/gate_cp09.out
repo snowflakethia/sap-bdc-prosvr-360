@@ -1,0 +1,10 @@
+PASS  CP09-01  tools/lint_app.py: allowed schemas only, registry == tools/demo_queries.sql, binds only  ->  lint: 0 violations (60 registry statements)
+PASS  CP09-02  npm run build (client tsc + vite, server tsc)  ->  exit 0
+PASS  CP09-03  GET /healthcheck  ->  200
+PASS  CP09-04  every /api/* GET route (18) returns 200 with data in < 3 s (cache off)  ->  failures []; slowest project/P-0615 2.3 s
+PASS  CP09-05  POST /api/advisor streams the agent :run (tool use + text deltas)  ->  170696 bytes, 32 s, events ['done', 'response', 'response.status', 'response.suggested_queries', 'response.table', 'response.text']
+PASS  CP09-06  POST /api/ask-cortex answers over the page's registry facts  ->  ## Summary for Partner MD, FS Group  **Performance Overview (FY22-FY26):** - Revenue recov
+PASS  CP09-07  QUERY_TAG ACOCO_APP statements (last 6 h) reference only SERVING / SEMANTIC / ONTOLOGY (+ the 2 search services)  ->  470 tagged, 0 outside []
+
+cp09: 7/7 passed
+EXIT 0

@@ -1,126 +1,62 @@
-import { useState } from 'react';
-import { FilterProvider } from '@/hooks/useFilters';
+import { useEffect, useState } from 'react';
+import { FilterProvider, useFilters } from '@/hooks/useFilters';
 import Sidebar, { NAV_ITEMS, type PageId } from '@/components/Sidebar';
-import Overview from '@/pages/Overview';
-import Production from '@/pages/Production';
-import Bom from '@/pages/Bom';
-import Inventory from '@/pages/Inventory';
-import Logistics from '@/pages/Logistics';
-import WorkCenter from '@/pages/WorkCenter';
-import Projects from '@/pages/Projects';
-import Geography from '@/pages/Geography';
-import Lineage from '@/pages/Lineage';
-import Analyst from '@/pages/Analyst';
-import Ontology from '@/pages/Ontology';
-import Optimization from '@/pages/Optimization';
-import Forecasting from '@/pages/Forecasting';
-import Fulfillment from '@/pages/Fulfillment';
-import EquipmentHealth from '@/pages/EquipmentHealth';
-import Components from '@/pages/Components';
-import AskCortex from '@/components/AskCortex';
-import PresenterNotes from '@/components/PresenterNotes';
-import Scenario from '@/pages/Scenario';
+import { BusinessOverview, DashboardOverview, DemoOverview } from '@/pages/Context';
 import Architecture from '@/pages/Architecture';
-import { PRESENTER_NOTES, TOUR_AUTOSTART } from '@/lib/presenter';
-import GuidedTour, { TOUR_DONE_KEY } from '@/components/GuidedTour';
+import Overview from '@/pages/Overview';
+import Portfolio from '@/pages/Portfolio';
+import ProjectHealth from '@/pages/ProjectHealth';
+import TimeMix from '@/pages/TimeMix';
+import People from '@/pages/People';
+import Pipeline from '@/pages/Pipeline';
+import AiProductivity from '@/pages/AiProductivity';
+import Reasoning from '@/pages/Reasoning';
+import Lineage from '@/pages/Lineage';
+import Trust from '@/pages/Trust';
+import Advisor from '@/pages/Advisor';
+import Assets from '@/pages/Assets';
 
-// Pages whose analysis Cortex can explain in context: topic -> suggested follow-ups.
-// (Fulfillment, Equipment and Components embed their own, richer Ask Cortex panels.)
-const ASK: Partial<Record<PageId, { topic: string; suggestions: string[] }>> = {
-  overview: { topic: 'overview', suggestions: ['What are the top three risks this quarter?', 'Which plant needs attention first and why?'] },
-  production: { topic: 'production', suggestions: ['Which products drive most scrap?', 'Where is OEE falling and why?'] },
-  bom: { topic: 'bom', suggestions: ['Which components dominate system cost?', 'Which high-cost components are short on cover?'] },
-  inventory: { topic: 'inventory', suggestions: ['Where is working capital tied up?', 'What obsolete stock should we act on?'] },
-  logistics: { topic: 'logistics', suggestions: ['Which shipping point is least reliable?', 'How much late cost is logistics vs production?'] },
-  workcenter: { topic: 'workcenter', suggestions: ['Which work centers are bottlenecks?', 'Does tool risk threaten a bottleneck?'] },
-  projects: { topic: 'projects', suggestions: ['Which projects are over budget?', 'What is driving schedule slip?'] },
-  supplychain: { topic: 'supplychain', suggestions: ['Where is the network most concentrated?', 'Which supplier is weakest?'] },
-  forecasting: { topic: 'forecasting', suggestions: ['Is demand outrunning capacity?', 'What trend should planning watch?'] },
-};
+export type Navigate = (p: PageId) => void;
 
-const PAGE_COMPONENTS: Record<string, React.FC> = {
-  scenario: Scenario,
-  architecture: Architecture,
-  overview: Overview,
-  production: Production,
-  bom: Bom,
-  inventory: Inventory,
-  logistics: Logistics,
-  workcenter: WorkCenter,
-  projects: Projects,
-  supplychain: Geography,
-  lineage: Lineage,
-  analyst: Analyst,
-  ontology: Ontology,
-  optimization: Optimization,
-  forecasting: Forecasting,
-  fulfillment: Fulfillment,
-  equipment: EquipmentHealth,
-  components: Components,
-};
-
-function Placeholder({ name }: { name: string }) {
-  return (
-    <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-sf-primary/30 bg-sky-50/30">
-      <p className="text-lg text-sf-dark/60">{name} — coming soon</p>
-    </div>
-  );
-}
-
-function AppShell() {
-  const [activePage, setActivePage] = useState<PageId>('scenario');
-  const [showNotes, setShowNotes] = useState(() => localStorage.getItem('sc360.notes') !== 'off');
-  const toggleNotes = () => {
-    localStorage.setItem('sc360.notes', showNotes ? 'off' : 'on');
-    setShowNotes(!showNotes);
+function Shell() {
+  // The app opens on C1 (PRD 8.3); #p8 etc. deep-links a page (presenter bookmarks).
+  const fromHash = (): PageId => {
+    const h = window.location.hash.slice(1).toLowerCase();
+    return (NAV_ITEMS.some((n) => n.id === h) ? h : 'c1') as PageId;
   };
-  // First visit only; ?tour=0 suppresses it for live demos.
-  const [tourOpen, setTourOpen] = useState(
-    () => TOUR_AUTOSTART && localStorage.getItem(TOUR_DONE_KEY) !== '1' && new URLSearchParams(location.search).get('tour') !== '0'
-  );
+  const [page, setPage] = useState<PageId>(fromHash);
+  const { setProject } = useFilters();
+  useEffect(() => {
+    const onHash = () => setPage(fromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  const nav: Navigate = (p) => { setPage(p); window.history.replaceState(null, '', `#${p}`); window.scrollTo(0, 0); };
+  const openProject = (id: string) => { setProject(id); nav('p2'); };
 
-  const navItem = NAV_ITEMS.find((n) => n.id === activePage)!;
-  const Icon = navItem.icon;
-  const PageComponent = PAGE_COMPONENTS[activePage];
+  const pages: Record<PageId, JSX.Element> = {
+    c1: <BusinessOverview nav={nav} />,
+    c2: <DashboardOverview nav={nav} />,
+    c3: <DemoOverview nav={nav} />,
+    c4: <Architecture />,
+    p0: <Overview nav={nav} openProject={openProject} />,
+    p1: <Portfolio openProject={openProject} />,
+    p2: <ProjectHealth nav={nav} />,
+    p3: <TimeMix />,
+    p4: <People />,
+    p5: <Pipeline />,
+    p6: <AiProductivity />,
+    p7: <Reasoning openProject={openProject} />,
+    p8: <Lineage />,
+    p9: <Trust />,
+    p10: <Advisor />,
+    p11: <Assets openProject={openProject} />,
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar activePage={activePage} onNavigate={setActivePage} />
-      <main className="ml-64 min-h-screen p-6">
-        <div className="mb-6 flex items-center gap-3">
-          <Icon className="h-6 w-6 text-sf-primary" />
-          <h1 className="text-2xl font-bold text-sf-deeper">{navItem.label}</h1>
-          <div className="ml-auto flex items-center gap-3">
-            {showNotes && PRESENTER_NOTES[activePage] && <PresenterNotes note={PRESENTER_NOTES[activePage]} />}
-            <button
-              onClick={toggleNotes}
-              className="text-xs text-gray-400 underline decoration-dotted hover:text-sf-primary"
-              title="Show or hide presenter notes (remembered in this browser)"
-            >
-              {showNotes ? 'Hide notes' : 'Show notes'}
-            </button>
-            <button
-              onClick={() => setTourOpen(true)}
-              className="text-xs text-gray-400 underline decoration-dotted hover:text-sf-primary"
-              title="Replay the guided demo walkthrough"
-            >
-              Take the tour
-            </button>
-          </div>
-        </div>
-        {ASK[activePage] && (
-          <div className="mb-6">
-            <AskCortex key={activePage} topic={ASK[activePage]!.topic} suggestions={ASK[activePage]!.suggestions}
-              label={`Ask Cortex about ${navItem.label}`} />
-          </div>
-        )}
-        {PageComponent ? (
-          <PageComponent />
-        ) : (
-          <Placeholder name={navItem.label} />
-        )}
-      </main>
-      {tourOpen && <GuidedTour onClose={() => setTourOpen(false)} activePage={activePage} setActivePage={setActivePage} />}
+      <Sidebar activePage={page} onNavigate={nav} />
+      <main className="ml-64 p-8" data-page={NAV_ITEMS.find((n) => n.id === page)?.code}>{pages[page]}</main>
     </div>
   );
 }
@@ -128,7 +64,7 @@ function AppShell() {
 export default function App() {
   return (
     <FilterProvider>
-      <AppShell />
+      <Shell />
     </FilterProvider>
   );
 }

@@ -1,499 +1,172 @@
 import { Router, type Request, type Response } from "express";
-import fs from "node:fs";
-import path from "node:path";
-import { runQuery } from "../services/snowflake.js";
-import { callCortexAnalyst } from "../services/analyst.js";
-import { buildLineage } from "./lineage.js";
+import { PAGES, run, runPage, type Params } from "../registry.js";
+import { restAuthHeaders, restHost } from "../services/auth.js";
 
 const router = Router();
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Filter validation: every value becomes a bind, and must be one the data offers.
 // ---------------------------------------------------------------------------
+const STORY_PROJECT = "P-0615";
+let domain: Promise<{ groups: Set<string>; years: number[]; sizes: Set<string> }> | null = null;
 
-/** Parse comma-separated plant names from query string. */
-function parsePlants(raw: unknown): string[] {
-  if (typeof raw !== "string" || raw.trim() === "") return [];
-  return raw.split(",").map((p) => p.trim()).filter(Boolean);
+function filterDomain() {
+  if (!domain) {
+    domain = runPage("filters", defaults()).then((r) => ({
+      groups: new Set(r.f_groups.map((x) => String(x.md_group_id))),
+      years: r.f_years.map((x) => Number(x.fiscal_year)),
+      sizes: new Set(r.f_sizes.map((x) => String(x.size_class))),
+    }));
+    domain.catch(() => (domain = null));
+  }
+  return domain;
 }
 
-/**
- * Build a SQL IN clause with positional bind placeholders.
- * Returns { clause: "IN (?, ?, ?)", binds: [...values] }
- */
-function inClause(values: string[]): { clause: string; binds: string[] } {
-  const placeholders = values.map(() => "?").join(", ");
-  return { clause: `IN (${placeholders})`, binds: values };
+function defaults(): Params {
+  return { g: "FS", fy0: 2022, fy1: 2026, s: "ALL", p: STORY_PROJECT, q: "", prompt: "" };
 }
 
-// ---------------------------------------------------------------------------
-// GET /api/plants
-// ---------------------------------------------------------------------------
-router.get("/api/plants", async (_req: Request, res: Response) => {
-  try {
-    const rows = await runQuery(
-      `SELECT DISTINCT PLANT_NAME
-         FROM APP_DATA.DT_MANUFACTURING_KPI
-        ORDER BY 1`
-    );
-    res.json(rows.map((r) => r.plant_name));
-  } catch (err) {
-    console.error("GET /api/plants error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
+async function params(req: Request): Promise<Params> {
+  const d = await filterDomain();
+  const p = defaults();
+  const g = String(req.query.group ?? "FS");
+  p.g = g === "ALL" || d.groups.has(g) ? g : "FS";
+  const fy0 = Number(req.query.fy0), fy1 = Number(req.query.fy1);
+  if (d.years.includes(fy0)) p.fy0 = fy0;
+  if (d.years.includes(fy1)) p.fy1 = fy1;
+  if (p.fy0 > p.fy1) [p.fy0, p.fy1] = [p.fy1, p.fy0];
+  const s = String(req.query.size ?? "ALL");
+  p.s = d.sizes.has(s) ? s : "ALL";
+  const proj = String(req.params.id ?? req.query.project ?? STORY_PROJECT);
+  p.p = /^P-\d{4}$/.test(proj) ? proj : STORY_PROJECT;
+  // Cortex Search request for the project's "Why?" notes; JSON is built here, then bound.
+  p.q = JSON.stringify({
+    query: "why is this project behind plan or over budget",
+    columns: ["NOTE_DATE", "RAG_STATUS", "SEARCH_TEXT"],
+    filter: { "@eq": { PROJECT_ID: p.p } },
+    limit: 5,
+  });
+  return p;
+}
 
-// ---------------------------------------------------------------------------
-// GET /api/overview?plants=...
-// ---------------------------------------------------------------------------
-router.get("/api/overview", async (req: Request, res: Response) => {
-  try {
-    const plants = parsePlants(req.query.plants);
-    if (plants.length === 0) return res.json({});
-
-    const { clause, binds } = inClause(plants);
-
-    const [kpis, oeeTrend, ordersByPlant, scrapRate, otdTrend] =
-      await Promise.all([
-        // KPI summary
-        runQuery(
-          `SELECT
-             COUNT(DISTINCT o.PRODUCTION_ORDER)                          AS total_orders,
-             SUM(o.CONFIRMED_QTY)                                       AS total_confirmed,
-             ROUND(AVG(o.CYCLE_TIME_DAYS), 1)                           AS avg_cycle_time,
-             ROUND(100.0 * SUM(o.YIELD_QTY) / NULLIF(SUM(o.PLANNED_QTY), 0), 1) AS yield_pct,
-             ROUND(AVG(m.OEE_PCT), 1)                                   AS avg_oee,
-             ROUND(AVG(m.ON_TIME_DELIVERY_PCT), 1)                      AS avg_otd,
-             ROUND(AVG(m.SCRAP_RATE_PCT), 2)                            AS avg_scrap_rate,
-             ROUND(AVG(m.INVENTORY_TURNOVER), 1)                        AS avg_inv_turn
-           FROM APP_DATA.DT_PRODUCTION_ORDER_360 o
-           JOIN APP_DATA.DT_MANUFACTURING_KPI m
-             ON o.PLANT = m.PLANT
-          WHERE o.PLANT_NAME ${clause}`,
-          binds
-        ),
-        // OEE trend
-        runQuery(
-          `SELECT PERIOD_DATE, PLANT_NAME, ROUND(OEE_PCT, 1) AS oee
-             FROM APP_DATA.DT_MANUFACTURING_KPI
-            WHERE PLANT_NAME ${clause}
-            ORDER BY PERIOD_DATE`,
-          binds
-        ),
-        // Orders by plant
-        runQuery(
-          `SELECT PLANT_NAME, COUNT(*) AS orders
-             FROM APP_DATA.DT_PRODUCTION_ORDER_360
-            WHERE PLANT_NAME ${clause}
-            GROUP BY PLANT_NAME
-            ORDER BY orders DESC`,
-          binds
-        ),
-        // Scrap rate by plant
-        runQuery(
-          `SELECT PLANT_NAME, ROUND(AVG(SCRAP_RATE_PCT), 2) AS scrap_rate
-             FROM APP_DATA.DT_MANUFACTURING_KPI
-            WHERE PLANT_NAME ${clause}
-            GROUP BY PLANT_NAME
-            ORDER BY PLANT_NAME`,
-          binds
-        ),
-        // OTD trend
-        runQuery(
-          `SELECT PERIOD_DATE, PLANT_NAME, ROUND(ON_TIME_DELIVERY_PCT, 1) AS otd
-             FROM APP_DATA.DT_MANUFACTURING_KPI
-            WHERE PLANT_NAME ${clause}
-            ORDER BY PERIOD_DATE`,
-          binds
-        ),
-      ]);
-
-    res.json({ kpis: kpis[0] ?? {}, oeeTrend, ordersByPlant, scrapRate, otdTrend });
-  } catch (err) {
-    console.error("GET /api/overview error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/production?plants=...
-// ---------------------------------------------------------------------------
-router.get("/api/production", async (req: Request, res: Response) => {
-  try {
-    const plants = parsePlants(req.query.plants);
-    if (plants.length === 0) return res.json({});
-
-    const { clause, binds } = inClause(plants);
-
-    const [orders, kpis] = await Promise.all([
-      runQuery(
-        `SELECT *
-           FROM APP_DATA.DT_PRODUCTION_ORDER_360
-          WHERE PLANT_NAME ${clause}
-          ORDER BY BASIC_START_DATE DESC`,
-        binds
-      ),
-      runQuery(
-        `SELECT *
-           FROM APP_DATA.DT_MANUFACTURING_KPI
-          WHERE PLANT_NAME ${clause}
-          ORDER BY PERIOD_DATE`,
-        binds
-      ),
-    ]);
-
-    res.json({ orders, kpis });
-  } catch (err) {
-    console.error("GET /api/production error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/bom
-// ---------------------------------------------------------------------------
-router.get("/api/bom", async (_req: Request, res: Response) => {
-  try {
-    const rows = await runQuery(
-      `SELECT * FROM APP_DATA.DT_BOM_EXPLOSION`
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error("GET /api/bom error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/inventory?plants=...
-// ---------------------------------------------------------------------------
-router.get("/api/inventory", async (req: Request, res: Response) => {
-  try {
-    const plants = parsePlants(req.query.plants);
-    if (plants.length === 0) return res.json([]);
-
-    const { clause, binds } = inClause(plants);
-    const rows = await runQuery(
-      `SELECT *
-         FROM APP_DATA.DT_INVENTORY_OVERVIEW
-        WHERE PLANT_NAME ${clause}`,
-      binds
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error("GET /api/inventory error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/logistics
-// ---------------------------------------------------------------------------
-router.get("/api/logistics", async (_req: Request, res: Response) => {
-  try {
-    const rows = await runQuery(
-      `SELECT * FROM APP_DATA.DT_DELIVERY_PERFORMANCE`
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error("GET /api/logistics error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/workcenter?plants=...
-// ---------------------------------------------------------------------------
-router.get("/api/workcenter", async (req: Request, res: Response) => {
-  try {
-    const plants = parsePlants(req.query.plants);
-    if (plants.length === 0) return res.json([]);
-
-    const { clause, binds } = inClause(plants);
-    const rows = await runQuery(
-      `SELECT *
-         FROM APP_DATA.DT_WORK_CENTER_UTILIZATION
-        WHERE PLANT_NAME ${clause}`,
-      binds
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error("GET /api/workcenter error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/projects
-// ---------------------------------------------------------------------------
-router.get("/api/projects", async (_req: Request, res: Response) => {
-  try {
-    const rows = await runQuery(
-      `SELECT * FROM APP_DATA.DT_PROJECT_STATUS`
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error("GET /api/projects error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/geography?plants=...
-// ---------------------------------------------------------------------------
-router.get("/api/geography", async (req: Request, res: Response) => {
-  try {
-    const plants = parsePlants(req.query.plants);
-    if (plants.length === 0) return res.json({});
-
-    const { clause, binds } = inClause(plants);
-
-    const [flows, nodes, plantCodesRows] = await Promise.all([
-      runQuery(
-        `SELECT *
-           FROM APP_DATA.DT_SUPPLY_CHAIN_GEO`
-      ),
-      runQuery(
-        `SELECT *
-           FROM APP_DATA.A_SUPPLY_CHAIN_NODES`
-      ),
-      runQuery(
-        `SELECT PLANT
-           FROM APP_DATA.A_PLANT
-          WHERE PLANT_NAME ${clause}`,
-        binds
-      ),
-    ]);
-
-    const plantCodes = plantCodesRows.map((r) => String(r.plant));
-    res.json({ flows, nodes, plantCodes });
-  } catch (err) {
-    console.error("GET /api/geography error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/lineage — BDC sources, row counts and medallion lineage
-// ---------------------------------------------------------------------------
-router.get("/api/lineage", async (_req: Request, res: Response) => {
-  try {
-    const c = (await runQuery(
-      `SELECT * FROM APP_DATA.LINEAGE_COUNTS`
-    ))[0] as Record<string, unknown>;
-    res.json(buildLineage(c, "SUPPLY_CHAIN_360_APP (bundled APP_DATA, snapshot of SAP_SUPPLY_CHAIN)"));
-  } catch (err) {
-    console.error("GET /api/lineage error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/ontology
-// ---------------------------------------------------------------------------
-router.get("/api/ontology", async (_req: Request, res: Response) => {
-  try {
-    const [nodes, flows, bom, suppliers, production] = await Promise.all([
-      runQuery(`SELECT * FROM APP_DATA.A_SUPPLY_CHAIN_NODES`),
-      runQuery(`SELECT * FROM APP_DATA.DT_SUPPLY_CHAIN_GEO`),
-      runQuery(`SELECT * FROM APP_DATA.DT_BOM_EXPLOSION`),
-      runQuery(`SELECT * FROM APP_DATA.DT_SUPPLIER_QUALITY`),
-      runQuery(`SELECT DISTINCT PLANT_NAME, MATERIAL_DESC FROM APP_DATA.DT_PRODUCTION_ORDER_360`),
-    ]);
-    res.json({ nodes, flows, bom, suppliers, production });
-  } catch (err) {
-    console.error("GET /api/ontology error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/semantic-model — logical tables + declared relationships, read live
-// from the semantic view (DESCRIBE), so the ontology graph shows exactly what
-// Cortex Analyst can traverse.
-// ---------------------------------------------------------------------------
-router.get("/api/semantic-model", async (_req: Request, res: Response) => {
-  try {
-    const rows = await runQuery(
-      `DESCRIBE SEMANTIC VIEW APP_DATA.SAP_SUPPLY_CHAIN_360
-       ->> SELECT "object_kind" AS kind, "object_name" AS name, "parent_entity" AS parent,
-                  "property" AS prop, "property_value" AS val
-             FROM $1 WHERE "object_kind" IN ('TABLE', 'RELATIONSHIP')`
-    );
-    const tables: Record<string, Record<string, string>> = {};
-    const rels: Record<string, Record<string, string>> = {};
-    for (const r of rows as Record<string, string>[]) {
-      const bucket = r.kind === "TABLE" ? tables : rels;
-      (bucket[r.name] ??= { name: r.name })[r.prop] = r.val;
+function send(page: string) {
+  return async (req: Request, res: Response) => {
+    const t = Date.now();
+    try {
+      const data = await runPage(page, await params(req));
+      res.json({ page, ms: Date.now() - t, data });
+    } catch (err) {
+      console.error(`GET ${req.path} error:`, err);
+      res.status(500).json({ error: String(err) });
     }
-    const keys = (v?: string) => {
-      try { return v ? (JSON.parse(v) as string[]) : []; } catch { return [v as string]; }
-    };
-    res.json({
-      tables: Object.values(tables).map((t) => ({
-        name: t.name,
-        base: t.BASE_TABLE_NAME ?? "",
-        primaryKey: keys(t.PRIMARY_KEY),
-        comment: t.COMMENT ?? "",
-      })),
-      relationships: Object.values(rels).map((r) => ({
-        name: r.name,
-        from: r.TABLE,
-        to: r.REF_TABLE,
-        fromKeys: keys(r.FOREIGN_KEY),
-        toKeys: keys(r.REF_KEY),
-      })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Page APIs (PRD 8.4)
+// ---------------------------------------------------------------------------
+router.get("/api/filters", send("filters"));
+router.get("/api/overview", send("overview"));
+router.get("/api/portfolio", send("portfolio"));
+router.get("/api/project/:id", send("project"));
+router.get("/api/workforce", send("workforce"));
+router.get("/api/people", send("people"));
+router.get("/api/pipeline", send("pipeline"));
+router.get("/api/ai", send("ai"));
+router.get("/api/assets", send("assets"));
+router.get("/api/reasoning", send("reasoning"));
+router.get("/api/ontology", send("ontology"));
+router.get("/api/lineage", send("lineage"));
+router.get("/api/trust", send("trust"));
+router.get("/api/context/:page", (req, res, next) =>
+  ["c1", "c2", "c3"].includes(req.params.page) ? send(req.params.page)(req, res) : next());
+
+// Asset library search (P11): Cortex Search over the harvested assets.
+router.get("/api/assets/search", async (req: Request, res: Response) => {
+  try {
+    const p = await params(req);
+    const text = String(req.query.q ?? "").slice(0, 200).trim();
+    if (!text) return res.json({ data: { as_search: [] } });
+    p.q = JSON.stringify({
+      query: text,
+      columns: ["ASSET_ID", "ASSET_TITLE", "ASSET_TYPE", "WORK_TYPE", "EFFORT_SAVING_HOURS", "SOURCE_PROJECT_ID"],
+      limit: 8,
     });
+    res.json({ data: { as_search: await run("as_search", p) } });
   } catch (err) {
-    console.error("GET /api/semantic-model error:", err);
     res.status(500).json({ error: String(err) });
   }
 });
 
 // ---------------------------------------------------------------------------
-// GET /api/optimization?plants=...
+// Ask Cortex (per card): re-run the page's registry statements, ask AI_COMPLETE to explain them.
 // ---------------------------------------------------------------------------
-router.get("/api/optimization", async (req: Request, res: Response) => {
+router.post("/api/ask-cortex", async (req: Request, res: Response) => {
   try {
-    const plants = parsePlants(req.query.plants);
-    if (plants.length === 0) return res.json({});
-
-    const { clause, binds } = inClause(plants);
-
-    const [kpiTrends, supplierQuality, deliveryPerf, productionEff] = await Promise.all([
-      runQuery(
-        `SELECT PLANT_NAME, PERIOD_DATE,
-                ROUND(OEE_PCT, 1) AS oee,
-                ROUND(SCRAP_RATE_PCT, 2) AS scrap_rate,
-                ROUND(ON_TIME_DELIVERY_PCT, 1) AS otd,
-                ROUND(INVENTORY_TURNOVER, 1) AS inv_turnover
-           FROM APP_DATA.DT_MANUFACTURING_KPI
-          WHERE PLANT_NAME ${clause}
-          ORDER BY PERIOD_DATE`,
-        binds
-      ),
-      runQuery(
-        `SELECT SUPPLIER_NAME, MATERIAL_DESC,
-                ROUND(AVG(DEFECT_RATE_PCT), 2) AS avg_defect_rate,
-                ROUND(AVG(ON_TIME_DELIVERY_PCT), 1) AS avg_otd,
-                ROUND(AVG(QUALITY_SCORE), 1) AS avg_quality_score
-           FROM APP_DATA.DT_SUPPLIER_QUALITY
-          GROUP BY SUPPLIER_NAME, MATERIAL_DESC
-          ORDER BY avg_quality_score`
-      ),
-      runQuery(
-        `SELECT SHIPPING_POINT_DESC,
-                COUNT(*) AS total_deliveries,
-                SUM(CASE WHEN ON_TIME_FLAG = 'Y' THEN 1 ELSE 0 END) AS on_time_count,
-                ROUND(100.0 * SUM(CASE WHEN ON_TIME_FLAG = 'Y' THEN 1 ELSE 0 END) / COUNT(*), 1) AS otd_pct,
-                ROUND(AVG(DELAY_DAYS), 1) AS avg_delay
-           FROM APP_DATA.DT_DELIVERY_PERFORMANCE
-          GROUP BY SHIPPING_POINT_DESC
-          ORDER BY otd_pct DESC`
-      ),
-      runQuery(
-        `SELECT PLANT_NAME, MATERIAL_DESC,
-                COUNT(*) AS order_count,
-                ROUND(AVG(CYCLE_TIME_DAYS), 1) AS avg_cycle_time,
-                ROUND(100.0 * SUM(YIELD_QTY) / NULLIF(SUM(PLANNED_QTY), 0), 1) AS yield_pct,
-                ROUND(100.0 * SUM(SCRAP_QTY) / NULLIF(SUM(PLANNED_QTY), 0), 2) AS scrap_pct
-           FROM APP_DATA.DT_PRODUCTION_ORDER_360
-          WHERE PLANT_NAME ${clause}
-          GROUP BY PLANT_NAME, MATERIAL_DESC
-          ORDER BY yield_pct`,
-        binds
-      ),
-    ]);
-
-    res.json({ kpiTrends, supplierQuality, deliveryPerf, productionEff });
+    const topic = String(req.body?.topic ?? "");
+    if (!PAGES[topic] || topic === "filters") return res.status(400).json({ error: `unknown topic ${topic}` });
+    const fakeReq = { query: req.body?.args ?? {}, params: { id: req.body?.args?.project } } as unknown as Request;
+    const p = await params(fakeReq);
+    const data = await runPage(topic, p);
+    const facts = JSON.stringify(
+      Object.fromEntries(Object.entries(data).map(([k, rows]) => [k, rows.slice(0, 40)]))).slice(0, 14000);
+    const question = String(req.body?.question ?? "").slice(0, 500) ||
+      "Explain what these numbers say for the Partner MD and the one action you would take first.";
+    p.prompt = [
+      "You are the ACoCo ProServe360 advisor for a Partner Managing Director of a professional-services firm.",
+      `Scope: MD group ${p.g === "ALL" ? "firm-wide" : p.g}, fiscal years FY${p.fy0 % 100}-FY${p.fy1 % 100} (Oct-Sep), as of 1 Oct 2026.`,
+      `Page: ${topic}. The JSON below holds the exact figures shown on the page (registry statement -> rows).`,
+      "Answer in under 180 words of markdown. Cite the numbers you use. Do not invent figures not in the data.",
+      "Hours saved are ESTIMATED; say so if you use them. A confidence interval spanning zero means no significant effect.",
+      `Question: ${question}`,
+      `Data: ${facts}`,
+    ].join("\n");
+    const rows = await run("ask_complete", p);
+    res.json({ answer: String(rows[0]?.answer ?? "") });
   } catch (err) {
-    console.error("GET /api/optimization error:", err);
+    console.error("POST /api/ask-cortex error:", err);
     res.status(500).json({ error: String(err) });
   }
 });
 
 // ---------------------------------------------------------------------------
-// GET /api/forecasting?plants=...
+// Advisor (P10): stream the Cortex Agent :run response back to the browser as SSE.
 // ---------------------------------------------------------------------------
-router.get("/api/forecasting", async (req: Request, res: Response) => {
+const AGENT_PATH = "/api/v2/databases/ACOCO_DB/schemas/AGENT/agents/ACOCO_ADVISOR:run";
+
+router.post("/api/advisor", async (req: Request, res: Response) => {
+  const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+  const clean = messages.slice(-12).map((m: any) => ({
+    role: m.role === "assistant" ? "assistant" : "user",
+    content: [{ type: "text", text: String(m.text ?? "").slice(0, 4000) }],
+  }));
+  if (!clean.length) return res.status(400).json({ error: "messages required" });
+  const abort = new AbortController();
+  // The browser going away (response closed before we finish) cancels the agent call; req "close" fires too early.
+  res.on("close", () => { if (!res.writableEnded) abort.abort(); });
   try {
-    const plants = parsePlants(req.query.plants);
-    if (plants.length === 0) return res.json({});
-
-    const { clause, binds } = inClause(plants);
-
-    const [demandHistory, kpiTrends, supplierTrends] = await Promise.all([
-      runQuery(
-        `SELECT PLANT_NAME, MATERIAL_DESC, BASIC_START_DATE, PLANNED_QTY, CONFIRMED_QTY, ORDER_STATUS
-           FROM APP_DATA.DT_PRODUCTION_ORDER_360
-          WHERE PLANT_NAME ${clause}
-          ORDER BY BASIC_START_DATE`,
-        binds
-      ),
-      runQuery(
-        `SELECT PLANT_NAME, PERIOD_DATE, OEE_PCT, ON_TIME_DELIVERY_PCT, SCRAP_RATE_PCT, INVENTORY_TURNOVER
-           FROM APP_DATA.DT_MANUFACTURING_KPI
-          WHERE PLANT_NAME ${clause}
-          ORDER BY PLANT_NAME, PERIOD_DATE`,
-        binds
-      ),
-      runQuery(
-        `SELECT SUPPLIER_NAME, MATERIAL_DESC, PERIOD_DATE, QUALITY_SCORE, ON_TIME_DELIVERY_PCT, DEFECT_RATE_PCT
-           FROM APP_DATA.DT_SUPPLIER_QUALITY
-          ORDER BY SUPPLIER_NAME, PERIOD_DATE`
-      ),
-    ]);
-
-    res.json({ demandHistory, kpiTrends, supplierTrends });
-  } catch (err) {
-    console.error("GET /api/forecasting error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// POST /api/analyst
-// ---------------------------------------------------------------------------
-router.post("/api/analyst", async (req: Request, res: Response) => {
-  try {
-    const { messages } = req.body;
-    if (!Array.isArray(messages)) {
-      return res.status(400).json({ error: "messages array is required" });
+    const upstream = await fetch(`https://${restHost()}${AGENT_PATH}`, {
+      method: "POST",
+      headers: { ...restAuthHeaders(), "Content-Type": "application/json", Accept: "text/event-stream" },
+      body: JSON.stringify({ messages: clean }),
+      signal: abort.signal,
+    });
+    if (!upstream.ok || !upstream.body) {
+      return res.status(upstream.status || 502).json({ error: `agent ${upstream.status}: ${(await upstream.text()).slice(0, 500)}` });
     }
-    const result = await callCortexAnalyst(messages);
-    res.json(result);
-  } catch (err) {
-    console.error("POST /api/analyst error:", err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// POST /api/analyst/run-sql — execute SQL generated by Cortex Analyst
-// Safety: only allows SELECT or WITH ... SELECT statements
-// ---------------------------------------------------------------------------
-router.post("/api/analyst/run-sql", async (req: Request, res: Response) => {
-  try {
-    const { sql } = req.body;
-    if (typeof sql !== "string" || !sql.trim()) {
-      return res.status(400).json({ error: "sql string is required" });
+    res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
+    const reader = upstream.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(Buffer.from(value));
     }
-    // Strip leading comments and whitespace, then check first keyword
-    const stripped = sql
-      .replace(/--[^\n]*\n/g, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .trim();
-    const firstWord = stripped.split(/\s+/)[0]?.toUpperCase();
-    if (firstWord !== "SELECT" && firstWord !== "WITH") {
-      return res
-        .status(400)
-        .json({ error: "Only SELECT or WITH queries are allowed" });
-    }
-    const rows = await runQuery(sql);
-    res.json({ rows });
+    res.end();
   } catch (err) {
-    console.error("POST /api/analyst/run-sql error:", err);
-    res.status(500).json({ error: String(err) });
+    if (abort.signal.aborted) return;
+    console.error("POST /api/advisor error:", err);
+    if (!res.headersSent) res.status(502).json({ error: String(err) });
+    else res.end();
   }
 });
 

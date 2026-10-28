@@ -215,8 +215,8 @@ def main():
     steps = sys.argv[1:] or ["attrition", "forecast", "r13", "r14", "serving"]
     for s in steps:
         {"attrition": attrition, "forecast": forecast, "r13": r13, "r14": r14,
-         "serving": lambda: (sf.run_file(str(ROOT / "sql" / "03_l2" / "post" / "41_serving_reasoning.sql")),
-                             print("serving: reasoning views built"))}[s]()
+         "serving": lambda: ([sf.run_file(str(f)) for f in sorted((ROOT / "sql" / "03_l2" / "post").glob("*.sql"))],
+                             print("serving: post-build views built"))}[s]()
 
 
 if __name__ == "__main__":

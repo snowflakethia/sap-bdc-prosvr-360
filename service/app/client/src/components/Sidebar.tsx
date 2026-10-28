@@ -1,187 +1,98 @@
-import {
-  LayoutDashboard,
-  Factory,
-  GitBranch,
-  Warehouse,
-  Truck,
-  Settings,
-  FolderKanban,
-  Globe,
-  Database,
-  Bot,
-  Check,
-  Network,
-  Sparkles,
-  TrendingUp,
-  ClipboardCheck,
-  Activity,
-  Boxes,
-  BookOpen,
-  Layers,
-} from 'lucide-react';
 import { useFilters } from '@/hooks/useFilters';
 import { cn } from '@/lib/utils';
 
 export type PageId =
-  | 'scenario'
-  | 'architecture'
-  | 'overview'
-  | 'production'
-  | 'bom'
-  | 'inventory'
-  | 'logistics'
-  | 'fulfillment'
-  | 'equipment'
-  | 'components'
-  | 'workcenter'
-  | 'projects'
-  | 'supplychain'
-  | 'ontology'
-  | 'optimization'
-  | 'forecasting'
-  | 'lineage'
-  | 'analyst';
+  | 'c1' | 'c2' | 'c3' | 'c4'
+  | 'p0' | 'p1' | 'p2' | 'p3' | 'p4' | 'p5' | 'p6' | 'p7' | 'p8' | 'p9' | 'p10' | 'p11';
 
-export interface NavItem {
-  id: PageId;
-  label: string;
-  icon: React.ElementType;
-}
+export interface NavItem { id: PageId; code: string; label: string }
 
-export const NAV_ITEMS: NavItem[] = [
-  { id: 'scenario', label: 'Business Scenario', icon: BookOpen },
-  { id: 'architecture', label: 'Technology Architecture', icon: Layers },
-  { id: 'overview', label: 'Executive Overview', icon: LayoutDashboard },
-  { id: 'production', label: 'Production Planning', icon: Factory },
-  { id: 'bom', label: 'Bill of Materials', icon: GitBranch },
-  { id: 'inventory', label: 'Inventory & Warehouse', icon: Warehouse },
-  { id: 'logistics', label: 'Logistics & Delivery', icon: Truck },
-  { id: 'fulfillment', label: 'Fulfillment & Constraints', icon: ClipboardCheck },
-  { id: 'equipment', label: 'Equipment Health', icon: Activity },
-  { id: 'components', label: 'Components & Digital Thread', icon: Boxes },
-  { id: 'workcenter', label: 'Work Center & Capacity', icon: Settings },
-  { id: 'projects', label: 'Project Management', icon: FolderKanban },
-  { id: 'supplychain', label: 'Supply Chain Map', icon: Globe },
-  { id: 'ontology', label: 'Supply Chain Ontology', icon: Network },
-  { id: 'optimization', label: 'SC Optimization', icon: Sparkles },
-  { id: 'forecasting', label: 'SC Forecasting', icon: TrendingUp },
-  { id: 'lineage', label: 'BDC Sources & Lineage', icon: GitBranch },
-  { id: 'analyst', label: 'Cortex Analyst', icon: Bot },
+/** Sidebar groups (PRD 8.3). */
+export const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
+  { title: 'Context', items: [
+    { id: 'c1', code: 'C1', label: 'Business Overview' },
+    { id: 'c2', code: 'C2', label: 'Dashboard Overview' },
+    { id: 'c3', code: 'C3', label: 'Demo Overview' },
+    { id: 'c4', code: 'C4', label: 'Platform Architecture' },
+  ] },
+  { title: 'ProServe360', items: [
+    { id: 'p0', code: 'P0', label: 'ProServe360 Overview' },
+    { id: 'p7', code: 'P7', label: 'Context & Reasoning' },
+    { id: 'p10', code: 'P10', label: 'Ask the Advisor' },
+  ] },
+  { title: 'Operational Excellence', items: [
+    { id: 'p1', code: 'P1', label: 'Portfolio & Pareto' },
+    { id: 'p2', code: 'P2', label: 'Project Health' },
+    { id: 'p11', code: 'P11', label: 'Asset Library' },
+  ] },
+  { title: 'Value Creation', items: [{ id: 'p5', code: 'P5', label: 'Pipeline & Pursuit' }] },
+  { title: 'People Development', items: [
+    { id: 'p3', code: 'P3', label: 'Time Mix & Bench' },
+    { id: 'p4', code: 'P4', label: 'People Intelligence' },
+    { id: 'p6', code: 'P6', label: 'AI Productivity & Learning' },
+  ] },
+  { title: 'Data', items: [
+    { id: 'p8', code: 'P8', label: 'BDC Sources & Lineage' },
+    { id: 'p9', code: 'P9', label: 'Data Trust' },
+  ] },
 ];
 
-interface SidebarProps {
-  activePage: PageId;
-  onNavigate: (page: PageId) => void;
+export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
+
+function Filters() {
+  const { filters, setFilters, groups, years, sizes } = useFilters();
+  const sel = 'w-full rounded-md border border-white/20 bg-white/10 px-2 py-1 text-xs text-white focus:outline-none';
+  return (
+    <div className="space-y-2 border-b border-white/10 px-4 pb-4">
+      <label className="block text-[10px] font-semibold uppercase tracking-wider text-sf-pale">MD group</label>
+      <select className={sel} value={filters.group} onChange={(e) => setFilters({ group: e.target.value })}>
+        {groups.map((g) => <option key={g.md_group_id} value={g.md_group_id} className="text-gray-900">{g.md_group_name}</option>)}
+        <option value="ALL" className="text-gray-900">Firm-wide</option>
+      </select>
+      <label className="block text-[10px] font-semibold uppercase tracking-wider text-sf-pale">Fiscal years</label>
+      <div className="flex gap-1">
+        <select className={sel} value={filters.fy0} onChange={(e) => setFilters({ fy0: Number(e.target.value) })}>
+          {years.filter((y) => y <= filters.fy1).map((y) => <option key={y} value={y} className="text-gray-900">FY{y % 100}</option>)}
+        </select>
+        <select className={sel} value={filters.fy1} onChange={(e) => setFilters({ fy1: Number(e.target.value) })}>
+          {years.filter((y) => y >= filters.fy0).map((y) => <option key={y} value={y} className="text-gray-900">FY{y % 100}</option>)}
+        </select>
+      </div>
+      <label className="block text-[10px] font-semibold uppercase tracking-wider text-sf-pale">Size class</label>
+      <select className={sel} value={filters.size} onChange={(e) => setFilters({ size: e.target.value })}>
+        <option value="ALL" className="text-gray-900">All sizes</option>
+        {sizes.map((s) => <option key={s} value={s} className="text-gray-900">{s}</option>)}
+      </select>
+    </div>
+  );
 }
 
-export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
-  const { plants, selectedPlants, setSelectedPlants } = useFilters();
-
-  function togglePlant(plant: string) {
-    if (selectedPlants.includes(plant)) {
-      setSelectedPlants(selectedPlants.filter((p) => p !== plant));
-    } else {
-      setSelectedPlants([...selectedPlants, plant]);
-    }
-  }
-
-  function selectAll() {
-    setSelectedPlants([...plants]);
-  }
-
-  function selectNone() {
-    setSelectedPlants([]);
-  }
-
+export default function Sidebar({ activePage, onNavigate }: { activePage: PageId; onNavigate: (p: PageId) => void }) {
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col bg-gradient-to-b from-sf-dark to-sf-deeper text-white">
-      {/* Logo */}
-      <div className="flex flex-col gap-1.5 border-b border-white/10 px-5 py-4">
-        <img
-          src={`${import.meta.env.BASE_URL}snowflake_logo.svg`}
-          alt="Snowflake"
-          className="h-7 w-auto self-start"
-        />
-        <span className="text-lg font-bold tracking-tight text-white">
-          Supply Chain 360
-        </span>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3">
-        <ul className="space-y-0.5">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const active = activePage === item.id;
-            return (
-              <li key={item.id}>
-                <button
-                  onClick={() => onNavigate(item.id)}
-                  className={cn(
-                    'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                    active
-                      ? 'bg-sf-primary/20 text-sf-light font-medium'
-                      : 'text-sf-pale/80 hover:bg-white/5 hover:text-white'
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {item.label}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {/* Plant Filter */}
-      <div className="border-t border-white/10 px-4 py-3">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-sf-pale/70">
-            Plants
-          </span>
-          <div className="flex gap-2 text-[10px]">
-            <button onClick={selectAll} className="text-sf-light hover:underline">
-              All
-            </button>
-            <button onClick={selectNone} className="text-sf-light hover:underline">
-              None
-            </button>
-          </div>
+    <aside className="fixed inset-y-0 left-0 z-30 flex w-64 flex-col bg-gradient-to-b from-sf-deeper to-sf-dark text-white">
+      <div className="flex items-center gap-2 px-4 py-4">
+        <img src="/snowflake_logo.svg" alt="" className="h-7 w-7" />
+        <div>
+          <p className="text-sm font-bold leading-tight">ACoCo ProServe360</p>
+          <p className="text-[10px] text-sf-pale">Partner MD Command Center</p>
         </div>
-        <div className="max-h-32 space-y-0.5 overflow-y-auto">
-          {plants.map((p) => {
-            const checked = selectedPlants.includes(p);
-            return (
-              <button
-                key={p}
-                onClick={() => togglePlant(p)}
-                className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs text-sf-pale/80 hover:bg-white/5"
-              >
-                <span
-                  className={cn(
-                    'flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border',
-                    checked
-                      ? 'border-sf-primary bg-sf-primary'
-                      : 'border-sf-pale/40'
-                  )}
-                >
-                  {checked && <Check className="h-2.5 w-2.5 text-white" />}
-                </span>
-                <span className="truncate">
-                  {p}
-                </span>
+      </div>
+      <Filters />
+      <nav className="flex-1 overflow-y-auto px-2 py-3">
+        {NAV_GROUPS.map((g) => (
+          <div key={g.title} className="mb-3">
+            <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sf-pale/80">{g.title}</p>
+            {g.items.map((it) => (
+              <button key={it.id} onClick={() => onNavigate(it.id)}
+                className={cn('flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition',
+                  activePage === it.id ? 'bg-white/15 font-semibold text-white' : 'text-white/80 hover:bg-white/10')}>
+                <span className="w-7 shrink-0 text-[10px] text-sf-light">{it.code}</span>{it.label}
               </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-white/10 px-5 py-3">
-        <p className="text-[10px] leading-relaxed text-sf-pale/50">
-          SAP BDC &nbsp;|&nbsp; 16 products &nbsp;|&nbsp; 177 entities
-        </p>
-      </div>
+            ))}
+          </div>
+        ))}
+      </nav>
+      <p className="px-4 py-3 text-[10px] text-sf-pale/70">SAP Business Data Cloud + Snowflake - as of 1 Oct 2026</p>
     </aside>
   );
 }
