@@ -11,3 +11,5 @@ cp09: 7/7 passed
 == clone ACOCO_L2 -> ACOCO_BKP_CP09_ACOCO_L2
 exported 8 definitions to backup/cp09/
 == git
+== cp-09 pushed: 93515cb
+EXIT 0

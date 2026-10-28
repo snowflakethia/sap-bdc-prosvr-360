@@ -17,3 +17,10 @@ The file does not exist at "/Users/bthia/Development/sap-bdc-prosvr-360/service/
 11:25:36 AM [vite] (client) hmr invalidate /src/components/ui.tsx Could not Fast Refresh ("COLORS" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
 11:25:36 AM [vite] (client) hmr update /src/index.css, /src/pages/Overview.tsx, /src/pages/Portfolio.tsx, /src/pages/Reasoning.tsx, /src/pages/Pipeline.tsx, /src/pages/Context.tsx, /src/pages/People.tsx, /src/pages/ProjectHealth.tsx, /src/pages/AiProductivity.tsx, /src/pages/Lineage.tsx, /src/pages/Trust.tsx, /src/pages/Architecture.tsx, /src/pages/TimeMix.tsx, /src/pages/Assets.tsx, /src/pages/Advisor.tsx
 11:26:26 AM [vite] (client) hmr update /src/pages/Pipeline.tsx, /src/index.css
+npm error Lifecycle script `dev` failed with error:
+npm error code 143
+npm error path /Users/bthia/Development/sap-bdc-prosvr-360/service/app/client
+npm error workspace client@1.0.0
+npm error location /Users/bthia/Development/sap-bdc-prosvr-360/service/app/client
+npm error command failed
+npm error command sh -c vite

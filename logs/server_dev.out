@@ -16,3 +16,10 @@ ACoCo ProServe360 server on http://localhost:3001
 {"level":"INFO","message":"[11:36:00.750 AM]: No config file path found. Client config will not be used."}
 {"level":"INFO","message":"[11:36:00.750 AM]: Easy Logging is disabled as no config has been found"}
 {"level":"INFO","message":"[11:36:00.751 AM]: Connection[id: 3f700b94-c4f0-4c21-a81b-3ad79b6d7349] - connected successfully after 8.647584000005736 milliseconds"}
+npm error Lifecycle script `dev` failed with error:
+npm error code 143
+npm error path /Users/bthia/Development/sap-bdc-prosvr-360/service/app/server
+npm error workspace server@1.0.0
+npm error location /Users/bthia/Development/sap-bdc-prosvr-360/service/app/server
+npm error command failed
+npm error command sh -c tsx watch src/index.ts

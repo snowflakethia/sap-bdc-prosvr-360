@@ -72,7 +72,7 @@ plan/checkpoints.md   this file (status column updated at each CP)
 | 07 | Semantic Views and ontology registry | 5.3, 7.2 | `SEMANTIC` (5 SVs), `ONTOLOGY.ONT_*` | `ACOCO_L2` + SV DDL |
 | 08 | Cortex Agent and regression | 10, B5 | `ACOCO_DB.AGENT.ACOCO_ADVISOR` | agent DDL |
 | 09 | Command Center app (local) | 8, B6 | nothing new | - (git only) |
-| 10 | awaiting validation | cp-10 | SPCS v5, gate 8/8 |
+| 10 | SPCS deployment | 8.5, B7 | image, service, endpoint | service spec |
 | 11 | Demo readiness | 6.3, 11, B8 | nothing new | final tag `v1.0-demo` |
 
 ---
@@ -463,5 +463,5 @@ regression 20/20 re-run on the final build.
 | 07 | approved | cp-07 | Boon Sing Thia, 2026-10-27 | gate 6/6; ontology check 0 errors; D-07-1..5 |
 | 08 | approved | cp-08 | Boon Sing Thia, 2026-10-28 | gate 5/5; regression 20/20; p90 84 s; D-08-1..4 |
 | 09 | approved 2026-10-28 | cp-09, cp-09.1 | UI: Business Group label, (i) metric popovers (D-09-11) |
-| 10 | not started | | | |
+| 10 | awaiting validation | cp-10 | SPCS image v5, gate 8/8 (D-10-1..4) |
 | 11 | not started | | | |
