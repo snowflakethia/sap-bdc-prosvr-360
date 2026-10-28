@@ -387,12 +387,15 @@ question per SV with SQL that runs.
 3. Fee-boundary evidence from your local session:
    ```sql
    SELECT DISTINCT f.value:"objectName"::string AS object
-   FROM SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY ah, LATERAL FLATTEN(ah.base_objects_accessed) f
-   JOIN SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY q ON q.query_id = ah.query_id
-   WHERE q.query_tag = 'ACOCO_APP' AND ah.query_start_time > DATEADD(hour,-3,CURRENT_TIMESTAMP());
+   FROM SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY ah
+   JOIN SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY q ON q.query_id = ah.query_id,
+   LATERAL FLATTEN(ah.base_objects_accessed) f
+   WHERE q.query_tag = 'ACOCO_APP' AND ah.query_start_time > DATEADD(hour,-3,CURRENT_TIMESTAMP())
+   ORDER BY 1;
    ```
-   Expected: only `ACOCO_L2.SERVING.*`, `ACOCO_L2.SEMANTIC.*`, `ACOCO_L2.ONTOLOGY.*` (and their underlying L2 DTs);
-   no `_V1`, `ACOCO_SIM` or `ACOCO_L1`. (`ACCESS_HISTORY` latency can be up to ~3 h; re-check later if empty.)
+   Expected (base objects = the tables beneath the views): only `ACOCO_L2.*` tables (ONTOLOGY, the five marts,
+   CORE, QUALITY, REASONING) plus `ACOCO_DB.OPS.AS_OF_CONTROL` (the as-of date read inside `VW_DEMAND_FORECAST`);
+   no `_V1` CLD table, no `ACOCO_SIM` and no `ACOCO_L1`. (Corrected at CP-09: the JOIN must precede the FLATTEN.) (`ACCESS_HISTORY` latency can be up to ~3 h; re-check later if empty.)
 
 **Rollback:** `git checkout cp-08` (no Snowflake change in this CP).
 
