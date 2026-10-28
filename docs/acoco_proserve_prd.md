@@ -1,7 +1,7 @@
 # PRD - ACoCo ProServe360: Partner MD Decision Support on SAP BDC + Snowflake (v2.1, SPCS edition)
 
 **Document type:** Product Requirements Document - **master document for the demo**
-**Version:** 2.5 - 27 October 2026 (v2.4 + bench held below 3 % overall; Delivery ~71-72 %)
+**Version:** 2.6 - 28 October 2026 (v2.5 + **measured** figures restated in 1, 6.3, 8 and 11 at CP-11; SPCS owner role; Business Group label)
 **Supersedes:** `docs/references/acoco_prd/acoco_oldref/ACoCo_Agentic_AI_Decision_Support_Demo_PRD.md` v1.1 (Streamlit edition, three personas, four roles)
 **Target account:** `SFSEAPAC.SNOWFLAKE_SAP_APJ` (AWS, connector `SNOWFLAKE_APJ`, status `CONNECTED`)
 **Demo "today":** **1 October 2026** - data window **1 Oct 2021 to 30 Sep 2026** (five fiscal years, FY22-FY26)
@@ -50,9 +50,9 @@ as-of control view, honesty markers - carries over unchanged.
 | Data | **L0** = SAP BDC data products as **catalog-linked databases** (S/4HANA finance/project + SAP People Intelligence workforce) + `ACOCO_SIM` (BDC-shaped synthetic data for products not yet shared) + AI-agent telemetry. **L1** passthrough views. **L2** dynamic tables + 5 Semantic Views. |
 | Reasoning | Cortex Agent `ACOCO_ADVISOR` (5 Cortex Analyst tools + 1 Cortex Search tool), Cortex `AI_COMPLETE` for in-page "Ask Cortex" explanations, Snowflake ML for forecasts and risk scores. |
 | Front end | **ACoCo Command Center** - React (Vite, Tailwind, Recharts) + Express (Node 20) in one container, served by an SPCS **service** on compute pool `ACOCO_POOL`, public endpoint, sidebar navigation and Ask-Cortex buttons as in Supply Chain 360. |
-| Security model | Everything runs as `ACCOUNTADMIN`. The service's identity is the service owner (`ACCOUNTADMIN`). |
+| Security model | Build and administration run as `ACCOUNTADMIN`. SPCS does not allow `ACCOUNTADMIN` to own a service, so the Command Center is owned by **`ACOCO_APP_ROLE`** (read on `ACOCO_L2`, the agent, Cortex and `WH_ACOCO_APP` only - no CLD / `ACOCO_SIM` / `ACOCO_L1` grant); presenters reach the endpoint through `ALL_ENDPOINTS_USAGE` granted to `ACCOUNTADMIN` (CP-10, D-10-1). |
 | Time | Demo today = **2026-10-01**. Data = 2021-10-01 to 2026-09-30. FY = Oct-Sep. "Current" = last closed month **Sep 2026** = FY26 close. |
-| Scale (design) | ~1,000 consultants (with hires and leavers over 5 years: ~1,700 distinct people), ~400 projects, ~800 opportunities, 60 closed fiscal months, six MD groups. |
+| Scale (measured) | **1,956 people at end FY26** (3,476 distinct people FY22-FY26: real People Intelligence users plus the simulated pool), **774 projects**, **2,143 opportunities**, 167 library assets, 60 closed fiscal months, six Business Groups (each led by one Partner MD). |
 
 ---
 
@@ -60,7 +60,7 @@ as-of control view, honesty markers - carries over unchanged.
 
 ### 2.1 The business scenario - how ACoCo makes (and loses) money
 
-**ACoCo Consulting** is a ~1,000-person professional-services firm organised in six industry groups (Financial
+**ACoCo Consulting** is a ~2,000-person (1,956 at end FY26) professional-services firm organised in six industry groups (Financial
 Services, Products, Health & Public Service, Communications/Media/Tech, Resources, Cross-Industry AI). Each group is
 run by a **Partner MD** who owns two things: a **portfolio of client work** (projects in delivery and deals being
 bid) and a **group of people** (the consultants whose home cost centre is in the group).
@@ -716,25 +716,31 @@ Reuse `gen/` (seeded, deterministic, G2 determinism check), re-parameterised:
 
 Volume estimate (design): ~6-7 M rows in `ACOCO_SIM` (timesheet dominates); L2 rebuild < 30 minutes on Medium.
 
-### 6.3 Story anchors (design targets - re-measure before speaking)
+### 6.3 Story anchors (measured 28 Oct 2026 - CP-11)
 
-| Anchor | Design target |
-|---|---|
-| One Large FS fixed-price project in loss at FY26 close | forecast margin < 0 %, CPI ~0.73, SPI ~0.8 |
-| FY26 firm Delivery share (billability) / bench | ~72 % / ~1-2 % against targets ~70 % / ~2 % (bench < 3 % in every year) |
-| Roll-off before 30 Dec 2026 without successor | 30-40 people in FS; > 75 % below the pipeline's required AI-skill level |
-| Attrition trend | FY22 peak ~18 % -> FY26 ~13 % |
-| AI return (FY26, FS) | People+Agents margin ~10 pts above People-only; CPI > 1.1 vs ~1.0 |
-| Pre-sales | above-median intensity win-rate ~50 % vs ~30 % within size class |
-| Pursuit-team fit | bids with skill fit >= 0.8 win ~55 % vs ~30 % below 0.5, within size class |
-| Asset reuse | harvest rate FY22 ~15 % -> FY26 ~40 %; projects with reuse CPI ~1.05 vs ~0.95 without; the FS loss-making project reused none of the 2-3 matching assets |
-| Time mix (FS, FY26) | Delivery ~72 %, Bid ~16 %, Learning ~10 %, Admin ~1.5 %, Bench ~1.7 % - vs target ~70 / ~15 / ~10 / ~3 / ~2 % |
-| AI productivity uplift (FS, FY26) | AI-active vs rest within level x work type: productivity index ~+0.08, 90 % CI excluding zero; skilled-but-inactive ~0 |
-| Learning payback | AI-curriculum completers ~+4 % productivity in the following 6 months vs matched non-learners; non-AI curricula smaller and not significant |
-| AI skilled but inactive | ~20 % of FS people with AI-skill level >= 3 have no AI-tool use in Jul-Sep 2026 |
+Design targets are kept for reference; the **measured** column is what the demo says. Source: `tools/validate.py --step anchors`
+(`plan/measured_anchors.md`). Four anchors miss their design band and are accepted as measured (decision at CP-06): the
+story still holds in each case and the presenter uses the measured figure.
 
-Every figure is re-measured by a `validate.py` assertion and restated as **measured** in this document before the demo.
-v1.1's measured figures (P-0417, Daniel Okafor, Omar Rodriguez, 38 roll-offs, etc.) **do not carry over**.
+| # | Anchor | Design target | **Measured** | |
+|---|---|---|---|---|
+| A1 | One Large FS fixed-price project in loss at FY26 close | forecast margin < 0 %, CPI ~0.73, SPI ~0.8 | **P-0615 Atlas Bank: forecast margin -16.9 %, CPI 0.70, SPI 0.96, LD exposure $1.46M** | accepted (SPI higher: over budget more than late) |
+| A2 | FY26 firm Delivery share / bench | ~72 % / ~1-2 %, bench < 3 % every year | **Delivery 70.9 %, bench 1.4 %** (bench FY22-26: 1.9 / 1.7 / 1.8 / 1.5 / 1.4 %) | on target |
+| A3 | FS roll-off in the next 90 days | 30-40 people; > 75 % below pipeline AI level | **36 people; 89 % below the pipeline's AI-skill level** | on target |
+| A4 | Voluntary attrition trend (firm) | FY22 ~18 % -> FY26 ~13 % | **19.6 % -> 17.2 -> 15.2 -> 13.7 -> 12.9 %** | on target |
+| A5 | AI return (FY26, FS): People+Agents vs People-only | margin ~+10 pts; CPI > 1.1 vs ~1.0 | **margin 40.8 % vs 29.0 % (+11.8 pts); median CPI 1.20 vs 1.12** | on target |
+| A6 | Pre-sales intensity and win-rate, within size class | ~50 % vs ~30 % | **54.6 % vs 23.7 % (gap 30.8 pts)** | accepted (gap larger) |
+| A7 | Pursuit-team skill fit and win-rate | fit >= 0.8 ~55 % vs < 0.5 ~30 % | **53.3 % vs 10.3 %** | on target (gap larger) |
+| A8 | Asset harvest and reuse (firm) | harvest FY22 ~15 % -> FY26 ~40 %; CPI ~1.05 vs ~0.95 | **harvest 11 % -> 30 %; median CPI with reuse 1.12 vs 1.03 without; P-0615 reused none of the matching assets** | accepted (lower harvest, smaller CPI gap) |
+| A9 | Time mix (FS, FY26) vs target ~70 / 15 / 10 / 3 / 2 % | ~72 / 16 / 10 / 1.5 / 1.7 % | **Delivery 71.3 / Bid 16.4 / Learning 9.5 / Admin 1.4 / Bench 1.4 %** | on target |
+| A10 | AI productivity uplift (FS, FY26), within level x work type | ~+0.08, CI excluding zero; skilled-inactive ~0 | **+11.8 %, 90 % CI [+9.8, +13.8 %], significant; skilled-but-inactive +2.6 %, not significant** | accepted (larger uplift) |
+| A11 | Learning payback (6 months, vs matched comparison) | AI ~+4 %, significant; non-AI smaller | **Agentic-AI +4.9 % firm (+3.7 % FS), significant; core curricula negative** | on target |
+| A12 | AI skilled but inactive (FS, Jul-Sep 2026) | ~20 % of AI-skill >= 3 | **34 of 170 (20 %)** | on target |
+| A13 | Large-project revenue share | 72-79 % | **72.9 % FY22-26** | on target |
+
+Every spoken figure, with its page and source object, is on the presenter card `docs/PRESENTER_CARD.md` and re-measured by
+`tools/validate.py --step card` (part of `--all`). v1.1's figures (P-0417, Daniel Okafor, Omar Rodriguez, 38 roll-offs, etc.)
+**do not carry over**.
 
 ---
 
@@ -836,7 +842,7 @@ viewer joining cold. They replace v2.1's single top-bar "Demo Context" link.
 
 | # | Page | Purpose | Content | Source |
 |---|---|---|---|---|
-| C1 | **Business Overview** | Explain the business ACoCo runs | ACoCo in numbers (six groups, ~1,000 people, ~400 projects, ~800 opportunities FY22-FY26); the bill-code table and how a team's pyramid sets margin; the life cycle of an hour (bid -> project -> harvest -> bench/learning); the **five uses of time with their targets by level** and the objective of each (2.1); the three pillars and the ProServe360 overlay; why Agentic AI matters and the productivity hypothesis; Priya Nair's situation on 1 Oct 2026 | static (`content/business.md`) + live headline KPIs from `SV_PORTFOLIO_360` |
+| C1 | **Business Overview** | Explain the business ACoCo runs | ACoCo in numbers (six Business Groups; live: FY26 revenue $327.9M, margin 35.2 %, 1,956 people, Delivery 70.9 %, win-rate 49.7 %); the bill-code table and how a team's pyramid sets margin; the life cycle of an hour (bid -> project -> harvest -> bench/learning); the **five uses of time with their targets by level** and the objective of each (2.1); the three pillars and the ProServe360 overlay; why Agentic AI matters and the productivity hypothesis; Priya Nair's situation on 1 Oct 2026 | static (`content/business.md`) + live headline KPIs from `SV_PORTFOLIO_360` |
 | C2 | **Dashboard Overview** | Explain how to read the dashboard | Sitemap by pillar; for each page: the question it answers, the epic and stories, the main metrics with their one-line definitions (from `ONT_METRIC`), and the filters; how Ask Cortex and the Advisor work; the honesty markers (`SOURCE_SYSTEM` badge, ESTIMATED, design-target vs measured) | static + `ACOCO_L2.ONTOLOGY.ONT_METRIC` |
 | C3 | **Demo Overview** | Explain the demo itself | The 30-minute flow (section 11) as a clickable storyboard - beat, page, claim; the four epics and which SAP data alone cannot answer each; which data is real CLD and which is simulated, and why; what goes back to SAP for each pillar | static (`content/demo.md`) |
 | C4 | **Platform Architecture** | Explain the solution | Five-layer view (5.2) with the reference architecture (5.1); **ontology graph** (5.3) coloured by owning system (S/4HANA / People Intelligence / non-SAP), click an entity for its SAP data product, L1 domain object, L2 `ENT_*` table, Semantic Views and metrics; medallion contract (L0 CLD -> L1 domain -> L2 asset); zero-copy and fee-boundary explanation; object inventory | static diagram + `ACOCO_L2.SERVING.VW_ONTOLOGY_GRAPH` (over `ONTOLOGY.ONT_*`) |
@@ -959,6 +965,8 @@ the PMD-11 prompt. Write-back to SAP is **narrated, not executed** in the demo.
 ---
 
 ## 11. Demo script (30 minutes, Partner MD)
+
+Figures to speak are on `docs/PRESENTER_CARD.md` (measured, one row per figure with page and source; IDs F, S, O, D, V, P, R by beat). Warm-up and suspend: `docs/RUNBOOK.md`.
 
 | Min | Beat | Screen | Spoken claim |
 |---|---|---|---|

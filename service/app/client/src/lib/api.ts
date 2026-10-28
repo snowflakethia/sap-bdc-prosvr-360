@@ -74,59 +74,66 @@ function collectSql(node: any, out: string[]) {
 }
 
 /** POST /api/advisor and fold the streamed events into a turn; calls onUpdate as events arrive. */
+/** Fold one agent :run event into the turn being built. */
+function fold(turn: AdvisorTurn, event: string, raw: string) {
+  let d: any;
+  try {
+    d = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  if (event === 'response.text.delta') turn.text += d.text ?? '';
+  else if (event === 'response.status') turn.status = d.message ?? turn.status;
+  else if (event === 'response.tool_use') turn.tools.push({ name: d.name, type: d.type });
+  else if (event === 'response.tool_result') collectSql(d.content, turn.sql);
+  else if (event === 'response.table' && d.result_set) {
+    turn.tables.push({
+      columns: (d.result_set.resultSetMetaData?.rowType ?? []).map((c: any) => c.name),
+      rows: d.result_set.data ?? [],
+    });
+  } else if (event === 'response.suggested_queries') turn.suggestions = (d.suggested_queries ?? []).map((q: any) => q.query);
+  else if (event === 'error') turn.error = d.message ?? JSON.stringify(d);
+}
+
+/**
+ * Ask the Advisor. The server runs the agent as a job and the browser long-polls for new events: SPCS ingress
+ * ends any single request at ~90 s, and a what-if answer can take longer than that.
+ */
 export async function streamAdvisor(
   messages: { role: 'user' | 'assistant'; text: string }[],
   onUpdate: (t: AdvisorTurn) => void,
   signal?: AbortSignal,
 ): Promise<AdvisorTurn> {
   const turn = emptyTurn();
-  const res = await fetch(`${BASE}/advisor`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages }),
-    signal,
-  });
-  if (!res.ok || !res.body) {
-    const body = await res.json().catch(() => ({}));
-    turn.error = body.error ?? `advisor error ${res.status}`;
+  const fail = (msg: string) => {
+    turn.error = msg;
     turn.done = true;
     onUpdate({ ...turn });
     return turn;
-  }
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = '';
-  let event = '';
+  };
+  const start = await fetch(`${BASE}/advisor/start`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }), signal,
+  });
+  const body = await start.json().catch(() => ({}));
+  if (!start.ok || !body.id) return fail(body.error ?? `advisor error ${start.status}`);
+  const id: string = body.id;
+  const cancel = () => { void fetch(`${BASE}/advisor/${id}`, { method: 'DELETE' }); };
+  signal?.addEventListener('abort', cancel, { once: true });
+  let from = 0;
   for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    let nl: number;
-    while ((nl = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, nl).replace(/\r$/, '');
-      buf = buf.slice(nl + 1);
-      if (line.startsWith('event:')) event = line.slice(6).trim();
-      else if (line.startsWith('data:')) {
-        let d: any;
-        try {
-          d = JSON.parse(line.slice(5));
-        } catch {
-          continue;
-        }
-        if (event === 'response.text.delta') turn.text += d.text ?? '';
-        else if (event === 'response.status') turn.status = d.message ?? turn.status;
-        else if (event === 'response.tool_use') turn.tools.push({ name: d.name, type: d.type });
-        else if (event === 'response.tool_result') collectSql(d.content, turn.sql);
-        else if (event === 'response.table' && d.result_set) {
-          turn.tables.push({
-            columns: (d.result_set.resultSetMetaData?.rowType ?? []).map((c: any) => c.name),
-            rows: d.result_set.data ?? [],
-          });
-        } else if (event === 'response.suggested_queries') turn.suggestions = (d.suggested_queries ?? []).map((q: any) => q.query);
-        else if (event === 'error') turn.error = d.message ?? JSON.stringify(d);
-        onUpdate({ ...turn });
-      }
+    let page: { events: { event: string; data: string }[]; next: number; done: boolean };
+    try {
+      const r = await fetch(`${BASE}/advisor/${id}/events?from=${from}`, { signal });
+      if (!r.ok) return fail(`advisor error ${r.status}`);
+      page = await r.json();
+    } catch (e) {
+      if (signal?.aborted) throw e;
+      continue; // a dropped poll is retried; the job keeps running server-side
     }
+    for (const e of page.events) fold(turn, e.event, e.data);
+    from = page.next;
+    if (page.events.length) onUpdate({ ...turn });
+    if (page.done) break;
   }
   turn.done = true;
   onUpdate({ ...turn });

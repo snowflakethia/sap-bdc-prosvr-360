@@ -1,0 +1,33 @@
+[
+  {
+    "name": "ACOCO_COMMAND_CENTER",
+    "status": "RUNNING",
+    "database_name": "ACOCO_DB",
+    "schema_name": "APP",
+    "owner": "ACOCO_APP_ROLE",
+    "compute_pool": "ACOCO_POOL",
+    "spec": "---\nspec:\n  containers:\n  - name: \"app\"\n    image: \"sfseapac-snowflake-sap-apj.registry.snowflakecomputing.com/acoco_db/app/images/acoco_command_center:v6\"\n    sha256: \"@sha256:0ae2d958bb1687a0a85985b5e5e57ccf61e18ffcb6d092ebbd051df9b617e244\"\n    env:\n      PORT: \"8080\"\n      SNOWFLAKE_WAREHOUSE: \"WH_ACOCO_APP\"\n      ACOCO_AS_OF: \"2026-10-01\"\n    readinessProbe:\n      port: 8080\n      path: \"/healthcheck\"\n    resources:\n      limits:\n        memory: \"2Gi\"\n        cpu: \"1\"\n      requests:\n        memory: \"1Gi\"\n        cpu: \"500m\"\n  endpoints:\n  - name: \"ui\"\n    port: 8080\n    public: true\n",
+    "dns_name": "acoco-command-center.flsk.svc.spcs.internal",
+    "current_instances": 1,
+    "target_instances": 1,
+    "min_ready_instances": 1,
+    "min_instances": 1,
+    "max_instances": 1,
+    "auto_resume": "true",
+    "external_access_integrations": null,
+    "created_on": "2026-10-27T21:22:17.562000-07:00",
+    "updated_on": "2026-10-27T22:47:46.981000-07:00",
+    "resumed_on": "2026-10-27T22:19:46.679000-07:00",
+    "suspended_on": "2026-10-27T22:17:33.048000-07:00",
+    "auto_suspend_secs": 0,
+    "comment": "ACoCo ProServe360 Partner MD Command Center (CP-10)",
+    "owner_role_type": "ROLE",
+    "query_warehouse": "WH_ACOCO_APP",
+    "is_job": "false",
+    "is_async_job": "false",
+    "spec_digest": "abab5e998504132184e36008fea6fec850be54aafefbd796242fdc0b40d98faf",
+    "is_upgrading": "false",
+    "managing_object_domain": null,
+    "managing_object_name": null
+  }
+]

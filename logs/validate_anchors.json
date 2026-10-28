@@ -75,7 +75,7 @@
   "id": "A10",
   "anchor": "AI productivity uplift (FS, FY26), within level x work type",
   "design_target": "~+0.08 (0.05-0.11), 90 % CI excluding zero; skilled-but-inactive ~0",
-  "measured": "uplift +0.119, 90 % CI [+0.097, +0.137] (375 people); skilled-inactive PI 1.073 vs other non-active 1.037",
+  "measured": "uplift +0.119, 90 % CI [+0.098, +0.138] (375 people); skilled-inactive PI 1.073 vs other non-active 1.037",
   "status": "MISS",
   "proposed_fix": ""
  },

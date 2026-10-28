@@ -1,6 +1,6 @@
 # Measured story anchors (PRD 6.3)
 
-Measured 2026-10-27 against ACOCO_L2 as of 2026-10-01 by `tools/validate.py --step anchors`.
+Measured 2026-10-28 against ACOCO_L2 as of 2026-10-01 by `tools/validate.py --step anchors`.
 Design targets are from PRD 6.3; `MISS` = outside the band, with the proposed fix (decision needed - a
 generator change returns to CP-02 and is re-measured here).
 
@@ -15,7 +15,7 @@ generator change returns to CP-02 and is re-measured here).
 | A7 | Pursuit-team skill fit and win-rate | fit >= 0.8 ~55 % vs < 0.5 ~30 % (gap >= 15 pts) | high 53.3 % (n 971) vs low 10.3 % (n 494) | **OK** |  |
 | A8 | Asset harvest and reuse | harvest FY22 ~15 % -> FY26 ~40 %; reuse CPI ~1.05 vs ~0.95; story project reused none of 2-3 matching assets | harvest by FY {2022: 11.0, 2023: 17.0, 2024: 20.0, 2025: 32.0, 2026: 30.0}; median CPI reuse 1.122 vs none 1.029; story project uses 0, matching assets available at its start 18 | **MISS** | Calibrate HARVEST_P by FY and the number of assets matching the story project's work type (CP-02) |
 | A9 | Time mix (FS, FY26) | Delivery ~72 (70-74) / Bid ~16 (14-18) / Learning ~10 (8-12) / Admin ~1.5 (< 5) / Bench ~1.7 (< 3) % | Delivery 71.3 / Bid 16.4 / Learning 9.5 / Admin 1.4 / Bench 1.4 % | **OK** |  |
-| A10 | AI productivity uplift (FS, FY26), within level x work type | ~+0.08 (0.05-0.11), 90 % CI excluding zero; skilled-but-inactive ~0 | uplift +0.119, 90 % CI [+0.097, +0.137] (375 people); skilled-inactive PI 1.073 vs other non-active 1.037 | **MISS** |  |
+| A10 | AI productivity uplift (FS, FY26), within level x work type | ~+0.08 (0.05-0.11), 90 % CI excluding zero; skilled-but-inactive ~0 | uplift +0.119, 90 % CI [+0.098, +0.138] (375 people); skilled-inactive PI 1.073 vs other non-active 1.037 | **MISS** |  |
 | A11 | Learning payback (6 months after vs before, vs matched comparison) | AI curriculum ~+4 % (+0.03-0.05), significant; non-AI smaller, not significant | AI +0.0488 (se 0.0017, n 3,431); non-AI -0.0369 (se 0.0011) | **OK** |  |
 | A12 | AI skilled but inactive (FS, Jul-Sep 2026) | ~20 % (15-25) of FS people with AI-skill >= 3 have no AI-tool use | 34 of 170 (20 %) | **OK** |  |
 | A13 | Large-project revenue share (portfolio shape) | 0.72-0.79 of revenue | FY22-26 72.9 %; by FY {2022: 69.5, 2023: 78.5, 2024: 75.6, 2025: 70.2, 2026: 70.7} | **OK** |  |

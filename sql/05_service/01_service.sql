@@ -43,7 +43,7 @@ CREATE SERVICE IF NOT EXISTS ACOCO_DB.APP.ACOCO_COMMAND_CENTER
 spec:
   containers:
   - name: app
-    image: /acoco_db/app/images/acoco_command_center:v5
+    image: /acoco_db/app/images/acoco_command_center:v6
     env:
       PORT: "8080"
       SNOWFLAKE_WAREHOUSE: WH_ACOCO_APP

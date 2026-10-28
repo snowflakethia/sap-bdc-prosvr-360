@@ -54,6 +54,23 @@ class Ingress:
             return r.status, time.time() - t, r.read()
 
 
+    def advisor(self, question, timeout=300):
+        """Ask through the job API the browser uses: start, then long-poll events. -> (event kinds, text, seconds)."""
+        t = time.time()
+        jid = json.loads(self.request("/api/advisor/start", {"messages": [{"role": "user", "text": question}]})[2])["id"]
+        kinds, text, nxt = {}, "", 0
+        while time.time() - t < timeout:
+            page = json.loads(self.request(f"/api/advisor/{jid}/events?from={nxt}", timeout=60)[2])
+            for e in page["events"]:
+                kinds[e["event"]] = kinds.get(e["event"], 0) + 1
+                if e["event"] == "response.text.delta":
+                    text += json.loads(e["data"]).get("text", "")
+            nxt = page["next"]
+            if page["done"]:
+                break
+        return kinds, text, time.time() - t
+
+
 if __name__ == "__main__":
     import sys
     s, sec, b = Ingress(sys.argv[1]).request(sys.argv[2] if len(sys.argv) > 2 else "/healthcheck")

@@ -14,7 +14,7 @@ sql() { snow sql -c "$CONN" -q "$1" >/dev/null; }
 
 if [[ "${1:-}" == "--prune" ]]; then
   DRY="${2:-}"
-  keep=$(git tag -l 'cp-*' | sort | tail -3 | sed 's/cp-/CP/' | tr '\n' '|' | sed 's/|$//')
+  keep=$(git tag -l 'cp-[0-9][0-9]' | sort | tail -3 | sed 's/cp-/CP/' | tr '\n' '|' | sed 's/|$//')
   dbs=$(snow sql -c "$CONN" --format json -q "show databases like 'ACOCO_BKP_CP%'" | python3 -c 'import json,sys;[print(r["name"]) for r in json.load(sys.stdin)]')
   for db in $dbs; do
     if [[ -n "$keep" && "$db" =~ ACOCO_BKP_($keep)_ ]]; then echo "keep  $db"; continue; fi

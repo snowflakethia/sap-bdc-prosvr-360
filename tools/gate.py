@@ -662,12 +662,10 @@ def gate_cp10():
     checks.append(("CP10-05", f"every /api/* route ({len(routes)}) 200 with data, warm, through the endpoint", "< 3 s, 0 failures",
                    f"failures {bad}; slowest {slow}", not bad))
 
-    t = time.time()
-    stream = ig.request("/api/advisor", {"messages": [{"role": "user", "text": "What was the FS margin % in FY26?"}]}, timeout=240)[2].decode(errors="ignore")
-    events = {ln[6:].strip() for ln in stream.splitlines() if ln.startswith("event:")}
-    checks.append(("CP10-06", "Advisor streams the agent :run from inside SPCS (service OAuth token)", "tool use + text deltas",
-                   f"{len(stream)} bytes, {round(time.time() - t)} s, {sorted(events)[:5]}",
-                   {"response.text.delta", "response.tool_use"} <= events and "error" not in events))
+    kinds, text, sec = ig.advisor("What was the FS margin % in FY26?")
+    checks.append(("CP10-06", "Advisor (job + long-poll, as the browser) runs the agent from inside SPCS", "tool use + answer",
+                   f"{len(text)} chars, {round(sec)} s, events {sorted(kinds)[:4]}",
+                   bool(text) and "response.tool_use" in kinds and "error" not in kinds))
     ans = json.loads(ig.request("/api/ask-cortex", {"topic": "overview", "args": {"group": "FS"}}, timeout=120)[2]).get("answer", "")
     checks.append(("CP10-07", "Ask Cortex (AI_COMPLETE) from the service", "answer cites figures", ans[:80].replace("\n", " "),
                    len(ans) > 100 and any(ch.isdigit() for ch in ans)))
@@ -681,9 +679,40 @@ def gate_cp10():
     return checks
 
 
+def gate_cp11():
+    """Demo readiness: validate --all, presenter card fully asserted, agent regression 20/20 today, dry run all PASS."""
+    import re
+    import subprocess
+    import time
+    checks = []
+    py = str(ROOT / ".venv" / "bin" / "python")
+    v = subprocess.run([py, str(ROOT / "tools" / "validate.py"), "--all"], capture_output=True, text=True)
+    last = [ln for ln in v.stdout.splitlines() if ln.startswith("validate --all")]
+    checks.append(("CP11-01", "tools/validate.py --all (marts, reasoning, anchors, card)", "all PASS",
+                   last[0] if last else v.stdout[-120:], v.returncode == 0))
+    card = (ROOT / "docs" / "PRESENTER_CARD.md").read_text()
+    m = re.search(r"_(\d+) / (\d+) figures verified", card)
+    rows = len(re.findall(r"^\| [FSODVPR]\d+ \|", card, re.M))
+    checks.append(("CP11-02", "every presenter-card figure carries a validate.py assertion", "verified = rows",
+                   f"{m.group(1)}/{m.group(2)} verified, {rows} rows" if m else "no footer",
+                   bool(m) and m.group(1) == m.group(2) == str(rows) and rows > 0))
+    reg = (ROOT / "logs" / "agent_regression.md").read_text()
+    stamp = re.search(r"regression \((\d{4}-\d{2}-\d{2})", reg)
+    today = time.strftime("%Y-%m-%d")
+    checks.append(("CP11-03", "agent regression re-run on the final build (logs/agent_regression.md)", f"20/20, {today}",
+                   f"{'20/20' if '20/20 PASS' in reg else 'not 20/20'}, {stamp.group(1) if stamp else '-'}",
+                   "20/20 PASS" in reg and bool(stamp) and stamp.group(1) == today))
+    dr = subprocess.run([py, str(ROOT / "tools" / "dry_run.py"), "ictbqx-sfseapac-snowflake-sap-apj.snowflakecomputing.app"],
+                        capture_output=True, text=True)
+    tail = [ln for ln in dr.stdout.splitlines() if "steps PASS" in ln]
+    checks.append(("CP11-04", "scripted dry run of the 30-minute flow on the deployed app (logs/dry_run_cp11.md)", "all steps PASS",
+                   tail[0][:110] if tail else dr.stdout[-120:], dr.returncode == 0))
+    return checks
+
+
 GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03, "cp04": gate_cp04,
          "cp05": gate_cp05, "cp06": gate_cp06,
-         "cp07": gate_cp07, "cp08": gate_cp08, "cp09": gate_cp09, "cp10": gate_cp10}
+         "cp07": gate_cp07, "cp08": gate_cp08, "cp09": gate_cp09, "cp10": gate_cp10, "cp11": gate_cp11}
 
 
 def log_to_quality(cp, run_at, rows):

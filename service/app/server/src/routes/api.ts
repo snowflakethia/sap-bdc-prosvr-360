@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import { PAGES, run, runPage, type Params } from "../registry.js";
 import { restAuthHeaders, restHost } from "../services/auth.js";
@@ -169,6 +170,97 @@ router.post("/api/advisor", async (req: Request, res: Response) => {
     if (!res.headersSent) res.status(502).json({ error: String(err) });
     else res.end();
   }
+});
+
+// ---------------------------------------------------------------------------
+// Advisor as a job (what the browser uses). SPCS ingress ends any single request at ~90 s, and a what-if answer
+// can take longer, so the agent run happens server-side and the client polls short requests for new events.
+// ---------------------------------------------------------------------------
+interface AdvisorEvent { event: string; data: string }
+interface AdvisorJob { events: AdvisorEvent[]; done: boolean; abort: AbortController; touched: number; waiters: (() => void)[] }
+const jobs = new Map<string, AdvisorJob>();
+// Events the client folds into a turn (thinking deltas are dropped: large and not shown).
+const KEEP = new Set(["response.text.delta", "response.status", "response.tool_use", "response.tool_result",
+  "response.table", "response.suggested_queries", "error"]);
+
+function push(job: AdvisorJob, e: AdvisorEvent | null) {
+  if (e) job.events.push(e);
+  else job.done = true;
+  job.waiters.splice(0).forEach((w) => w());
+}
+
+async function runJob(job: AdvisorJob, messages: unknown[]) {
+  try {
+    const upstream = await fetch(`https://${restHost()}${AGENT_PATH}`, {
+      method: "POST",
+      headers: { ...restAuthHeaders(), "Content-Type": "application/json", Accept: "text/event-stream" },
+      body: JSON.stringify({ messages }),
+      signal: job.abort.signal,
+    });
+    if (!upstream.ok || !upstream.body) {
+      push(job, { event: "error", data: JSON.stringify({ message: `agent ${upstream.status}: ${(await upstream.text()).slice(0, 500)}` }) });
+      return;
+    }
+    const reader = upstream.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "", event = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, nl).replace(/\r$/, "");
+        buf = buf.slice(nl + 1);
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:") && KEEP.has(event)) push(job, { event, data: line.slice(5) });
+      }
+    }
+  } catch (err) {
+    if (!job.abort.signal.aborted) push(job, { event: "error", data: JSON.stringify({ message: String(err) }) });
+  } finally {
+    push(job, null);
+  }
+}
+
+// Forget jobs nobody has polled for 10 minutes.
+setInterval(() => {
+  for (const [id, j] of jobs) if (Date.now() - j.touched > 600_000) { j.abort.abort(); jobs.delete(id); }
+}, 60_000).unref();
+
+router.post("/api/advisor/start", (req: Request, res: Response) => {
+  const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+  const clean = messages.slice(-12).map((m: any) => ({
+    role: m.role === "assistant" ? "assistant" : "user",
+    content: [{ type: "text", text: String(m.text ?? "").slice(0, 4000) }],
+  }));
+  if (!clean.length) return res.status(400).json({ error: "messages required" });
+  const id = randomUUID();
+  const job: AdvisorJob = { events: [], done: false, abort: new AbortController(), touched: Date.now(), waiters: [] };
+  jobs.set(id, job);
+  void runJob(job, clean);
+  res.json({ id });
+});
+
+router.get("/api/advisor/:id/events", async (req: Request, res: Response) => {
+  const job = jobs.get(String(req.params.id));
+  if (!job) return res.status(404).json({ error: "unknown advisor job" });
+  job.touched = Date.now();
+  const from = Math.max(0, parseInt(String(req.query.from ?? "0"), 10) || 0);
+  if (job.events.length <= from && !job.done) {
+    // Long-poll: return as soon as something arrives, at most 20 s (well inside the ingress limit).
+    await new Promise<void>((resolve) => {
+      const t = setTimeout(resolve, 20_000);
+      job.waiters.push(() => { clearTimeout(t); resolve(); });
+    });
+  }
+  res.json({ events: job.events.slice(from), next: job.events.length, done: job.done });
+});
+
+router.delete("/api/advisor/:id", (req: Request, res: Response) => {
+  const job = jobs.get(String(req.params.id));
+  if (job) { job.abort.abort(); jobs.delete(String(req.params.id)); }
+  res.json({ ok: true });
 });
 
 export default router;

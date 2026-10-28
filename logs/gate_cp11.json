@@ -1,0 +1,34 @@
+{
+  "cp": "cp11",
+  "run_at": "2026-10-28T06:04:44+00:00",
+  "checks": [
+    {
+      "check_id": "CP11-01",
+      "description": "tools/validate.py --all (marts, reasoning, anchors, card)",
+      "expected": "all PASS",
+      "actual": "validate --all: marts PASS, reasoning PASS, anchors PASS, card PASS",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP11-02",
+      "description": "every presenter-card figure carries a validate.py assertion",
+      "expected": "verified = rows",
+      "actual": "37/37 verified, 37 rows",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP11-03",
+      "description": "agent regression re-run on the final build (logs/agent_regression.md)",
+      "expected": "20/20, 2026-10-28",
+      "actual": "20/20, 2026-10-28",
+      "result": "PASS"
+    },
+    {
+      "check_id": "CP11-04",
+      "description": "scripted dry run of the 30-minute flow on the deployed app (logs/dry_run_cp11.md)",
+      "expected": "all steps PASS",
+      "actual": "**16/16 steps PASS**; slowest page P9 1.96 s; Advisor 143 s, 94 s.",
+      "result": "PASS"
+    }
+  ]
+}

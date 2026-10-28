@@ -331,9 +331,23 @@ def write_anchor_md(anchors):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--step", choices=["marts", "anchors", "reasoning"], required=True)
+    ap.add_argument("--step", choices=["marts", "anchors", "reasoning", "card"])
+    ap.add_argument("--all", action="store_true", help="marts + reasoning + anchors + card (CP-11 gate)")
     ap.add_argument("--report", action="store_true")
     a = ap.parse_args()
+    if a.all:
+        import subprocess
+        rc = {}
+        for step in ("marts", "reasoning", "anchors", "card"):
+            print(f"== {step}", flush=True)
+            rc[step] = subprocess.run([sys.executable, __file__, "--step", step]).returncode
+        print("validate --all: " + ", ".join(f"{k} {'PASS' if v == 0 else 'FAIL'}" for k, v in rc.items()))
+        sys.exit(1 if any(rc.values()) else 0)
+    if not a.step:
+        ap.error("--step or --all is required")
+    if a.step == "card":
+        import presenter_card
+        sys.exit(presenter_card.main())
     if a.step in ("marts", "reasoning"):
         rows = reconcile_marts() if a.step == "marts" else reasoning_checks()
         (ROOT / "logs" / f"validate_{a.step}.json").write_text(json.dumps(rows, indent=1, default=str))

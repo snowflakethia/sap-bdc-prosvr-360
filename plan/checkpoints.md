@@ -463,5 +463,5 @@ regression 20/20 re-run on the final build.
 | 07 | approved | cp-07 | Boon Sing Thia, 2026-10-27 | gate 6/6; ontology check 0 errors; D-07-1..5 |
 | 08 | approved | cp-08 | Boon Sing Thia, 2026-10-28 | gate 5/5; regression 20/20; p90 84 s; D-08-1..4 |
 | 09 | approved 2026-10-28 | cp-09, cp-09.1 | UI: Business Group label, (i) metric popovers (D-09-11) |
-| 10 | awaiting validation | cp-10 | SPCS image v5, gate 8/8 (D-10-1..4) |
-| 11 | not started | | | |
+| 10 | approved 2026-10-28 | cp-10 | SPCS image v5, gate 8/8 (D-10-1..4) |
+| 11 | awaiting validation | cp-11 | validate --all, card 37/37, agent 20/20, dry run 16/16 (D-11-1..5) |

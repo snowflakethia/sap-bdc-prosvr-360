@@ -1,0 +1,29 @@
+[
+  {
+    "name": "CSS_ASSET_LIBRARY",
+    "database_name": "ACOCO_L2",
+    "schema_name": "REASONING",
+    "target_lag": "1 day",
+    "warehouse": "WH_ACOCO_BUILD",
+    "search_column": "SEARCH_TEXT",
+    "attribute_columns": "ASSET_TYPE,WORK_TYPE",
+    "columns": "SEARCH_TEXT,ASSET_ID,ASSET_TITLE,ASSET_TYPE,WORK_TYPE,SKILL_TAGS,EFFORT_SAVING_HOURS,SOURCE_PROJECT_ID,HARVEST_DATE",
+    "definition": "SELECT SEARCH_TEXT, ASSET_ID, ASSET_TITLE, ASSET_TYPE, WORK_TYPE, SKILL_TAGS, EFFORT_SAVING_HOURS::VARCHAR AS EFFORT_SAVING_HOURS,\n       SOURCE_PROJECT_ID, HARVEST_DATE::VARCHAR AS HARVEST_DATE\nFROM ACOCO_L2.REASONING.CSS_DOC_ASSET",
+    "comment": "Find reusable assets by need (R12); filter by WORK_TYPE / ASSET_TYPE",
+    "service_query_url": "sfseapac-snowflake-sap-apj.ap-southeast-1.snowflakecomputing.com/api/v2/databases/acoco_l2/schemas/reasoning/cortex-search-services/css_asset_library:query",
+    "source_data_num_rows": 167,
+    "indexing_state": "ACTIVE",
+    "indexing_error": "",
+    "serving_state": "ACTIVE",
+    "created_on": "2026-10-27T06:59:19.413000-07:00",
+    "data_timestamp": "2026-10-27T21:54:29.664000-07:00",
+    "embedding_model": "snowflake-arctic-embed-m-v1.5",
+    "primary_key_columns": "",
+    "scoring_profile_count": 0,
+    "auto_suspend": null,
+    "refresh_mode": "INCREMENTAL",
+    "vector_indexes": "[{\"auto_embedded\":true,\"column\":\"SEARCH_TEXT\",\"model\":\"snowflake-arctic-embed-m-v1.5\"}]",
+    "full_index_build_interval_days": null,
+    "request_logging": null
+  }
+]
