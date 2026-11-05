@@ -60,8 +60,8 @@ If `sd = 0` or the input is missing, the score is 50 (neutral), except where not
 | UTIL | Utilization at level: `(BILLABLE + PRESALES + ASSET_CONTRIBUTION hours) / AVAILABLE_HOURS / UTILIZATION_TARGET(level)` | timesheet, `ASSET_CONTRIBUTION`, `OPS.GEN_PARAMS_TIME_TARGET` |
 | LEARN | Learning attainment: `0.7 * LEAST(learning_hours_T4Q / (LEARNING_TARGET * available_hours_T4Q), 1.2) + 0.3 * required_curricula_completed / required_curricula(level)` (trailing 4 quarters) | LMS, `OPS.GEN_PARAMS_TIME_TARGET`, `OPS.LEVEL_REQUIRED_CURRICULUM` |
 | ACREATE | Asset creation: `SUM(role_weight * quality)` over assets contributed to in the trailing 4 quarters; role weight Author 1.0 / Contributor 0.5 / Reviewer 0.25; `quality = avg_rating / 5 * LN(1 + reuse_count)` (min 0.2 so new assets still count) | `ASSET_CONTRIBUTION`, `ASSET_USAGE` |
-| AREUSE | Asset reuse: hours saved by reusing firm assets on own work / delivery hours (quarter) | `ASSET_USAGE` |
-| TEAM | Mean WPS (excluding TEAM pillar) of direct reports in the quarter | `REL_PERSON_REPORTS_TO` |
+| AREUSE | Asset reuse: hours saved by reusing firm assets on own work / delivery hours, trailing 4 quarters (hours saved are recorded at the work-package start, so a single quarter is too lumpy) | `ASSET_USAGE` |
+| TEAM | Mean WPS (excluding TEAM pillar) of the team in the quarter: Manager = direct reports; Senior Manager and Principal = whole reporting tree, direct and indirect, depth <= 4 (decision 2026-11-05) | `REL_PERSON_REPORTS_TO`, `REL_PERSON_REPORTING_LINE` |
 
 Billability and utilization are now different measures: billability counts client-billable hours only;
 utilization adds presales (bid) hours and asset-contribution hours.
@@ -90,7 +90,7 @@ Learning stays at the CP-02 target of 10 % of available hours at every level (D-
 | VC - Value Creation | WIN 50 %, EFF 50 % |
 | OE - Operational Excellence | SCHED 50 %, EFF 50 % |
 | PD - People Development | Manager and below: BILL 30 %, UTIL 20 %, AREUSE 20 %, LEARN 15 %, ACREATE 15 %<br>Senior Manager and above: BILL 20 %, UTIL 30 %, AREUSE 20 %, LEARN 15 %, ACREATE 15 % |
-| TM - Team (Manager+ only) | TEAM 100 %; only when the person has 3 or more direct reports in the quarter |
+| TM - Team (Manager+ only) | TEAM 100 %; only when 3 or more team members (as defined for TEAM) are scored in the quarter |
 
 Pillar score = weighted average of its input scores (0-100).
 `OPS.WPS_INPUT_WEIGHTS` is keyed by LEVEL x PILLAR x INPUT, because the PD weights differ by level.

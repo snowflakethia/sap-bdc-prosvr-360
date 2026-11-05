@@ -311,11 +311,11 @@ def gate_cp04():
     ent = [r for r in rep if r["object"].startswith("ENT_")]
     rel = [r for r in rep if r["object"].startswith("REL_")]
     bad_e = [r["object"] for r in ent if not r["ok"]]
-    checks.append(("CP04-01", "12 ENT_* entities: key unique and not null; rows = distinct keys in the owning L1 source",
-                   "12 / 0 failing", f"{len(ent)} / {bad_e}", len(ent) == 12 and not bad_e))
+    checks.append(("CP04-01", "14 ENT_* entities: key unique and not null; rows = distinct keys in the owning L1 source",
+                   "14 / 0 failing", f"{len(ent)} / {bad_e}", len(ent) == 14 and not bad_e))
     bad_r = [r["object"] for r in rel if not r["ok"]]
-    checks.append(("CP04-02", "7 REL_* bridges: non-empty, key unique and not null", "7 / 0 failing",
-                   f"{len(rel)} / {bad_r}", len(rel) == 7 and not bad_r))
+    checks.append(("CP04-02", "11 REL_* bridges: non-empty, key unique and not null", "11 / 0 failing",
+                   f"{len(rel)} / {bad_r}", len(rel) == 11 and not bad_r))
 
     n, refs = go.check_refs()
     checks.append(("CP04-03", "no L2 object references L0 (*_V1 CLDs, ACOCO_SIM)", "0", f"{n} scanned, {refs}", not refs))
@@ -327,9 +327,9 @@ def gate_cp04():
     dts_show = [r for r in q("SHOW DYNAMIC TABLES IN DATABASE ACOCO_L2") if r["schema_name"] in ("CORE", "ONTOLOGY")]
     unhealthy = [f"{r['name']}:{r['scheduling_state']}" for r in dts_show if r["scheduling_state"] != "ACTIVE"]
     failed = [r["NAME"] for r in dts if r["ST"] != "SUCCEEDED"] + [r["name"] for r in dts_show if r["name"] not in {d["NAME"] for d in dts}]
-    checks.append(("CP04-04", "every L2 dynamic table ACTIVE with a successful last refresh", "21 / 0 / 0",
+    checks.append(("CP04-04", "every L2 dynamic table ACTIVE with a successful last refresh", "27 / 0 / 0",
                    f"{len(dts_show)} / not active {unhealthy} / not succeeded {failed}",
-                   len(dts_show) == 21 and not unhealthy and not failed))
+                   len(dts_show) == 27 and not unhealthy and not failed))
 
     lags = {r["name"]: r["target_lag"] for r in dts_show}
     downstream = [k for k, v in lags.items() if str(v).upper() == "DOWNSTREAM"]
@@ -711,9 +711,65 @@ def gate_cp11():
     return checks
 
 
+def gate_p6b():
+    """P6 step 3: L1 additions, ontology, WPS marts (spec docs/spec_p6_productivity.md v0.4)."""
+    import sf
+    q = sf.query
+    checks = []
+    w = q("""SELECT (SELECT COUNT(*) FROM (SELECT LEVEL, PILLAR FROM ACOCO_L1.ORGANISATION.WPS_WEIGHT
+                                          GROUP BY 1, 2 HAVING SUM(INPUT_WEIGHT) <> 100)) bad_input,
+                    (SELECT COUNT(*) FROM (SELECT LEVEL FROM (SELECT DISTINCT LEVEL, PILLAR, PILLAR_WEIGHT
+                                          FROM ACOCO_L1.ORGANISATION.WPS_WEIGHT) GROUP BY 1 HAVING SUM(PILLAR_WEIGHT) <> 100)) bad_pillar,
+                    (SELECT COUNT(DISTINCT LEVEL) FROM ACOCO_L1.ORGANISATION.WPS_WEIGHT) levels""")[0]
+    checks.append(("P6B-01", "WPS weights: every level x pillar input weights and every level's pillar weights sum to 100",
+                   "0 / 0, 5 levels", str(w), w["BAD_INPUT"] == 0 and w["BAD_PILLAR"] == 0 and w["LEVELS"] == 5))
+    pd_w = q("""SELECT LEVEL, MAX(IFF(INPUT = 'BILL', INPUT_WEIGHT, NULL)) b, MAX(IFF(INPUT = 'UTIL', INPUT_WEIGHT, NULL)) u,
+                       MAX(IFF(INPUT = 'AREUSE', INPUT_WEIGHT, NULL)) r, MAX(IFF(INPUT = 'LEARN', INPUT_WEIGHT, NULL)) l,
+                       MAX(IFF(INPUT = 'ACREATE', INPUT_WEIGHT, NULL)) c
+                FROM ACOCO_L1.ORGANISATION.WPS_WEIGHT WHERE PILLAR = 'PD' GROUP BY 1""")
+    want = {"Analyst": (30, 20), "Consultant": (30, 20), "Manager": (30, 20), "Senior Manager": (20, 30), "Principal": (20, 30)}
+    bad = [r["LEVEL"] for r in pd_w if (float(r["B"]), float(r["U"])) != want[r["LEVEL"]]
+           or (float(r["R"]), float(r["L"]), float(r["C"])) != (20, 15, 15)]
+    checks.append(("P6B-02", "PD weights (CP-P6a): BILL / UTIL 30 / 20 Manager and below, 20 / 30 Senior Manager+; AREUSE 20, "
+                   "LEARN 15, ACREATE 15", "0 levels off", str(bad), not bad and len(pd_w) == 5))
+    k = q("""SELECT COUNT(*) n, COUNT(DISTINCT PERSON_QUARTER_ID) d, COUNT_IF(WPS IS NULL) nulls,
+                    COUNT_IF(AVAILABLE_HOURS < 80) small, COUNT(DISTINCT FISCAL_YEAR || 'Q' || FISCAL_QUARTER) quarters
+             FROM ACOCO_L2.WORKFORCE_PERFORMANCE.DT_PERSON_QUARTER_WPS""")[0]
+    checks.append(("P6B-03", "DT_PERSON_QUARTER_WPS: key unique, WPS never null, population >= 80 available hours, 20 quarters FY22-26",
+                   "unique, 0, 0, 20", str(k), k["N"] == k["D"] and k["NULLS"] == 0 and k["SMALL"] == 0 and k["QUARTERS"] == 20))
+    med = q("""SELECT LEVEL, MEDIAN(WPS) wps, MEDIAN(VC) vc, MEDIAN(OE) oe, MEDIAN(PD) pd
+               FROM ACOCO_L2.WORKFORCE_PERFORMANCE.DT_PERSON_QUARTER_WPS GROUP BY 1""")
+    off = [f"{r['LEVEL']}:{c}={float(r[c]):.1f}" for r in med for c in ("WPS", "VC", "OE", "PD") if not 45 <= float(r[c]) <= 55]
+    checks.append(("P6B-04", "WPS and each pillar have a median of about 50 (45-55) at every level", "0 off",
+                   f"{len(med)} levels, off {off}", len(med) == 5 and not off))
+    tm = q("""SELECT COUNT_IF(TM_APPLIES AND LEVEL_SORT < 3) junior_tm, COUNT_IF(TM_APPLIES AND TEAM_MEMBERS_SCORED < 3) small_team,
+                     COUNT_IF(TM_APPLIES) tm_rows
+              FROM ACOCO_L2.WORKFORCE_PERFORMANCE.DT_PERSON_QUARTER_WPS""")[0]
+    checks.append(("P6B-05", "TM pillar only for Manager+ with >= 3 scored team members (Manager direct, Senior Manager+ reporting tree)", "0 / 0, > 0 rows", str(tm),
+                   tm["JUNIOR_TM"] == 0 and tm["SMALL_TEAM"] == 0 and tm["TM_ROWS"] > 0))
+    bu = q("""SELECT COUNT_IF(BID_HOURS + ASSET_CONTRIBUTION_HOURS > 0) with_other,
+                     COUNT_IF(BID_HOURS + ASSET_CONTRIBUTION_HOURS > 0 AND ABS(UTILIZATION - BILLABILITY) < 1e-9) equal
+              FROM ACOCO_L2.WORKFORCE_PERFORMANCE.DT_PERSON_QUARTER_WPS""")[0]
+    checks.append(("P6B-06", "billability <> utilization wherever there are bid or asset-contribution hours", "0 equal",
+                   str(bu), bu["WITH_OTHER"] > 0 and bu["EQUAL"] == 0))
+    # simulated people = S9xxxxx ids; SIMULATED rows also hold real people's back-history, which keeps their CLD manager
+    m = q("""SELECT COUNT_IF(PERSON_ID LIKE 'S9%' AND MANAGER_ID IS NULL) sim_null,
+                    COUNT_IF(PERSON_ID LIKE 'S9%') sim FROM ACOCO_L1.WORKFORCE.WORKFORCE_JOB""")[0]
+    checks.append(("P6B-07", "simulated people carry a line manager in L1 WORKFORCE_JOB (D-P6-8)", "0 null", str(m),
+                   m["SIM"] > 0 and m["SIM_NULL"] == 0))
+    f = q("""SELECT (SELECT COUNT(*) FROM ACOCO_L2.PIPELINE_PRESALES.DT_OPPORTUNITY_FACT WHERE TEAM_SIZE IS NULL
+                     AND STATUS_AS_OF IN ('WON', 'LOST')) no_core,
+                    (SELECT COUNT_IF(TEAM_ROLE = 'SUPPORT') FROM ACOCO_L2.ONTOLOGY.REL_PURSUIT_TEAM) support,
+                    (SELECT COUNT_IF(ACTUAL_END IS NOT NULL) FROM ACOCO_L2.ONTOLOGY.ENT_WORK_PACKAGE) wp_closed""")[0]
+    checks.append(("P6B-08", "SUPPORT members named (WIN) but outside skill fit; ACTUAL_END present on closed work packages",
+                   "support > 0, closed WPs > 0", str(f), f["SUPPORT"] > 0 and f["WP_CLOSED"] > 0 and f["NO_CORE"] == 0))
+    return checks
+
+
 GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03, "cp04": gate_cp04,
          "cp05": gate_cp05, "cp06": gate_cp06,
-         "cp07": gate_cp07, "cp08": gate_cp08, "cp09": gate_cp09, "cp10": gate_cp10, "cp11": gate_cp11}
+         "cp07": gate_cp07, "cp08": gate_cp08, "cp09": gate_cp09, "cp10": gate_cp10, "cp11": gate_cp11,
+         "p6b": gate_p6b}
 
 
 def log_to_quality(cp, run_at, rows):
