@@ -51,6 +51,7 @@ def read_inputs(sf: Sf):
                max(iff("employmentStatus" = 'D', "startDate", null)) term_date,
                max_by("payGrade", "startDate") pay_grade,
                max_by("costCenter"::varchar, "startDate") cost_center,
+               max_by("managerId"::varchar, "startDate") manager_id,
                max_by("gender", "startDate") gender
         from cw group by 1 order by try_to_number("userId"), "userId" """)
     for c in ("FIRST_START", "LAST_END", "TENURE_START", "TERM_DATE"):
@@ -66,19 +67,26 @@ def read_inputs(sf: Sf):
         group by 1, 2 order by 1, 2""")
     real_avail["WEEK_START"] = pd.to_datetime(real_avail["WEEK_START"]).dt.date
     real_avail["AVAILABLE_HOURS"] = real_avail["AVAILABLE_HOURS"].astype(float)
+    # P6 control tables (sql/00_control/04_p6_config.sql)
+    truth = sf.df("select * from ACOCO_DB.OPS.SIM_TRUTH_EFFECTS order by effect_id, level")
+    truth["COEF"] = truth["COEF"].astype(float)
+    prices = sf.df("select * from ACOCO_DB.OPS.AI_MODEL_PRICE order by vendor, model")
+    req_curr = sf.df("select * from ACOCO_DB.OPS.LEVEL_REQUIRED_CURRICULUM order by level, curriculum")
     return dict(params=params, levels=levels, targets=targets, paygrade=paygrade, sfcc=sfcc, mdcc=mdcc,
                 activity_ce=activity_ce, customers=customers, real_people=real_people, real_monthly=real_people,
-                real_avail_week=real_avail, assign_map=assign_map)
+                real_avail_week=real_avail, assign_map=assign_map, truth=truth, prices=prices, req_curr=req_curr)
 
 
 def generate(inputs) -> dict:
     t0 = time.time()
     rng = np.random.default_rng(int(inputs["params"]["seed"]))
-    ctx = g.Ctx(rng=rng, gl=dict(revenue="0041000000", receivable="0012100000", overhead="0094233007",
-                                 plan_cost="0094308000", agent_cost="0094308000"), **inputs)
+    rng2 = np.random.default_rng(int(inputs["params"]["seed"]) + 6)        # P6 draws (separate stream)
+    ctx = g.Ctx(rng=rng, rng2=rng2, gl=dict(revenue="0041000000", receivable="0012100000", overhead="0094233007",
+                                           plan_cost="0094308000", agent_cost="0094308000"), **inputs)
     wk = weeks()
     people = g.build_people(ctx)
     names, md = g.build_names_and_mds(ctx, people)
+    people = g.assign_managers(ctx, people)
     skill, ps, ai_level = g.build_skills(ctx, people)
     latest = ps.sort_values("ASSESSED_DATE").groupby("USER_ID").SKILL_ID.apply(set)
     ctx.out["_skill_sets"] = latest.to_dict()
@@ -91,12 +99,13 @@ def generate(inputs) -> dict:
     learning = g.build_learning_catalogue(ctx, skill)
     perf, comp = g.build_hr_extras(ctx, people)
     avail, leave = g.weekly_availability(ctx, people, wk)
+    plan_l = g.build_learning_plan(ctx, people, wk, avail)
     assets = g.Assets()
     st, opps, projects, wps, wp_skills, wp_plan, opp_team, opp_skills, accounts = g.run_demand(
-        ctx, people, wk, avail, ai_level, skill, learning, assets)
+        ctx, people, wk, avail, ai_level, skill, learning, assets, plan_l)
     ctx.out["_wp_plan"] = wp_plan
     g.allocate_bid_time(ctx, st, people, wk)
-    comps = g.schedule_learning(ctx, st, people, learning, ps, wk)
+    comps = g.schedule_learning(ctx, st, people, learning, plan_l, wk)
     ts = g.build_timesheets(ctx, st, people, wk, projects)
     telem, agt, ident = g.build_telemetry_and_agt(ctx, st, people, ts, wk)
     je, docs, plan, io = g.build_finance(ctx, people, ts, projects, wps, opps, agt)
@@ -152,18 +161,19 @@ def generate(inputs) -> dict:
         ("ASSETS", "ASSET", False): pd.DataFrame(assets.assets),
         ("ASSETS", "ASSET_HARVEST", False): pd.DataFrame(assets.harvests),
         ("ASSETS", "ASSET_USAGE", False): pd.DataFrame(assets.uses),
+        ("ASSETS", "ASSET_CONTRIBUTION", False): pd.DataFrame(assets.contribs),
         ("TELEMETRY", "OPENAI_USAGE", False): telem["OPENAI"],
         ("TELEMETRY", "ANTHROPIC_USAGE", False): telem["ANTHROPIC"],
         ("TELEMETRY", "CORTEX_USAGE", False): telem["CORTEX"],
         ("TELEMETRY", "AI_IDENTITY_MAP", False): ident,
         ("PROJECTCOMMENTARY", "STATUS_NOTE", False): notes,
     }
-    stats = story_stats(people, ts, avail, st, wk, opps, projects, wps, assets)
+    stats = story_stats(people, ts, avail, st, wk, opps, projects, wps, assets, comps, learning, telem, opp_team)
     print(f"generated {sum(len(v) for v in tables.values()):,} rows in {time.time() - t0:.0f}s")
     return dict(tables=tables, stats=stats)
 
 
-def story_stats(people, ts, avail, st, wk, opps, projects, wps, assets):
+def story_stats(people, ts, avail, st, wk, opps, projects, wps, assets, comps, learning, telem, opp_team):
     fy = wk.fiscal_year.values
     out = {}
     for f in (2022, 2023, 2024, 2025, 2026):
@@ -192,6 +202,40 @@ def story_stats(people, ts, avail, st, wk, opps, projects, wps, assets):
     out["asset_uses"] = len(assets.uses)
     out["people"] = len(people)
     out["sim_people"] = int((people.source_system == "SIMULATED").sum())
+    # P6 shape checks (spec 4.1-4.4)
+    out["ai_underperform"] = p[p.SEEDED_STORY == "AI_UNDERPERFORM"].PROJECT_ID.tolist()
+    out["asset_contributions"] = len(assets.contribs)
+    ac = pd.DataFrame(assets.contribs)
+    ac["FY"] = [d.year + (d.month >= 10) for d in ac.CONTRIBUTION_DATE]
+    lv = people.set_index("user_id").level
+    ac["LEVEL"] = ac.USER_ID.map(lv)
+    fy_people = {f: set(people.user_id[(avail[:, wk.fiscal_year.values == f].sum(axis=1) > 0)]) for f in (2025,)}
+    out["asset_participation_FY25_pct"] = {
+        l: round(100 * ac[(ac.FY == 2025) & (ac.LEVEL == l)].USER_ID.nunique()
+                 / max(1, sum(1 for u in fy_people[2025] if lv[u] == l)), 1) for l in g.LEVELS}
+    out["asset_roles_by_level"] = ac.groupby(["LEVEL", "CONTRIBUTION_ROLE"]).size().unstack(fill_value=0).to_dict("index")
+    u = pd.DataFrame(assets.uses)
+    out["asset_users"] = int(u.USED_BY_USER_ID.nunique())
+    t = pd.concat(telem.values(), ignore_index=True)
+    out["token_rows"] = len(t)
+    out["tokens_by_product_pct"] = (100 * t.groupby("PRODUCT").TOKENS.sum() / t.TOKENS.sum()).round(1).to_dict()
+    tc = t[t.VENDOR == "CORTEX"]
+    fam = tc.MODEL.map(lambda m: "CLAUDE" if "claude" in m else "GPT" if "gpt" in m else "OPEN")
+    out["cortex_family_pct"] = (100 * tc.groupby(fam).TOKENS.sum() / tc.TOKENS.sum()).round(1).to_dict()
+    out["cost_usd_by_vendor"] = t.groupby("VENDOR").COST_USD.sum().round(0).to_dict()
+    c = comps.merge(learning[["LEARNING_ITEM_ID", "CURRICULUM"]], on="LEARNING_ITEM_ID")
+    c["FY"] = [d.year + (d.month >= 10) for d in c.COMPLETION_DATE]
+    c["LEVEL"] = c.USER_ID.map(lv)
+    take = c[c.FY == 2025].groupby(["CURRICULUM", "LEVEL"]).USER_ID.nunique().unstack(fill_value=0)
+    out["curriculum_takeup_FY25"] = take.to_dict("index")
+    fyv = wk.fiscal_year.values == 2025
+    out["learning_share_FY25_by_level_pct"] = {
+        l: round(100 * st.learn[(people.level == l).values][:, fyv].sum()
+                 / avail[(people.level == l).values][:, fyv].sum(), 1) for l in g.LEVELS}
+    tm = pd.DataFrame(opp_team, columns=["OPPORTUNITY_ID", "USER_ID", "TEAM_ROLE"])
+    out["bid_team_rows"] = tm.TEAM_ROLE.value_counts().to_dict()
+    out["named_bids_per_person"] = round(len(tm) / max(tm.USER_ID.nunique(), 1), 1)
+    out["sim_with_manager_pct"] = round(100 * people[people.source_system == "SIMULATED"].manager_id.notna().mean(), 1)
     return out
 
 

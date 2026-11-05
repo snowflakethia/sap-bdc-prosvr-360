@@ -11,13 +11,12 @@ Legend: ADD = new object, CHG = changed, KEEP = unchanged but must be re-verifie
 | `Staffing.person_prod` (flat +0.11 / +0.02, line ~423) | CHG | Replace with Cortex -> OE dose-response by level (model-agnostic within Cortex) |
 | Win logit in `run_demand` (~565) | CHG | Add bid-team usage share terms: Claude Code (Manager and below), Codex (Senior Manager+), plus Commercial training |
 | `_usage_bands`, `build_telemetry_and_agt` (~410, ~1059) | CHG | Add PRODUCT, MODEL (synced across vendors), INPUT/OUTPUT_TOKENS, USE_CASE, per-model cost |
-| `Assets` class (~691) | CHG | ~1,000-1,200 assets, contributors by role, usage by person with rating; contribution hours -> INTERNAL_INVEST |
+| `Assets` class (~691) | CHG | ~1,000-1,200 assets, contributors by role, usage by person with rating; contribution HOURS recorded (not budgeted, counted in UTIL) |
 | Learning targets by level, required curricula, minimum take-up per curriculum x level | ADD | Feeds LEARN input and fills Q6 cells |
 | `build_learning_catalogue`, `schedule_learning` (~289, ~761) | CHG | 8 curricula, provider, modality, assessment score |
 | `AI_LEARN_BOOST` (+7 %, 26 wks) | CHG | Per-curriculum effect on its target input |
 | Managers for simulated people | ADD | Feeds `MANAGER_ID` (today NULL, `workforce_job.sql:47`) |
 | `ACTUAL_END` on closed projects / WPs | ADD | |
-| Timesheet `INTERNAL_INVEST` category | ADD | Separates utilization from billability |
 | `OPS.SIM_TRUTH_EFFECTS` | ADD | Ground truth for gates |
 | Two under-performing AI-enabled projects | ADD | PRD PMD-7 honesty rule (not present today) |
 
@@ -29,16 +28,17 @@ and keep story projects P-0679 / P-0460 behaving as narrated. Record each move i
 
 | Object | Action |
 |---|---|
-| `OPS.LEVEL` | CHG - add BILLABILITY_TARGET, UTILIZATION_TARGET, LEARNING_TARGET_HOURS |
+| `OPS.LEVEL`, `OPS.GEN_PARAMS_TIME_TARGET` | KEEP - targets reused (BILL = DELIVERY, UTIL = DELIVERY + BID, LEARN = LEARNING) |
 | `OPS.LEVEL_REQUIRED_CURRICULUM` | ADD |
 | `ACOCO_SIM.ASSETS.ASSET_CONTRIBUTION` + L1 view | ADD |
 | `ACOCO_SIM.ASSETS.ASSET_USAGE`, `sql/02_l1/assets/*` | CHG - USED_BY_USER_ID, RATING |
 | `OPS.WPS_WEIGHTS`, `OPS.WPS_INPUT_WEIGHTS` (keyed LEVEL x PILLAR x INPUT), `OPS.AI_MODEL_PRICE` | ADD |
 | `ai_telemetry/ai_usage_event.sql` | CHG - new columns |
 | `talent/learning_item.sql`, `learning_completion.sql` | CHG - taxonomy, assessment |
-| `workforce/workforce_job.sql` | CHG - sim MANAGER_ID |
+| `workforce/workforce_job.sql` | CHG - sim MANAGER_ID (generator now writes `managerId`; L1 still casts NULL) |
+| `sales/opportunity_team.sql` | KEEP - new TEAM_ROLE value SUPPORT |
+| `12_mart_pipeline_presales.sql` skill fit (`covered`, `held`) | CHG - exclude SUPPORT members so SKILL_FIT stays on the core team (A7) |
 | `projects/*` | CHG - ACTUAL_END |
-| `time/timesheet_record.sql`, `ENT_TIME_CATEGORY` | CHG - INTERNAL_INVEST |
 | `tools/l1_map.yml`, `sql/02_l1/_all.sql` | CHG - regenerate |
 
 ## 3. L2
@@ -80,7 +80,7 @@ and keep story projects P-0679 / P-0460 behaving as narrated. Record each move i
 | C1 Business context | KEEP | Firm win-rate / delivery values move |
 | C2 Metrics glossary | KEEP | Picks up new ONT_METRIC rows automatically |
 | P2 Project health | CHG | Label PRODUCTIVITY_INDEX as "Earned-hour efficiency" |
-| P3 Time mix | CHG | INTERNAL_INVEST category; billability vs utilization |
+| P3 Time mix | CHG | Billability vs utilization (categories unchanged) |
 | P4 People | CHG | Curriculum list uses new taxonomy; person WPS + team view |
 | P5 Pipeline | KEEP | Win-rate values move (Commercial training term) |
 | P7 Reasoning | KEEP | Re-verify bench / attrition |

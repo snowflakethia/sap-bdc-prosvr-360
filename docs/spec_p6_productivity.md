@@ -1,6 +1,7 @@
 # P6 AI Productivity & Learning - Requirement Specification
 
 Version 0.3 (draft for checkpoint CP-P6a) - 2026-11-05
+v0.4: targets reuse OPS.GEN_PARAMS_TIME_TARGET (learning 10 % every level); asset-building hours recorded, not budgeted (2.3).
 v0.3: PD input weights confirmed and made level-dependent (2.4); Cortex model names confirmed against the account (4.1).
 v0.2: learning input added to PD; asset creation/reuse redesigned; small-cell rules; all vendor models;
 vendor/product effect matrix (Cortex -> OE all levels; Claude Code -> WIN Manager and below; Codex -> WIN Senior Manager+).
@@ -52,31 +53,35 @@ If `sd = 0` or the input is missing, the score is 50 (neutral), except where not
 
 | Input | Raw definition | Source |
 |---|---|---|
-| WIN | Shrunk win-rate on closed opportunities the person booked bid time to in the trailing 4 quarters: `(wins + 3 * level_win_rate) / (bids + 3)` | `DT_OPPORTUNITY_FACT`, bid timesheets |
+| WIN | Shrunk win-rate on closed opportunities the person is named on in the bid team (`OPPORTUNITY_TEAM`: LEAD, MEMBER or SUPPORT) in the trailing 4 quarters: `(wins + 3 * level_win_rate) / (bids + 3)` | `DT_OPPORTUNITY_FACT`, `REL_PURSUIT_TEAM` |
 | EFF | Earned-hour efficiency: `EARNED_HOURS / DELIVERY_HOURS` | timesheet |
 | SCHED | Schedule score, hours-weighted over the work packages worked: ahead `1 + LEAST(ahead_wks / plan_wks, 0.2)`, on time `1`, late `GREATEST(0, 1 - slip_wks / plan_wks)`. Closed work uses `ACTUAL_END`, open work uses `FORECAST_END` | `ENT_WORK_PACKAGE` |
-| BILL | Billability at level: `BILLABLE_HOURS / AVAILABLE_HOURS / BILLABILITY_TARGET(level)` | timesheet, `OPS.LEVEL` |
-| UTIL | Utilization at level: `(BILLABLE + PRESALES + INTERNAL_INVEST hours) / AVAILABLE_HOURS / UTILIZATION_TARGET(level)` | timesheet, `OPS.LEVEL` |
-| LEARN | Learning attainment: `0.7 * LEAST(learning_hours_T4Q / LEARNING_TARGET_HOURS(level), 1.2) + 0.3 * required_curricula_completed / required_curricula(level)` (trailing 4 quarters) | LMS, `OPS.LEVEL`, `OPS.LEVEL_REQUIRED_CURRICULUM` |
+| BILL | Billability at level: `BILLABLE_HOURS / AVAILABLE_HOURS / BILLABILITY_TARGET(level)` | timesheet, `OPS.GEN_PARAMS_TIME_TARGET` |
+| UTIL | Utilization at level: `(BILLABLE + PRESALES + ASSET_CONTRIBUTION hours) / AVAILABLE_HOURS / UTILIZATION_TARGET(level)` | timesheet, `ASSET_CONTRIBUTION`, `OPS.GEN_PARAMS_TIME_TARGET` |
+| LEARN | Learning attainment: `0.7 * LEAST(learning_hours_T4Q / (LEARNING_TARGET * available_hours_T4Q), 1.2) + 0.3 * required_curricula_completed / required_curricula(level)` (trailing 4 quarters) | LMS, `OPS.GEN_PARAMS_TIME_TARGET`, `OPS.LEVEL_REQUIRED_CURRICULUM` |
 | ACREATE | Asset creation: `SUM(role_weight * quality)` over assets contributed to in the trailing 4 quarters; role weight Author 1.0 / Contributor 0.5 / Reviewer 0.25; `quality = avg_rating / 5 * LN(1 + reuse_count)` (min 0.2 so new assets still count) | `ASSET_CONTRIBUTION`, `ASSET_USAGE` |
 | AREUSE | Asset reuse: hours saved by reusing firm assets on own work / delivery hours (quarter) | `ASSET_USAGE` |
 | TEAM | Mean WPS (excluding TEAM pillar) of direct reports in the quarter | `REL_PERSON_REPORTS_TO` |
 
 Billability and utilization are now different measures: billability counts client-billable hours only;
-utilization adds presales (bid) and internal-investment (asset building) hours.
-Asset contribution hours are booked to `INTERNAL_INVEST`, so building assets counts toward utilization but not billability.
+utilization adds presales (bid) hours and asset-contribution hours.
+Asset-building time is **recorded but not budgeted** (decision 2026-11-05): contributors log hours in
+`ASSET_CONTRIBUTION.HOURS`, no timesheet time is set aside for it (no separate timesheet category), and those hours
+are added to utilization only. Because they overlap delivery or bid time, utilization can exceed 100 % of
+available hours; the page labels this.
 
-New level targets (added to `OPS.LEVEL`, derived from generator allocations `ALLOC`):
+Level targets reuse the existing CP-02 time targets (`OPS.GEN_PARAMS_TIME_TARGET`, decision 2026-11-05) - no new
+target columns on `OPS.LEVEL`:
 
-| Level | BILLABILITY_TARGET | UTILIZATION_TARGET | LEARNING_TARGET_HOURS (per year) | Required curricula (`OPS.LEVEL_REQUIRED_CURRICULUM`) |
+| Level | BILLABILITY_TARGET (= DELIVERY) | UTILIZATION_TARGET (= DELIVERY + BID) | LEARNING_TARGET (= LEARNING) | Required curricula (`OPS.LEVEL_REQUIRED_CURRICULUM`) |
 |---|---|---|---|---|
-| Analyst | 0.80 | 0.88 | 200 | 1 AI curriculum, SAP_FUNCTIONAL |
-| Consultant | 0.75 | 0.85 | 180 | 1 AI curriculum, PROJECT_MGMT |
-| Manager | 0.65 | 0.80 | 160 | 1 AI curriculum, LEADERSHIP, COMMERCIAL_BID |
-| Senior Manager | 0.50 | 0.75 | 140 | 1 AI curriculum, LEADERSHIP, COMMERCIAL_BID |
-| Principal | 0.40 | 0.70 | 120 | 1 AI curriculum, LEADERSHIP |
+| Analyst | 0.75 | 0.85 | 0.10 | 1 AI curriculum, SAP_FUNCTIONAL |
+| Consultant | 0.71 | 0.85 | 0.10 | 1 AI curriculum, PROJECT_MGMT |
+| Manager | 0.60 | 0.85 | 0.10 | 1 AI curriculum, LEADERSHIP, COMMERCIAL_BID |
+| Senior Manager | 0.45 | 0.85 | 0.10 | 1 AI curriculum, LEADERSHIP, COMMERCIAL_BID |
+| Principal | 0.35 | 0.85 | 0.10 | 1 AI curriculum, LEADERSHIP |
 
-Learning hour targets are set so the firm-wide learning share stays near the CP-02 target (~10 % of available hours).
+Learning stays at the CP-02 target of 10 % of available hours at every level (D-02-11).
 
 ### 2.4 Pillars
 
@@ -202,7 +207,7 @@ Manager and above; INDUSTRY all levels. Required curricula per level (2.3) drive
 ### 4.3 Other new data
 - Line managers for simulated people: Manager+ in the same group, span 4-8.
 - `ACTUAL_END` on closed projects and work packages.
-- Timesheet category `INTERNAL_INVEST` (asset building), carved from existing non-billable internal time.
+- No new timesheet category: asset-building hours are recorded on `ASSET_CONTRIBUTION.HOURS` only (2.3).
 
 ### 4.3a Assets (redesigned)
 
