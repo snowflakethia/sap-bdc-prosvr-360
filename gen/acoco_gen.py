@@ -542,13 +542,15 @@ class Staffing:
         self.pursuit_members = {}                        # internal order -> named bid-team people
 
     def _p6_exposures(self, people):
-        """P6 (spec 4.1, 4.4): product mix per person (OPENAI, ANTHROPIC, CORTEX; Dirichlet around the old vendor
-        preference), Cortex open-model share, the productivity matrix with the Cortex dose-response, and the
-        per-person win-rate coefficients from OPS.SIM_TRUTH_EFFECTS."""
+        """P6 (spec 4.1, 4.4): independent product propensities per person (OPENAI, ANTHROPIC, CORTEX; Beta with the
+        old vendor-mix means, drawn independently so one product's use does not crowd out another - D-P6-24), Cortex
+        open-model share, the productivity matrix with the Cortex dose-response, and the per-person win-rate
+        coefficients from OPS.SIM_TRUTH_EFFECTS."""
         ctx, r2 = self.ctx, self.ctx.rng2
         P = len(people)
         lv = people.level.values
-        self.share = r2.dirichlet(np.array([0.40, 0.35, 0.25]) * 2.5, size=P).astype(np.float32)
+        mean = np.array([0.40, 0.35, 0.25])
+        self.share = np.column_stack([r2.beta(2.0 * m, 2.0 * (1 - m), P) for m in mean]).astype(np.float32)
         self.open_share = r2.beta(1.0, 9.0, P).astype(np.float32)
         on = self.avail > 0
         n_on = np.maximum(on.sum(axis=0), 1)
@@ -1155,8 +1157,10 @@ def build_timesheets(ctx, st, people, wk, projects):
             for w in range(w0, w1):
                 h = float(st.avail[pi, w] * alloc)
                 if h > 0:
+                    # P6: lead hours carry the person's productivity (Cortex dose) and learning effects too (D-P6-22)
+                    e = float(st.pp[pi, w]) * (1 + float(learn_boost[pi, w]))
                     rows.append((uid[pi], cc[pi], wstart[w], int(fy[w]), "DELIVERY", f"{proj}-WP01", None,
-                                 round(h, 1), round(h, 1), 0.0, 0.0))
+                                 round(h, 1), round(h * e, 1), 0.0, 0.0))
     P, W = st.avail.shape
     for pi, w, io, h in st.bid_rows:
         rows.append((uid[pi], cc[pi], wstart[w], int(fy[w]), "BID", None, io, round(h, 1), None, 0.0, 0.0))
@@ -1190,7 +1194,8 @@ def build_timesheets(ctx, st, people, wk, projects):
         wp = wps_[int(rng.integers(0, len(wps_)))]
         h = round(float(resid[pi, w]), 1)
         st.deliv[pi, w] += h
-        rows.append((uid[pi], cc[pi], wstart[w], int(fy[w]), "DELIVERY", wp, None, h, h, 0.0, 0.0))
+        e = float(st.pp[pi, w]) * (1 + float(learn_boost[pi, w]))       # P6: same productivity terms (D-P6-22)
+        rows.append((uid[pi], cc[pi], wstart[w], int(fy[w]), "DELIVERY", wp, None, h, round(h * e, 1), 0.0, 0.0))
     ts = pd.DataFrame(rows, columns=["USER_ID", "COST_CENTER", "WEEK_START", "FISCAL_YEAR", "CATEGORY",
                                      "WBS_ELEMENT", "INTERNAL_ORDER", "HOURS", "ZZ_EARNED_HOURS", "ZZ_AI_ASSISTED_HOURS",
                                      "ZZ_AI_HOURS_SAVED"])
@@ -1354,8 +1359,9 @@ def build_finance(ctx, people, ts, projects, wps, opps, agt):
 
 def build_telemetry_and_agt(ctx, st, people, ts, wk, je_lines_fn=None):
     """Per person x vendor x active day usage; AGT_* allocations from AI cost centres to project WBS.
-    P6 (spec 4.1): vendor drawn from the person's product mix, model from OPS.AI_MODEL_PRICE (Cortex open models by
-    the person's open-model share), input / output split, use case, cost priced per model."""
+    P6 (spec 4.1): each product is used on a day with the person's own propensity (independent across products), model
+    from OPS.AI_MODEL_PRICE (Cortex open models by the person's open-model share), input / output split, use case,
+    cost priced per model."""
     rng, r2 = ctx.rng, ctx.rng2
     rows = {v: [] for v in VENDORS}
     uid = people.user_id.values
@@ -1375,7 +1381,7 @@ def build_telemetry_and_agt(ctx, st, people, ts, wk, je_lines_fn=None):
     cases = ["CODE", "DOCUMENT", "ANALYSIS"]
     case_c = {"OPENAI": np.cumsum([0.6, 0.2, 0.2]), "ANTHROPIC": np.cumsum([0.6, 0.2, 0.2]),
               "CORTEX": np.cumsum([0.2, 0.2, 0.6])}
-    share_c = np.cumsum(st.share, axis=1)
+    share_c = None
 
     def draw(cum):                                   # categorical draw from a cumulative distribution
         return min(int(np.searchsorted(cum, r2.random() * cum[-1], side="right")), len(cum) - 1)
@@ -1388,20 +1394,24 @@ def build_telemetry_and_agt(ctx, st, people, ts, wk, je_lines_fn=None):
         ws = wk.week_start.iloc[w]
         bid_share = float(st.bid[pi, w] / st.avail[pi, w])
         for d in range(days):
-            v = VENDORS[draw(share_c[pi])]
-            day = ws + dt.timedelta(days=d)
-            mapped = rng.random() < 0.92
-            proj = wbs_of.get((uid[pi], ws)) if rng.random() < 0.93 else None
-            sessions = int(rng.integers(1, 8))
-            tokens = int(sessions * rng.integers(8_000, 60_000))
-            models, p_in, p_out, mix = cat[(v, v == "CORTEX" and r2.random() < st.open_share[pi])]
-            k = draw(mix)
-            out_t = int(tokens * r2.uniform(0.15, 0.35))
-            in_t = tokens - out_t
-            cost = round((in_t * p_in[k] + out_t * p_out[k]) / 1e6, 4)
-            case = "BID" if r2.random() < min(0.8, 1.5 * bid_share) else cases[draw(case_c[v])]
-            rows[v].append((day, uid[pi] if mapped else None, proj, sessions, tokens, cost, PRODUCT[v], models[k],
-                            in_t, out_t, case))
+            used = [vi for vi in range(3) if r2.random() < st.share[pi, vi]]
+            if not used:                       # an active day uses at least the person's main product (keeps use days)
+                used = [int(np.argmax(st.share[pi]))]
+            for vi in used:
+                v = VENDORS[vi]
+                day = ws + dt.timedelta(days=d)
+                mapped = rng.random() < 0.92
+                proj = wbs_of.get((uid[pi], ws)) if rng.random() < 0.93 else None
+                sessions = int(rng.integers(1, 8))
+                tokens = int(sessions * rng.integers(8_000, 60_000))
+                models, p_in, p_out, mix = cat[(v, v == "CORTEX" and r2.random() < st.open_share[pi])]
+                k = draw(mix)
+                out_t = int(tokens * r2.uniform(0.15, 0.35))
+                in_t = tokens - out_t
+                cost = round((in_t * p_in[k] + out_t * p_out[k]) / 1e6, 4)
+                case = "BID" if r2.random() < min(0.8, 1.5 * bid_share) else cases[draw(case_c[v])]
+                rows[v].append((day, uid[pi] if mapped else None, proj, sessions, tokens, cost, PRODUCT[v], models[k],
+                                in_t, out_t, case))
     out = {}
     for v in VENDORS:
         df = pd.DataFrame(rows[v], columns=["USAGE_DATE", "USER_KEY", "PROJECT_KEY", "SESSIONS", "TOKENS", "COST_USD",

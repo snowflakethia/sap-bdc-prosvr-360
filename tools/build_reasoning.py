@@ -199,22 +199,28 @@ def r14():
 
 def write_table(name, rows, comment, schema="REASONING"):
     cols = list(rows[0])
-    types = {c: ("BOOLEAN" if isinstance(rows[0][c], bool) else "FLOAT" if isinstance(rows[0][c], float)
-                 else "NUMBER" if isinstance(rows[0][c], int) else "VARCHAR") for c in cols}
+
+    def kind(c):   # first non-null value decides the type (insufficient-data cells carry NULLs)
+        v = next((r[c] for r in rows if r[c] is not None and not (isinstance(r[c], float) and np.isnan(r[c]))), None)
+        return ("BOOLEAN" if isinstance(v, (bool, np.bool_)) else "FLOAT" if isinstance(v, (float, np.floating))
+                else "NUMBER" if isinstance(v, (int, np.integer)) else "VARCHAR")
+    types = {c: kind(c) for c in cols}
     lit = lambda v: "NULL" if v is None or (isinstance(v, float) and np.isnan(v)) else (
-        str(v).upper() if isinstance(v, bool) else repr(float(v)) if isinstance(v, float) else str(v)
-        if isinstance(v, int) else "'" + str(v).replace("'", "''") + "'")
+        str(v).upper() if isinstance(v, (bool, np.bool_)) else repr(float(v)) if isinstance(v, (float, np.floating))
+        else str(int(v)) if isinstance(v, (int, np.integer)) else "'" + str(v).replace("'", "''") + "'")
     sf.query(f"CREATE OR REPLACE TABLE ACOCO_L2.{schema}.{name} ({', '.join(f'{c} {types[c]}' for c in cols)}) "
-             f"COMMENT = '{comment}'")
+             f"COMMENT = '{comment.replace(chr(39), chr(39) * 2)}'")
     for i in range(0, len(rows), 500):
         vals = ",\n".join("(" + ", ".join(lit(r[c]) for c in cols) + ")" for r in rows[i:i + 500])
         sf.query(f"INSERT INTO ACOCO_L2.{schema}.{name} VALUES {vals}")
 
 
 def main():
-    steps = sys.argv[1:] or ["attrition", "forecast", "r13", "r14", "serving"]
+    steps = sys.argv[1:] or ["attrition", "forecast", "r13", "r14", "p6", "serving"]
     for s in steps:
         {"attrition": attrition, "forecast": forecast, "r13": r13, "r14": r14,
+         # P6 WPS tests R13w, R14w, R15-R18 and the truth-recovery table (tools/p6_reasoning.py)
+         "p6": lambda: __import__("p6_reasoning").main_steps(),
          "serving": lambda: ([sf.run_file(str(f)) for f in sorted((ROOT / "sql" / "03_l2" / "post").glob("*.sql"))],
                              print("serving: post-build views built"))}[s]()
 

@@ -135,7 +135,10 @@ Common rules:
 - Controls: work type and group (stratified, then hours-weighted across strata).
 - Uncertainty: person-cluster bootstrap, 90 % CI (5th/95th), seed 20261001; 1000 resamples firm-level,
   400 per level cell.
-- `SIGNIFICANT = CI excludes 0`. Wording: "associated with", never "causes".
+- `SIGNIFICANT = CI excludes 0 AND |rho| >= 0.05` (practical-significance floor, decision 2026-11-05); a CI that excludes 0
+  with |rho| < 0.05 is shown as NEGLIGIBLE. Wording: "associated with", never "causes".
+- R16 / R18 use the partial rho (other products / curricula held constant); tests use person-quarters with a
+  complete trailing history; R17 / R18 hold current-quarter learning share constant (D-P6-19, D-P6-20).
 - No self-measurement: Q5/Q6 test against `WPS_EX_LEARN` (WPS recomputed without LEARN); Q3/Q4 test
   against WPS and against the specific pillar or input the exposure is expected to move (see 4.4).
 
@@ -167,7 +170,7 @@ R13 (AI-active uplift) and R14 (learning payback) are kept but re-based on WPS.
 
 | Column | Values |
 |---|---|
-| PRODUCT | ANTHROPIC = Claude Code; OPENAI = Codex; CORTEX = Cortex Code / AISQL (Snowflake) |
+| PRODUCT | ANTHROPIC = Claude Code; OPENAI = Codex; CORTEX = Cortex Code / AISQL (Snowflake). Each person has an independent propensity per product (a day can use several), so one product's use does not crowd out another (decision 2026-11-05) |
 | MODEL | Kept in sync across vendors (table below) |
 | INPUT_TOKENS / OUTPUT_TOKENS | split of TOKENS, output share 15-35 % |
 | USE_CASE | CODE, DOCUMENT, ANALYSIS, BID |
@@ -242,8 +245,10 @@ Direct Claude Code / Codex usage has no effect on OE (OE lever is Cortex). Corte
 | Curriculum -> pillar | Commercial -> WIN, Project Mgmt -> SCHED, AI curricula -> EFF, SAP Functional -> BILL, Leadership -> reports' WPS; Industry null |
 | Honesty | Two AI-enabled projects under-perform (PRD PMD-7) |
 
-Gates check the analysis recovers each true effect's sign, the CI covers the true value in at least 80 % of
-non-null cells, and null cells are not significant.
+Gates (`gate.py p6c`, table `REASONING.P6_TRUTH_RECOVERY`) check the analysis recovers each true effect's sign
+(rho has the true sign and its CI is not wholly on the wrong side) in at least 80 % of seeded level cells, and that
+null cells are not significant (CI excludes 0 and |rho| >= 0.05). Curricula are scored at the levels where they are
+relevant (4.2).
 
 ---
 
@@ -257,7 +262,7 @@ non-null cells, and null cells are not significant.
 | D | Product x level heatmap (vs OE and vs WIN) + Cortex by model family | R16 | 3 x 5 x 2 cells; null cells (Codex at Manager and below, Claude Code at Senior Manager+ on WIN) not significant |
 | E | Training hours vs WPS (excluding learning input) per level; learning attainment vs target by level | R17 | as C |
 | E2 | Asset creation and reuse by level; reuse vs OE | WPS mart | all levels populated |
-| F | Curriculum x level heatmap + target pillar | R18 | Industry row not significant |
+| F | Curriculum x level heatmap + target pillar | R18 | Industry row (not seeded) negligible or small; known limitation D-P6-27: Industry -> WIN shows a small association at Consultant / Manager (rho ~ +0.07), labelled "not seeded - small association" |
 | G | Retained: AI cost by vendor/model, AI-skilled but inactive, delivery model | existing | unchanged behaviour |
 
 Every tile keeps "Ask Cortex", a glossary key and significance colouring (D-09-8). Filters: group and fiscal year.

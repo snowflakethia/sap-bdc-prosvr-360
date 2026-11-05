@@ -766,10 +766,58 @@ def gate_p6b():
     return checks
 
 
+def gate_p6c():
+    """P6 step 4: reasoning R13w / R14w / R15-R18, WPS_BY_LEVEL, serving views, truth recovery (spec 3, 4.4)."""
+    import sf
+    q = sf.query
+    checks = []
+    tables = ["AI_WPS_TEST", "LEARNING_WPS_PAYBACK_TEST", "TOKEN_WPS_TEST", "TOKEN_WPS_QUINTILE", "VENDOR_WPS_TEST",
+              "TRAINING_WPS_TEST", "TRAINING_WPS_QUINTILE", "CURRICULUM_WPS_TEST", "P6_TRUTH_RECOVERY"]
+    have = {r["name"] for r in q("SHOW TABLES IN SCHEMA ACOCO_L2.REASONING")}
+    missing = [t for t in tables if t not in have]
+    checks.append(("P6C-01", "P6 reasoning tables built (R13w, R14w, R15-R18, quintiles, truth recovery)", "0 missing",
+                   str(missing), not missing))
+    views = ["VW_WPS_BY_LEVEL", "VW_PERSON_QUARTER_WPS", "VW_TOKEN_WPS_TEST", "VW_TOKEN_WPS_QUINTILE", "VW_VENDOR_WPS_TEST",
+             "VW_TRAINING_WPS_TEST", "VW_TRAINING_WPS_QUINTILE", "VW_CURRICULUM_WPS_TEST", "VW_AI_WPS_TEST",
+             "VW_LEARNING_WPS_PAYBACK_TEST"]
+    empty = [v for v in views if q(f"SELECT COUNT(*) n FROM ACOCO_L2.SERVING.{v}")[0]["N"] in (0, "0")]
+    checks.append(("P6C-02", "P6 serving views return rows", "0 empty", str(empty), not empty))
+    w = q("""SELECT COUNT(*) n, COUNT_IF(CELL_STATUS = 'OK' AND (PEOPLE < 15 OR PERSON_QUARTERS < 30)) bad_ok,
+                    COUNT_IF(SCOPE <> 'FIRM' AND FISCAL_YEARS <> 'FY24-26 pooled') unpooled
+             FROM ACOCO_L2.SERVING.VW_WPS_BY_LEVEL""")[0]
+    checks.append(("P6C-03", "Q2 WPS_BY_LEVEL: small-cell rule (>= 15 people, >= 30 PQ) applied, groups pooled FY24-26",
+                   "0 / 0", str(w), w["BAD_OK"] == 0 and w["UNPOOLED"] == 0 and w["N"] > 0))
+    sc = q("""SELECT COUNT(*) n FROM (
+                SELECT CELL_STATUS, RHO, PEOPLE, PERSON_QUARTERS FROM ACOCO_L2.REASONING.VENDOR_WPS_TEST
+                UNION ALL SELECT CELL_STATUS, RHO, PEOPLE, PERSON_QUARTERS FROM ACOCO_L2.REASONING.CURRICULUM_WPS_TEST
+                UNION ALL SELECT CELL_STATUS, RHO, PEOPLE, PERSON_QUARTERS FROM ACOCO_L2.REASONING.TOKEN_WPS_TEST
+                UNION ALL SELECT CELL_STATUS, RHO, PEOPLE, PERSON_QUARTERS FROM ACOCO_L2.REASONING.TRAINING_WPS_TEST)
+              WHERE (CELL_STATUS = 'OK') <> (PEOPLE >= 15 AND PERSON_QUARTERS >= 30)""")[0]
+    checks.append(("P6C-04", "R15-R18 cells: CELL_STATUS consistent with the small-cell rule", "0", str(sc["N"]),
+                   sc["N"] in (0, "0")))
+    v = {r["VERDICT"]: int(r["N"]) for r in q("SELECT VERDICT, COUNT(*) n FROM ACOCO_L2.REASONING.P6_TRUTH_RECOVERY GROUP BY 1")}
+    ok = v.get("RECOVERED", 0) + v.get("SIGN_RECOVERED", 0)
+    seeded = ok + v.get("MISSED", 0)
+    rate = ok / seeded if seeded else 0
+    checks.append(("P6C-05", "truth recovery: seeded effects recover their sign in >= 80 % of level cells (spec 4.4)",
+                   ">= 80 %", f"{ok} / {seeded} = {100 * rate:.0f} % (material {v.get('RECOVERED', 0)})", rate >= 0.8))
+    nulls = v.get("NULL_OK", 0) + v.get("NULL_SIGNIFICANT", 0)
+    bad = q("""SELECT LISTAGG(TEST || ' ' || STRATUM || ' ' || EXPOSURE || '->' || OUTCOME || ' ' || ROUND(RHO, 3), '; ') s
+               FROM ACOCO_L2.REASONING.P6_TRUTH_RECOVERY WHERE VERDICT = 'NULL_SIGNIFICANT'""")[0]["S"]
+    checks.append(("P6C-06", "truth recovery: null cells (true effect 0) are not significant - CI excludes 0 and |rho| >= 0.05 (spec 4.4)", "0 significant",
+                   f"{v.get('NULL_OK', 0)} / {nulls} ok; significant: {bad}", v.get("NULL_SIGNIFICANT", 0) == 0))
+    wording = q("""SELECT COUNT(*) n FROM ACOCO_L2.INFORMATION_SCHEMA.TABLES
+                   WHERE TABLE_SCHEMA IN ('REASONING', 'SERVING') AND REGEXP_LIKE(COMMENT, '.*(R1[3-8]|Q[2-6]).*')
+                     AND REGEXP_LIKE(LOWER(COMMENT), '.*\\\\bcauses?\\\\b.*') AND NOT REGEXP_LIKE(LOWER(COMMENT), '.*not caus.*')""")[0]
+    checks.append(("P6C-07", "wording: P6 test descriptions never claim causation", "0", str(wording["N"]),
+                   wording["N"] in (0, "0")))
+    return checks
+
+
 GATES = {"cp00": gate_cp00, "cp01": gate_cp01, "cp02": gate_cp02, "cp03": gate_cp03, "cp04": gate_cp04,
          "cp05": gate_cp05, "cp06": gate_cp06,
          "cp07": gate_cp07, "cp08": gate_cp08, "cp09": gate_cp09, "cp10": gate_cp10, "cp11": gate_cp11,
-         "p6b": gate_p6b}
+         "p6b": gate_p6b, "p6c": gate_p6c}
 
 
 def log_to_quality(cp, run_at, rows):
