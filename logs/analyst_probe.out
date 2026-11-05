@@ -1,5 +1,0 @@
-PASS  SV_WORKFORCE_PERFORMANCE: What was the bench percentage by level for Financial Services in fiscal year 2026?  ->  rows 5 
-PASS  SV_PROJECT_DELIVERY: Which active projects have the lowest CPI?  ->  rows 112 
-PASS  SV_PIPELINE_PRESALES: What is the win rate by skill fit band?  ->  rows 3 
-PASS  SV_AI_ADOPTION: What was AI assistant spend by AI tool in fiscal year 2026?  ->  rows 3 
-PASS  SV_PORTFOLIO_360: What was the margin percentage by MD group in fiscal year 2026?  ->  rows 6 

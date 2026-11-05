@@ -11,6 +11,7 @@ Rules
   R3  bind variables only: each registry statement's '?' count equals its declared binds; no ${...} in any
       server SQL template; runQuery is only called by the registry runner and with registry text.
 """
+import os
 import pathlib
 import re
 import sys
@@ -96,7 +97,7 @@ def lint():
 
 def run(stmts):
     import snowflake.connector
-    con = snowflake.connector.connect(connection_name="sfseapac_kp", paramstyle="qmark",
+    con = snowflake.connector.connect(connection_name=os.environ.get("ACOCO_CONNECTION", "default"), paramstyle="qmark",
                                       session_parameters={"QUERY_TAG": "ACOCO_APP_LINT"})
     cur = con.cursor()
     cur.execute("USE WAREHOUSE WH_ACOCO_APP")

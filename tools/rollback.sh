@@ -9,7 +9,7 @@
 #    re-creates Cortex Search services (not carried by clones), the agent and the service where they existed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-CONN="${ACOCO_CONNECTION:-sfseapac_kp}"
+CONN="${ACOCO_CONNECTION:-<connection>}"
 NN="${1:?checkpoint number}"; TAG="cp-${NN}"; CP="cp${NN}"
 
 git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || { echo "no tag $TAG"; exit 2; }

@@ -25,7 +25,7 @@ export default function ProjectHealth({ nav }: { nav: Navigate }) {
                     <option key={r.project_id} value={r.project_id}>{r.project_id} - {r.customer_name}{r.is_story_project ? ' (story)' : ''}</option>
                   ))}
                 </select>
-                <span className={`rounded-full px-3 py-1 text-xs font-bold text-white ${rag === 'RED' ? 'bg-rose-600' : rag === 'AMBER' ? 'bg-amber-500' : 'bg-emerald-600'}`}>{rag}</span>
+                <span className={`rounded-full px-3 py-1 text-xs font-bold text-white ${rag === 'RED' ? 'bg-rose-600' : rag === 'AMBER' ? 'bg-amber-500' : rag === 'GREEN' ? 'bg-emerald-600' : 'bg-gray-400'}`}>{rag}</span>
                 <span className="text-sm text-gray-600">{h.customer_name} - {h.md_group} - {h.size_class} {h.work_type} - {h.contract_type} - {h.delivery_model}</span>
               </div>
               <Grid cols={5}>

@@ -1,13 +1,13 @@
 """Minimal Snowflake helper: runs SQL through the Snowflake CLI (`snow sql`) and returns rows as dicts.
 
-Uses the existing CLI connection (default `sfseapac_kp`, override with env ACOCO_CONNECTION).
+Uses the existing CLI connection (default `<connection>`, override with env ACOCO_CONNECTION).
 No Python connector dependency, so the tools run with the system python3.
 """
 import json
 import os
 import subprocess
 
-CONNECTION = os.environ.get("ACOCO_CONNECTION", "sfseapac_kp")
+CONNECTION = os.environ.get("ACOCO_CONNECTION", "default")
 
 
 class SqlError(RuntimeError):

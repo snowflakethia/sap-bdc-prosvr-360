@@ -3,7 +3,7 @@
 **Document type:** Product Requirements Document - **master document for the demo**
 **Version:** 2.6 - 28 October 2026 (v2.5 + **measured** figures restated in 1, 6.3, 8 and 11 at CP-11; SPCS owner role; Business Group label)
 **Supersedes:** `docs/references/acoco_prd/acoco_oldref/ACoCo_Agentic_AI_Decision_Support_Demo_PRD.md` v1.1 (Streamlit edition, three personas, four roles)
-**Target account:** `SFSEAPAC.SNOWFLAKE_SAP_APJ` (AWS, connector `SNOWFLAKE_APJ`, status `CONNECTED`)
+**Target account:** `<ORG>.<ACCOUNT>` (AWS, connector `SNOWFLAKE_APJ`, status `CONNECTED`)
 **Demo "today":** **1 October 2026** - data window **1 Oct 2021 to 30 Sep 2026** (five fiscal years, FY22-FY26)
 
 > **SAP is the System of Record. Snowflake is the System of Context and Reasoning.**
@@ -413,7 +413,7 @@ SAP People Intelligence (on SAP Business Data Cloud) packages SuccessFactors dat
 ships its own insight apps on top. For ACoCo, Snowflake consumes the **same data products** zero-copy and joins them
 with S/4HANA project finance - something People Intelligence alone does not do.
 
-### 3.1 Already shared to `SFSEAPAC.SNOWFLAKE_SAP_APJ` (verified 2026-10-26)
+### 3.1 Already shared to `<ORG>.<ACCOUNT>` (verified 2026-10-26)
 
 | Data product (CLD) | Tables used | Rows | What it gives ACoCo |
 |---|---|---|---|
@@ -529,7 +529,7 @@ real-tenant shape and which are simulated.
 SAP S/4HANA (PCE) + SAP SuccessFactors        SAP Business Data Cloud / SAP People Intelligence
   (System of Record)               ------>     SAP-managed data products (CSN/ORD)
                                                    | zero-copy, connector SNOWFLAKE_APJ
-=============================== Snowflake SFSEAPAC.SNOWFLAKE_SAP_APJ (System of Context & Reasoning) ====
+=============================== Snowflake <ORG>.<ACCOUNT> (System of Context & Reasoning) ====
 L0  SOURCE   *_V1 CLDs (SAP, read-only, zero-copy)  +  ACOCO_SIM (non-SAP sources + BDC-shaped gap-fill,
              read-only after load)  +  SNOWFLAKE.ACCOUNT_USAGE (Cortex telemetry)
              "as delivered" - never modified, never read by a consumer
@@ -1017,7 +1017,7 @@ Figures to speak are on `docs/PRESENTER_CARD.md` (measured, one row per figure w
 
 ---
 
-## Appendix A - CLD inventory used (verified 2026-10-26 on `SFSEAPAC.SNOWFLAKE_SAP_APJ`)
+## Appendix A - CLD inventory used (verified 2026-10-26 on `<ORG>.<ACCOUNT>`)
 
 People Intelligence: `COREWORKFORCEDATA_V1`, `EMPLOYEEAVAILABILITY_V1`, `WORKFORCEPLANNEDWORKINGTIME_V1`,
 `ASSIGNMENTADDITIONALINFORMATION_V1`.

@@ -4,7 +4,7 @@ Service `ACOCO_DB.APP.ACOCO_COMMAND_CENTER` on compute pool `ACOCO_POOL` (1 x CP
 queries on `WH_ACOCO_APP` (XS). DDL: `sql/05_service/01_service.sql`. Image repo `ACOCO_DB.APP.IMAGES`.
 
 URL: `SHOW ENDPOINTS IN SERVICE ACOCO_DB.APP.ACOCO_COMMAND_CENTER;` -> `ingress_url` of endpoint `ui`
-(currently `https://ictbqx-sfseapac-snowflake-sap-apj.snowflakecomputing.app`). Log in with your Snowflake user;
+(currently `https://<SPCS_ENDPOINT_HOST>`). Log in with your Snowflake user;
 access needs `ACOCO_APP_ROLE` or `ACCOUNTADMIN` (granted `ALL_ENDPOINTS_USAGE`).
 
 ## Pre-demo warm-up (about 5 minutes before)
@@ -37,8 +37,8 @@ SHOW COMPUTE POOLS LIKE 'ACOCO_POOL';           -- state = SUSPENDED (may show S
 
 ```bash
 cd service/app
-snow spcs image-registry login -c sfseapac_kp
-REPO=sfseapac-snowflake-sap-apj.registry.snowflakecomputing.com/acoco_db/app/images
+snow spcs image-registry login -c <connection>
+REPO=<org>-<account>.registry.snowflakecomputing.com/acoco_db/app/images
 docker build --platform linux/amd64 -t $REPO/acoco_command_center:vN . && docker push $REPO/acoco_command_center:vN
 ```
 

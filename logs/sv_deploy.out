@@ -1,9 +1,0 @@
-rendered 5 semantic views to /Users/bthia/Development/sap-bdc-prosvr-360/sql/03_l2/semantic
-deployed SV_WORKFORCE_PERFORMANCE
-deployed SV_PROJECT_DELIVERY
-deployed SV_PIPELINE_PRESALES
-deployed SV_AI_ADOPTION
-deployed SV_PORTFOLIO_360
-registry: 13 entities, 18 relationships, 75 metrics written
-check: 13 entities, 18 relationships, 75 metrics {'Value Creation': 26, 'People Development': 27, 'ProServe360': 4, 'Operational Excellence': 18}
-check: 0 errors

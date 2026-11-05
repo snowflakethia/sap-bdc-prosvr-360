@@ -1,7 +1,7 @@
 # ACoCo ProServe360 - Implementation Checkpoint Plan
 
 **Implements:** `docs/acoco_proserve_prd.md` v2.3
-**Account:** `SFSEAPAC.SNOWFLAKE_SAP_APJ`, role `ACCOUNTADMIN`, connection `sfseapac_kp` (key-pair JWT, user `BTHIA`; reused from `sap-bdc-supply-chain-360`, verified 2026-10-27)
+**Account:** `<ORG>.<ACCOUNT>`, role `ACCOUNTADMIN`, connection `<connection>` (key-pair JWT, user `<YOUR_USER>`; reused from `sap-bdc-supply-chain-360`, verified 2026-10-27)
 **Status:** plan only - nothing has been executed
 
 ## How checkpoints work
@@ -26,8 +26,8 @@ step 4 runs only after the human says "CP-nn approved".
 
 ```bash
 git checkout cp-<nn>                                   # code, SQL, generator, app at that checkpoint
-snow sql -c sfseapac_kp -q "CREATE OR REPLACE DATABASE ACOCO_SIM CLONE ACOCO_BKP_CP<nn>_ACOCO_SIM;"   # data, if cloned
-snow sql -c sfseapac_kp -f sql/rebuild_from_checkpoint.sql   # re-creates L1 views, L2 DTs, SVs, agent from the tag
+snow sql -c <connection> -q "CREATE OR REPLACE DATABASE ACOCO_SIM CLONE ACOCO_BKP_CP<nn>_ACOCO_SIM;"   # data, if cloned
+snow sql -c <connection> -f sql/rebuild_from_checkpoint.sql   # re-creates L1 views, L2 DTs, SVs, agent from the tag
 ```
 
 L1 (views) and L2 (dynamic tables, Semantic Views) are fully reproducible from git and `ACOCO_SIM`, so `ACOCO_SIM`
@@ -356,7 +356,7 @@ question per SV with SQL that runs.
 **Human validation**
 1. Read `logs/agent_regression.md` - expected 20/20 `PASS`; latency table present.
 2. Ask two questions yourself in Snowflake Intelligence, or from the terminal with
-   `cortex agents run ACOCO_DB.AGENT.ACOCO_ADVISOR "<question>" -c sfseapac_kp`:
+   `cortex agents run ACOCO_DB.AGENT.ACOCO_ADVISOR "<question>" -c <connection>`:
    - *"Give me my FY26 ProServe360 scorecard against FY25."* -> expected: one figure per pillar, sources cited.
    - *"Which bench consultants with AI skill 3+ fit my open bids above USD 5 M?"* -> expected: a named list that
      uses the Pipeline and Workforce tools together.
@@ -376,7 +376,7 @@ question per SV with SQL that runs.
 - `tools/lint_app.py`: no `*_V1`, `ACOCO_SIM.`, `ACOCO_L1.`, or any `ACOCO_L2` schema other than `SERVING`,
   `SEMANTIC`, `ONTOLOGY` in `service/`; every registry statement identical to `tools/demo_queries.sql`; bind
   variables only.
-- Runs locally against the account with key-pair auth via connection `sfseapac_kp`.
+- Runs locally against the account with key-pair auth via connection `<connection>`.
 
 **Gate:** lint passes; `npm run build` succeeds; every `/api/*` route returns 200 with data in < 3 s locally.
 
@@ -465,3 +465,4 @@ regression 20/20 re-run on the final build.
 | 09 | approved 2026-10-28 | cp-09, cp-09.1 | UI: Business Group label, (i) metric popovers (D-09-11) |
 | 10 | approved 2026-10-28 | cp-10 | SPCS image v5, gate 8/8 (D-10-1..4) |
 | 11 | approved 2026-10-28 | cp-11, v1.0-demo | validate --all, card 37/37, agent 20/20, dry run 16/16 (D-11-1..5) |
+| P6a | approved 2026-11-05 | - | P6 redesign spec v0.3 + impact analysis; PD weights level-dependent (BILL/UTIL 30/20 Mgr and below, 20/30 SM+; AREUSE 20, LEARN 15, ACREATE 15); small cells 15 people / 30 PQ, group pooled FY24-26; Cortex models confirmed |

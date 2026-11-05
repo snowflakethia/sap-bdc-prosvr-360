@@ -5,7 +5,7 @@ import pandas as pd
 import snowflake.connector
 from snowflake.connector.pandas_tools import write_pandas
 
-CONNECTION = os.environ.get("ACOCO_CONNECTION", "sfseapac_kp")
+CONNECTION = os.environ.get("ACOCO_CONNECTION", "default")
 SIM_DB = "ACOCO_SIM"
 
 

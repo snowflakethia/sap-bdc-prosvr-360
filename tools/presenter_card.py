@@ -6,6 +6,7 @@ against the pinned measured value, and written to docs/PRESENTER_CARD.md with th
 
   python tools/presenter_card.py          # measure, assert, write the card (exit 1 on any drift)
 """
+import os
 import re
 import sys
 from pathlib import Path
@@ -117,7 +118,7 @@ def source_objects(sql):
 
 def measure():
     stmts = {n: (b, s) for n, b, s in L.parse_registry(REG.read_text())}
-    con = snowflake.connector.connect(connection_name="sfseapac_kp", paramstyle="qmark",
+    con = snowflake.connector.connect(connection_name=os.environ.get("ACOCO_CONNECTION", "default"), paramstyle="qmark",
                                       session_parameters={"QUERY_TAG": "ACOCO_CARD"})
     cur = con.cursor(snowflake.connector.DictCursor)
     cur.execute("USE WAREHOUSE WH_ACOCO_APP")

@@ -129,6 +129,12 @@ export const GLOSSARY: Record<string, Term> = {
     calc: 'Projects ranked by revenue; the line shows cumulative share of total.',
     note: 'A steep curve means a few projects carry the year.',
   },
+  portfolio_groups: {
+    title: 'Portfolio by Business Group',
+    what: 'Every project in the firm, grouped by Business Group: revenue, margin and health per group, then per project.',
+    calc: 'Revenue and margin summed over the selected fiscal years; projects closed before the range are left out. CPI, SPI, forecast margin and RAG apply to active projects only.',
+    note: 'Expand a group to list its projects; click a project to open Project Health (P2).',
+  },
   fp_watch: {
     title: 'Fixed-price watch list',
     what: 'Active fixed-price projects forecast below 10 % margin.',

@@ -8,7 +8,7 @@
 # connector are never cloned, altered or dropped (PRD 4.2).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-CONN="${ACOCO_CONNECTION:-sfseapac_kp}"
+CONN="${ACOCO_CONNECTION:-<connection>}"
 ALLOWED="ACOCO_DB ACOCO_SIM ACOCO_L1 ACOCO_L2"
 sql() { snow sql -c "$CONN" -q "$1" >/dev/null; }
 

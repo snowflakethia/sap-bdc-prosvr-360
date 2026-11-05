@@ -1,11 +1,12 @@
 """Programmatic access to the Command Center's public SPCS endpoint (CP-10 gate).
 
-Key-pair JWT (user BTHIA, key of connection sfseapac_kp) -> /oauth/token exchange scoped to the
+Key-pair JWT (SNOWFLAKE_ACCOUNT / SNOWFLAKE_USER / SNOWFLAKE_PRIVATE_KEY_PATH) -> /oauth/token exchange scoped to the
 ingress host -> 'Authorization: Snowflake Token="..."' on every request.
 """
 import base64
 import hashlib
 import json
+import os
 import time
 import urllib.parse
 import urllib.request
@@ -14,10 +15,10 @@ from pathlib import Path
 import jwt
 from cryptography.hazmat.primitives import serialization
 
-ACCOUNT = "SFSEAPAC-SNOWFLAKE_SAP_APJ"
-USER = "BTHIA"
-KEY = Path.home() / ".snowflake" / "keys" / "bthia_rsa.p8"
-HOST = "sfseapac-snowflake-sap-apj.snowflakecomputing.com"
+ACCOUNT = os.environ["SNOWFLAKE_ACCOUNT"].upper()
+USER = os.environ["SNOWFLAKE_USER"].upper()
+KEY = Path(os.environ["SNOWFLAKE_PRIVATE_KEY_PATH"]).expanduser()
+HOST = f"{ACCOUNT.lower().replace('_', '-')}.snowflakecomputing.com"
 
 
 def _jwt():

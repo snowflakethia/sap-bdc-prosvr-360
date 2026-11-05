@@ -8,3 +8,9 @@ __pycache__/
 *.pem
 .env
 logs/*.tmp
+
+# not for public repo
+backup/
+logs/
+docs/workshop/
+*.log

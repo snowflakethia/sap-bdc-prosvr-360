@@ -1,4 +1,0 @@
-registry: 13 entities, 18 relationships, 64 metrics written
-check: 13 entities, 18 relationships, 64 metrics {'Value Creation': 25, 'People Development': 19, 'Operational Excellence': 18, 'ProServe360': 2}
-check: 0 errors
-EXIT 0

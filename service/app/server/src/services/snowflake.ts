@@ -31,7 +31,7 @@ function buildConnectionOptions(): snowflake.ConnectionOptions {
     const token = fs.readFileSync(SPCS_TOKEN_PATH, "ascii");
     return { ...common, host: process.env.SNOWFLAKE_HOST!, authenticator: "OAUTH", token } as snowflake.ConnectionOptions;
   }
-  // Local development: key-pair (JWT) auth with the settings of connection sfseapac_kp (see .env.example).
+  // Local development: key-pair (JWT) auth with the settings of connection <connection> (see .env.example).
   const privateKey = fs.readFileSync(resolveHome(process.env.SNOWFLAKE_PRIVATE_KEY_PATH ?? ""), "utf-8");
   return {
     ...common,

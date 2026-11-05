@@ -49,7 +49,7 @@ export const PAGES: Record<string, string[]> = {
   c3: ["cx_story"],
   ontology: ["on_graph", "on_lineage"],
   overview: ["ov_scorecard", "ov_on_time", "ov_time_mix", "ov_trend", "ov_risks", "ov_ai_uplift"],
-  portfolio: ["pf_size", "pf_pareto", "pf_fp_watch"],
+  portfolio: ["pf_size", "pf_pareto", "pf_fp_watch", "pf_portfolio"],
   project: ["pj_list", "pj_header", "pj_months", "pj_work_packages", "pj_pyramid", "pj_assets", "pj_why"],
   workforce: ["wf_time_mix", "wf_mix_trend", "wf_bench_month", "wf_roll_off"],
   people: ["pe_headcount", "pe_risk", "pe_supply", "pe_demand", "pe_curriculum"],

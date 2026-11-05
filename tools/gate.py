@@ -3,6 +3,7 @@
 Each gate returns a list of (check_id, description, expected, actual, passed). Results are written to
 logs/gate_<cp>.json (and, from CP-05 on, also to ACOCO_L2.QUALITY.Q_CHECK_RESULTS). Exit code 1 if any check fails.
 """
+import os
 import datetime as dt
 import json
 import pathlib
@@ -702,7 +703,7 @@ def gate_cp11():
     checks.append(("CP11-03", "agent regression re-run on the final build (logs/agent_regression.md)", f"20/20, {today}",
                    f"{'20/20' if '20/20 PASS' in reg else 'not 20/20'}, {stamp.group(1) if stamp else '-'}",
                    "20/20 PASS" in reg and bool(stamp) and stamp.group(1) == today))
-    dr = subprocess.run([py, str(ROOT / "tools" / "dry_run.py"), "ictbqx-sfseapac-snowflake-sap-apj.snowflakecomputing.app"],
+    dr = subprocess.run([py, str(ROOT / "tools" / "dry_run.py"), os.environ.get("ACOCO_APP_HOST", "<SPCS_ENDPOINT_HOST>")],
                         capture_output=True, text=True)
     tail = [ln for ln in dr.stdout.splitlines() if "steps PASS" in ln]
     checks.append(("CP11-04", "scripted dry run of the 30-minute flow on the deployed app (logs/dry_run_cp11.md)", "all steps PASS",
