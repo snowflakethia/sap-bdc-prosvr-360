@@ -1,4 +1,4 @@
-"""Generate and deploy the five ACoCo Semantic Views (PRD 7.2 ontology rules) from one spec.
+"""Generate and deploy the six ACoCo Semantic Views (PRD 7.2 ontology rules) from one spec.
 
   .venv/bin/python tools/gen_semantic.py --render          write sql/03_l2/semantic/<sv>.yaml
   .venv/bin/python tools/gen_semantic.py --deploy [SV...]  render + deploy via `cortex agent-studio sv-deploy`
@@ -87,7 +87,8 @@ ENTITIES = {
     "learning_item": ("ONTOLOGY.ENT_LEARNING_ITEM", "LEARNING_ITEM_ID", {
         "learning_item_id": ("LEARNING_ITEM_ID", "Learning item", ["course"]),
         "learning_item_title": ("LEARNING_ITEM_TITLE", "Learning item title", ["course name"]),
-        "curriculum": ("CURRICULUM", "AGENTIC_AI or CORE curriculum", ["learning path"]),
+        "curriculum": ("CURRICULUM", "Curriculum: AGENTIC_AI_BUILD, PROMPT_COPILOT, CORTEX_DATA (AI), SAP_FUNCTIONAL, PROJECT_MGMT, "
+                                     "COMMERCIAL_BID, LEADERSHIP, INDUSTRY", ["learning path"]),
     }, "SAP People Intelligence Learning"),
     "asset": ("ONTOLOGY.ENT_ASSET", "ASSET_ID", {
         "asset_id": ("ASSET_ID", "Reusable delivery asset", []),
@@ -104,6 +105,21 @@ ENTITIES = {
         "time_category": ("TIME_CATEGORY", "DELIVERY, BID, LEARNING, ADMIN or BENCH", ["use of time", "category"]),
         "time_category_objective": ("OBJECTIVE", "What the category is judged on", []),
     }, "Timesheet attendance type"),
+    # P6 (spec 4.1, 4.2)
+    "ai_model": ("ONTOLOGY.ENT_AI_MODEL", "AI_MODEL_ID", {
+        "ai_product": ("PRODUCT", "AI product: CHATGPT / CLAUDE_CHAT (chat, 2023 - Apr 2025), CODEX / CLAUDE_CODE (from May 2025), "
+                                 "CORTEX (from Nov 2025)", ["product", "Claude Code", "Codex", "Cortex"]),
+        "ai_product_name": ("PRODUCT_NAME", "AI product name", []),
+        "ai_model_name": ("MODEL", "Model, e.g. claude-sonnet-4-5, gpt-5, openai-gpt-5 (via Cortex)", ["model", "LLM"]),
+        "model_family": ("MODEL_FAMILY", "CLAUDE, GPT or OPEN (open models via Cortex)", ["model vendor"]),
+    }, "AI telemetry + model price list"),
+    "learning_category": ("ONTOLOGY.ENT_LEARNING_CATEGORY", "CURRICULUM", {
+        "learning_category": ("CURRICULUM", "Curriculum code (8 curricula)", ["curriculum", "training category"]),
+        "learning_category_name": ("CURRICULUM_NAME", "Curriculum name", ["training", "course category"]),
+        "is_ai_curriculum": ("IS_AI_CURRICULUM", "One of the three AI curricula", ["AI training"]),
+        "target_pillar": ("TARGET_PILLAR", "WPS pillar the curriculum is meant to move (VC, OE, PD, TM)", []),
+        "target_input": ("TARGET_INPUT", "WPS input the curriculum is meant to move (EFF, SCHED, WIN, BILL, TEAM)", []),
+    }, "SAP People Intelligence Learning"),
 }
 # role-playing copies (logical name -> entity)
 ROLES = {"source_project": "project"}
@@ -111,15 +127,19 @@ ROLES = {"source_project": "project"}
 # ---------------------------------------------------------------------------------------------- metrics (once)
 METRICS = {
     # name: (expression over fact names, description, synonyms, pillar)
-    "delivery_pct": ("100 * SUM(<f>.delivery_hours) / NULLIF(SUM(<f>.available_hours), 0)",
-                     "Billability: Delivery hours as % of available hours (Employee Availability)", ["billability", "utilisation of delivery"], "Operational Excellence"),
+    "billability_pct": ("100 * SUM(<f>.delivery_hours) / NULLIF(SUM(<f>.available_hours), 0)",
+                        "Billability: client-billable (Delivery) hours as % of available hours (Employee Availability)",
+                        ["billability", "delivery share", "billable %"], "Operational Excellence"),
+    "utilization_pct": ("100 * SUM(<f>.utilized_hours) / NULLIF(SUM(<f>.available_hours), 0)",
+                        "Utilization: Delivery + Bid + recorded asset-contribution hours as % of available hours (asset hours "
+                        "are recorded, not budgeted, so it can exceed 100)", ["utilisation", "utilization rate"], "Operational Excellence"),
     "bid_pct": ("100 * SUM(<f>.bid_hours) / NULLIF(SUM(<f>.available_hours), 0)", "Bid (pre-sales) hours as % of available hours", ["presales share"], "Value Creation"),
     "learning_pct": ("100 * SUM(<f>.learning_hours) / NULLIF(SUM(<f>.available_hours), 0)", "Learning hours as % of available hours", [], "People Development"),
     "admin_pct": ("100 * SUM(<f>.admin_hours) / NULLIF(SUM(<f>.available_hours), 0)", "Admin hours as % of available hours (ceiling 5 %)", [], "Operational Excellence"),
     "bench_pct": ("100 * SUM(<f>.bench_hours) / NULLIF(SUM(<f>.available_hours), 0)", "Bench = available minus booked hours, % of available (target ~2 %, < 3 %)", ["idle time", "unutilised"], "Operational Excellence"),
     "available_hours_total": ("SUM(<f>.available_hours)", "Available hours (planned work hours minus absence)", ["capacity"], "Operational Excellence"),
     "bench_cost": ("SUM(<f>.bench_cost)", "Bench hours x level cost rate (USD)", [], "Operational Excellence"),
-    "productivity_index": ("SUM(<f>.earned_hours) / NULLIF(SUM(<f>.delivery_hours), 0)", "Earned hours / actual delivery hours (> 1 = faster than plan)", ["productivity"], "People Development"),
+    "productivity_index": ("SUM(<f>.earned_hours) / NULLIF(SUM(<f>.delivery_hours), 0)", "Earned-hour efficiency: earned hours / actual delivery hours (> 1 = faster than plan); one input of the WPS", ["earned-hour efficiency"], "People Development"),
     "category_share_pct": ("100 * SUM(<f>.hours) / NULLIF(SUM(<f>.available_hours), 0)", "Hours of the time category as % of available hours", ["time mix"], "Operational Excellence"),
     "revenue": ("SUM(<f>.revenue)", "Recognised revenue (USD, S/4 journal GL 0041000000)", ["sales", "fees"], "Value Creation"),
     "total_cost": ("SUM(<f>.total_cost)", "People + AI-agent + 35 % overhead cost (USD)", ["cost"], "Value Creation"),
@@ -176,6 +196,31 @@ METRICS = {
     "payback_ci_high": ("AVG(<f>.ci_high)", "R14: upper bound of the 90 % confidence interval", [], "People Development"),
     "risk_usd_at_stake": ("SUM(<f>.usd_at_stake)", "Money at stake on cross-pillar risk items (USD)", [], "ProServe360"),
     "risk_items": ("COUNT(<f>.risk_key)", "Number of risk items", [], "ProServe360"),
+    # P6 Workforce Productivity Score (spec 2, 3) - WPS / pillars are 0-100, 50 = level average
+    "avg_wps": ("AVG(<f>.wps)", "Workforce Productivity Score, 0-100 (50 = average of the level in the fiscal year)", ["WPS", "productivity score"], "People Development"),
+    "median_wps": ("MEDIAN(<f>.wps)", "Median WPS (0-100, 50 = level average)", ["median productivity"], "People Development"),
+    "avg_value_creation": ("AVG(<f>.vc)", "Value Creation pillar score (win-rate, earned-hour efficiency), 0-100", ["VC pillar"], "Value Creation"),
+    "avg_operational_excellence": ("AVG(<f>.oe)", "Operational Excellence pillar score (schedule, earned-hour efficiency), 0-100", ["OE pillar"], "Operational Excellence"),
+    "avg_people_development": ("AVG(<f>.pd)", "People Development pillar score (billability, utilization, asset reuse, learning, asset creation), 0-100", ["PD pillar"], "People Development"),
+    "avg_team": ("AVG(<f>.tm)", "Team pillar score (mean WPS of the team; Manager+ with >= 3 scored team members), 0-100", ["TM pillar"], "People Development"),
+    "avg_wps_ex_learn": ("AVG(<f>.wps_ex_learn)", "WPS recomputed without the learning input (used to test training)", [], "People Development"),
+    "team_pillar_coverage_pct": ("100 * AVG(IFF(<f>.tm_applies, 1, 0))", "Share of person-quarters where the Team pillar applies", [], "People Development"),
+    "scored_person_quarters": ("COUNT(<f>.person_quarter_key)", "Person-quarters scored (>= 80 available hours)", [], "People Development"),
+    "ai_tokens": ("SUM(<f>.tokens)", "AI tokens (input + output)", ["tokens", "token usage"], "People Development"),
+    "ai_token_cost_usd": ("SUM(<f>.cost_usd)", "AI spend priced per model (USD)", [], "People Development"),
+    "tokens_per_delivery_hour": ("SUM(<f>.tokens) / NULLIF(SUM(<f>.delivery_hours), 0)", "AI tokens per delivery hour", ["token intensity"], "People Development"),
+    "curriculum_learning_hours": ("SUM(<f>.learning_hours)", "Learning hours in the curriculum", ["training hours"], "People Development"),
+    "curriculum_completions": ("SUM(<f>.completions)", "Learning-item completions", [], "People Development"),
+    "avg_assessment_score": ("AVG(<f>.avg_assessment_score)", "Mean assessment score of completions (0-100)", [], "People Development"),
+    "association_rho": ("AVG(<f>.rho)", "Spearman rho of the exposure with the outcome within level (one row per test cell); "
+                        "associated with, not causes", ["correlation", "association"], "People Development"),
+    "association_ci_low": ("AVG(<f>.ci_low)", "Lower bound of the 90 % person-cluster bootstrap CI", [], "People Development"),
+    "association_ci_high": ("AVG(<f>.ci_high)", "Upper bound of the 90 % person-cluster bootstrap CI", [], "People Development"),
+    "wps_uplift": ("AVG(<f>.uplift_wps)", "R13 re-based: WPS of AI-active person-quarters minus the rest (WPS points)", [], "People Development"),
+    "wps_payback": ("AVG(<f>.payback_wps)", "R14 re-based: WPS change after a curriculum episode minus the matched comparison (WPS points)", [], "People Development"),
+    "level_median_wps": ("AVG(<f>.wps_median)", "Median WPS of the level cell (one row per scope x years x level)", [], "People Development"),
+    "level_median_billability_pct": ("100 * AVG(<f>.billability_median)", "Median billability of the level cell (%)", [], "Operational Excellence"),
+    "level_median_utilization_pct": ("100 * AVG(<f>.utilization_median)", "Median utilization of the level cell (%)", [], "Operational Excellence"),
 }
 
 
@@ -183,7 +228,22 @@ def F(col, desc, syn=None, kind="fact"):
     return dict(col=col, desc=desc, syn=syn or [], kind=kind)
 
 
-# ---------------------------------------------------------------------------------------------- the five views
+def test_fields(prefix, extra=None):
+    """Shared columns of the P6 association tests (spec 3.3); dimension names are prefixed (unique within the view)."""
+    out = {"rho": F("RHO", "Spearman rho within level (partial rho for R16 / R18)"),
+           "ci_low": F("CI_LOW", "90 % person-cluster bootstrap CI low"), "ci_high": F("CI_HIGH", "90 % CI high"),
+           f"{prefix}_scope": F("SCOPE", "FIRM or MD group id", kind="dim"),
+           f"{prefix}_fiscal_years": F("FISCAL_YEARS", "Fiscal year(s) tested, e.g. FY24-26 (pooled) or FY26", kind="dim"),
+           f"{prefix}_stratum": F("STRATUM", "ALL LEVELS or a level", kind="dim"),
+           f"{prefix}_outcome": F("OUTCOME", "WPS or a pillar / input (VC, OE, PD, TM, WIN, EFF, ...)", kind="dim"),
+           f"{prefix}_significant": F("SIGNIFICANT", "90 % CI excludes 0 AND |rho| >= 0.05", kind="dim"),
+           f"{prefix}_effect_size": F("EFFECT_SIZE", "SIGNIFICANT / NEGLIGIBLE / NOT_SIGNIFICANT", kind="dim"),
+           f"{prefix}_cell_status": F("CELL_STATUS", "OK or SMALL_CELL (< 15 people or < 30 person-quarters; suppressed)", kind="dim")}
+    out.update(extra or {})
+    return out
+
+
+# ---------------------------------------------------------------------------------------------- the views
 # fact logical table: (schema.table, key or None, {logical: F(...)}, [(relationship target, [(fact col, entity col)])], [metrics])
 SVS = {
     "SV_WORKFORCE_PERFORMANCE": dict(
@@ -196,9 +256,11 @@ SVS = {
                 "available_hours": F("AVAILABLE_HOURS", "Available hours"), "delivery_hours": F("DELIVERY_HOURS", "Delivery hours"),
                 "bid_hours": F("BID_HOURS", "Bid hours"), "learning_hours": F("LEARNING_HOURS", "Learning hours"),
                 "admin_hours": F("ADMIN_HOURS", "Admin hours"), "bench_hours": F("BENCH_HOURS", "Bench hours"),
-                "bench_cost": F("BENCH_COST", "Bench cost USD"), "earned_hours": F("EARNED_HOURS", "Earned hours")},
+                "bench_cost": F("BENCH_COST", "Bench cost USD"), "earned_hours": F("EARNED_HOURS", "Earned hours"),
+                "utilized_hours": F("UTILIZED_HOURS", "Delivery + bid + recorded asset-contribution hours")},
                 [("person", [("PERSON_ID", "PERSON_ID")]), ("fiscal_month", [("MONTH_START", "MONTH_START")])],
-                ["delivery_pct", "bid_pct", "learning_pct", "admin_pct", "bench_pct", "available_hours_total", "bench_cost", "productivity_index"]),
+                ["billability_pct", "utilization_pct", "bid_pct", "learning_pct", "admin_pct", "bench_pct", "available_hours_total",
+                 "bench_cost", "productivity_index"]),
             "time_booking": ("WORKFORCE_PERFORMANCE.DT_PERSON_MONTH_TIME", "PERSON_MONTH_TIME_ID", {
                 "hours": F("HOURS", "Hours in the time category"), "available_hours": F("AVAILABLE_HOURS", "Person-month available hours"),
                 "target_pct": F("TARGET_PCT", "Level target % for the category")},
@@ -319,7 +381,7 @@ WHERE f.FISCAL_YEAR = 2026 GROUP BY p.DELIVERY_MODEL ORDER BY MARGIN_PCT DESC"""
                  ("project", [("PROJECT_ID", "PROJECT_ID")])],
                 ["win_rate_pct", "pursuit_cost", "pursuit_cost_per_won_usd", "avg_skill_fit", "won_value", "open_pipeline_value", "bid_count"]),
             "pursuit_team": ("PIPELINE_PRESALES.DT_PURSUIT_TEAM", None, {
-                "bid_hours": F("BID_HOURS", "Bid hours booked"), "team_role": F("TEAM_ROLE", "LEAD or MEMBER", kind="dim")},
+                "bid_hours": F("BID_HOURS", "Bid hours booked"), "team_role": F("TEAM_ROLE", "LEAD, MEMBER or SUPPORT (support members are named on the bid but outside skill fit)", kind="dim")},
                 [("opportunity", [("OPPORTUNITY_ID", "OPPORTUNITY_ID")]), ("person", [("PERSON_ID", "PERSON_ID")])],
                 ["pursuit_team_bid_hours"]),
             "bench_match": ("REASONING.VW_BENCH_TO_PIPELINE_MATCH", None, {
@@ -344,16 +406,18 @@ JOIN ACOCO_L2.ONTOLOGY.ENT_MD_GROUP g ON g.MD_GROUP_ID = c.MD_GROUP_ID
 WHERE o.IS_OPEN_AS_OF GROUP BY g.MD_GROUP_NAME ORDER BY OPEN_PIPELINE_VALUE DESC""")],
     ),
     "SV_AI_ADOPTION": dict(
-        description="People Development pillar (AI): AI tool use and spend, agent cost on projects, AI-active vs other "
-                    "productivity, and learning payback. The stratified, confidence-tested results are in SERVING.VW_AI_PRODUCTIVITY_TEST.",
-        entities=["person", "md_group", "ai_tool", "project", "learning_item", "skill", "fiscal_month"],
+        description="AI adoption: AI tool, product and model use and spend (chat assistants 2023 - Apr 2025; Claude Code and "
+                    "Codex from May 2025; Cortex from Nov 2025), agent cost on projects, AI-active vs other earned-hour efficiency, "
+                    "and learning payback. WPS-based productivity tests are in SV_WORKFORCE_PRODUCTIVITY.",
+        entities=["person", "md_group", "ai_tool", "ai_model", "project", "learning_item", "skill", "fiscal_month"],
         entity_edges=[("person", "md_group", "MD_GROUP_ID"), ("learning_item", "skill", "TARGET_SKILL_ID")],
         facts={
             "ai_usage": ("AI_ADOPTION.DT_AI_USAGE_DAILY", None, {
-                "cost_usd": F("COST_USD", "Spend USD"), "sessions": F("SESSIONS", "Sessions"),
+                "cost_usd": F("COST_USD", "Spend USD"), "sessions": F("SESSIONS", "Sessions"), "tokens": F("TOKENS", "Tokens"),
                 "usage_date": F("USAGE_DATE", "Usage date", kind="time")},
-                [("person", [("PERSON_ID", "PERSON_ID")]), ("ai_tool", [("AI_TOOL_ID", "AI_TOOL_ID")])],
-                ["ai_cost_usd", "ai_sessions"]),
+                [("person", [("PERSON_ID", "PERSON_ID")]), ("ai_tool", [("AI_TOOL_ID", "AI_TOOL_ID")]),
+                 ("ai_model", [("AI_MODEL_ID", "AI_MODEL_ID")])],
+                ["ai_cost_usd", "ai_sessions", "ai_tokens"]),
             "agent_on_project": ("AI_ADOPTION.DT_AI_AGENT_PROJECT_MONTH", "AGENT_PROJECT_MONTH_ID", {
                 "agent_cost": F("AGENT_COST", "Agent cost USD"), "agent_hours": F("AGENT_HOURS", "Agent hours")},
                 [("project", [("PROJECT_ID", "PROJECT_ID")]), ("ai_tool", [("AI_TOOL_ID", "AI_TOOL_ID")]),
@@ -377,7 +441,7 @@ WHERE o.IS_OPEN_AS_OF GROUP BY g.MD_GROUP_NAME ORDER BY OPEN_PIPELINE_VALUE DESC
                 [], ["productivity_uplift", "uplift_ci_low", "uplift_ci_high"]),
             "payback_test": ("REASONING.LEARNING_PAYBACK_TEST", None, {
                 "payback": F("PAYBACK", "Payback"), "ci_low": F("CI_LOW", "90 % CI low"), "ci_high": F("CI_HIGH", "90 % CI high"),
-                "payback_scope": F("SCOPE", "FIRM or FS", kind="dim"), "payback_curriculum": F("CURRICULUM", "AGENTIC_AI or CORE", kind="dim"),
+                "payback_scope": F("SCOPE", "FIRM or FS", kind="dim"), "payback_curriculum": F("CURRICULUM", "Curriculum (8 curricula)", kind="dim"),
                 "payback_significant": F("SIGNIFICANT", "90 % CI excludes zero", kind="dim")},
                 [], ["payback_estimate", "payback_ci_low", "payback_ci_high"]),
             "learning_episode": ("AI_ADOPTION.DT_LEARNING_PAYBACK", None, {
@@ -390,10 +454,102 @@ WHERE o.IS_OPEN_AS_OF GROUP BY g.MD_GROUP_NAME ORDER BY OPEN_PIPELINE_VALUE DESC
                """SELECT t.AI_TOOL_NAME, ROUND(SUM(u.COST_USD), 0) AS AI_COST_USD
 FROM ACOCO_L2.AI_ADOPTION.DT_AI_USAGE_DAILY u JOIN ACOCO_L2.ONTOLOGY.ENT_AI_TOOL t ON t.AI_TOOL_ID = u.AI_TOOL_ID
 WHERE u.USAGE_DATE BETWEEN '2025-10-01' AND '2026-09-30' GROUP BY t.AI_TOOL_NAME ORDER BY AI_COST_USD DESC"""),
+              ("What is FY26 AI spend and tokens by product and model?",
+               """SELECT m.PRODUCT, m.MODEL, ROUND(SUM(u.COST_USD), 0) AS AI_COST_USD, SUM(u.TOKENS) AS TOKENS
+FROM ACOCO_L2.AI_ADOPTION.DT_AI_USAGE_DAILY u JOIN ACOCO_L2.ONTOLOGY.ENT_AI_MODEL m ON m.AI_MODEL_ID = u.AI_MODEL_ID
+WHERE u.USAGE_DATE BETWEEN '2025-10-01' AND '2026-09-30' GROUP BY m.PRODUCT, m.MODEL ORDER BY AI_COST_USD DESC"""),
               ("What is the average learning payback by curriculum?",
                """SELECT li.CURRICULUM, ROUND(AVG(l.PAYBACK), 4) AS LEARNING_PAYBACK
 FROM ACOCO_L2.AI_ADOPTION.DT_LEARNING_PAYBACK l JOIN ACOCO_L2.ONTOLOGY.ENT_LEARNING_ITEM li ON li.LEARNING_ITEM_ID = l.LEARNING_ITEM_ID
 GROUP BY li.CURRICULUM ORDER BY li.CURRICULUM""")],
+    ),
+    "SV_WORKFORCE_PRODUCTIVITY": dict(
+        description="Workforce Productivity Score (P6): WPS 0-100 per person x fiscal quarter (50 = level average in the year), its "
+                    "pillars Value Creation, Operational Excellence, People Development and Team, billability and utilization vs "
+                    "targets, AI tokens by product, learning by curriculum, and the association tests R13w-R18 (Spearman rho "
+                    "with 90 % CI). Results are associations, not causes.",
+        entities=["person", "md_group", "level", "fiscal_month", "learning_category"],
+        entity_edges=[("person", "md_group", "MD_GROUP_ID"), ("person", "level", "LEVEL")],
+        facts={
+            "person_quarter": ("WORKFORCE_PERFORMANCE.DT_PERSON_QUARTER_WPS", "PERSON_QUARTER_ID", {
+                "person_quarter_key": F("PERSON_QUARTER_ID", "Person-quarter"), "wps": F("WPS", "Workforce Productivity Score 0-100"),
+                "vc": F("VC", "Value Creation pillar 0-100"), "oe": F("OE", "Operational Excellence pillar 0-100"),
+                "pd": F("PD", "People Development pillar 0-100"), "tm": F("TM", "Team pillar 0-100 (null when it does not apply)"),
+                "wps_ex_learn": F("WPS_EX_LEARN", "WPS without the learning input"),
+                "available_hours": F("AVAILABLE_HOURS", "Available hours"), "delivery_hours": F("DELIVERY_HOURS", "Delivery hours"),
+                "asset_contribution_hours": F("ASSET_CONTRIBUTION_HOURS", "Recorded asset-building hours"),
+                "tm_applies": F("TM_APPLIES", "Team pillar applies (Manager+ with >= 3 scored team members)", kind="dim"),
+                "team_scope": F("TEAM_SCOPE", "DIRECT (Manager) or TREE (Senior Manager+, reporting tree)", kind="dim"),
+                "wps_fiscal_quarter_label": F("FISCAL_QUARTER_LABEL", "Fiscal quarter, e.g. FY26Q4", ["quarter label"], kind="dim")},
+                [("person", [("PERSON_ID", "PERSON_ID")]), ("fiscal_month", [("Q_START", "MONTH_START")])],
+                ["avg_wps", "median_wps", "avg_value_creation", "avg_operational_excellence", "avg_people_development", "avg_team",
+                 "avg_wps_ex_learn", "team_pillar_coverage_pct", "scored_person_quarters", "billability_pct"]),
+            "token_quarter": ("AI_ADOPTION.DT_AI_TOKENS_PERSON_QUARTER", "ROW_ID", {
+                "tokens": F("TOKENS", "Tokens"), "cost_usd": F("COST_USD", "Spend USD"), "delivery_hours": F("DELIVERY_HOURS", "Delivery hours"),
+                "token_product": F("PRODUCT", "AI product (CHATGPT, CLAUDE_CHAT, CODEX, CLAUDE_CODE, CORTEX)", ["product"], kind="dim"),
+                "token_model_family": F("MODEL_FAMILY", "CLAUDE, GPT or OPEN", kind="dim"),
+                "token_fiscal_year": F("FISCAL_YEAR", "Fiscal year", kind="dim"),
+                "token_fiscal_quarter": F("FISCAL_QUARTER", "Fiscal quarter 1-4", kind="dim")},
+                [("person", [("PERSON_ID", "PERSON_ID")])],
+                ["ai_tokens", "ai_token_cost_usd", "tokens_per_delivery_hour"]),
+            "learning_quarter": ("WORKFORCE_PERFORMANCE.DT_LEARNING_PERSON_QUARTER", "ROW_ID", {
+                "learning_hours": F("LEARNING_HOURS", "Learning hours"), "completions": F("COMPLETIONS", "Completions"),
+                "avg_assessment_score": F("AVG_ASSESSMENT_SCORE", "Mean assessment score"),
+                "is_required_at_level": F("IS_REQUIRED_AT_LEVEL", "Curriculum is required at the person's level", kind="dim"),
+                "learning_fiscal_year": F("FISCAL_YEAR", "Fiscal year", kind="dim"),
+                "learning_fiscal_quarter": F("FISCAL_QUARTER", "Fiscal quarter 1-4", kind="dim")},
+                [("person", [("PERSON_ID", "PERSON_ID")]), ("learning_category", [("CURRICULUM", "CURRICULUM")])],
+                ["curriculum_learning_hours", "curriculum_completions", "avg_assessment_score"]),
+            "wps_by_level": ("REASONING.WPS_BY_LEVEL", None, {
+                "wps_median": F("WPS_MEDIAN", "Median WPS"), "billability_median": F("BILLABILITY_MEDIAN", "Median billability 0-1"),
+                "utilization_median": F("UTILIZATION_MEDIAN", "Median utilization 0-1"),
+                "level_scope": F("SCOPE", "FIRM or MD group id", kind="dim"),
+                "level_fiscal_years": F("FISCAL_YEARS", "Fiscal year(s)", kind="dim"),
+                "level_cell": F("LEVEL", "Level of the cell", kind="dim"),
+                "level_cell_status": F("CELL_STATUS", "OK or SMALL_CELL", kind="dim")},
+                [], ["level_median_wps", "level_median_billability_pct", "level_median_utilization_pct"]),
+            "token_test": ("REASONING.TOKEN_WPS_TEST", None, test_fields("token_test", {
+                "token_test_exposure": F("EXPOSURE", "Token measure (tokens per delivery hour, ...)", kind="dim")}), [], ["association_rho", "association_ci_low", "association_ci_high"]),
+            "vendor_test": ("REASONING.VENDOR_WPS_TEST", None, test_fields("vendor_test", {
+                "vendor_test_exposure": F("EXPOSURE", "Product or model family (share of tokens); tested only in product-available quarters", kind="dim"),
+                "vendor_test_exposure_kind": F("EXPOSURE_KIND", "PRODUCT or MODEL_FAMILY", kind="dim")}), [], ["association_rho", "association_ci_low", "association_ci_high"]),
+            "training_test": ("REASONING.TRAINING_WPS_TEST", None, test_fields("training_test", {
+                "training_test_exposure": F("EXPOSURE", "Learning share of available hours", kind="dim")}), [], ["association_rho", "association_ci_low", "association_ci_high"]),
+            "curriculum_test": ("REASONING.CURRICULUM_WPS_TEST", None, test_fields("curriculum_test", {
+                "curriculum_test_curriculum": F("CURRICULUM", "Curriculum tested", kind="dim"),
+                "curriculum_test_target_input": F("TARGET_INPUT", "WPS input the curriculum targets", kind="dim")}), [], ["association_rho", "association_ci_low", "association_ci_high"]),
+            "ai_wps_test": ("REASONING.AI_WPS_TEST", None, {
+                "uplift_wps": F("UPLIFT_WPS", "WPS uplift of AI-active person-quarters"), "ci_low": F("CI_LOW", "90 % CI low"),
+                "ci_high": F("CI_HIGH", "90 % CI high"), "ai_wps_scope": F("SCOPE", "FIRM or MD group id", kind="dim"),
+                "ai_wps_fiscal_years": F("FISCAL_YEARS", "Fiscal year(s)", kind="dim"),
+                "ai_wps_stratum": F("STRATUM", "ALL LEVELS or a level", kind="dim"),
+                "ai_wps_significant": F("SIGNIFICANT", "90 % CI excludes 0", kind="dim")},
+                [], ["wps_uplift", "association_ci_low", "association_ci_high"]),
+            "payback_wps_test": ("REASONING.LEARNING_WPS_PAYBACK_TEST", None, {
+                "payback_wps": F("PAYBACK_WPS", "WPS payback of the curriculum"), "ci_low": F("CI_LOW", "90 % CI low"),
+                "ci_high": F("CI_HIGH", "90 % CI high"), "payback_wps_scope": F("SCOPE", "FIRM or MD group id", kind="dim"),
+                "payback_wps_curriculum": F("CURRICULUM", "Curriculum", kind="dim"),
+                "payback_wps_significant": F("SIGNIFICANT", "90 % CI excludes 0", kind="dim")},
+                [], ["wps_payback", "association_ci_low", "association_ci_high"]),
+        },
+        vqrs=[("What was the median WPS and billability by level in FY26?",
+               """SELECT LEVEL, ROUND(WPS_MEDIAN, 1) AS MEDIAN_WPS, ROUND(100 * BILLABILITY_MEDIAN, 1) AS MEDIAN_BILLABILITY_PCT,
+       ROUND(100 * UTILIZATION_MEDIAN, 1) AS MEDIAN_UTILIZATION_PCT
+FROM ACOCO_L2.REASONING.WPS_BY_LEVEL WHERE SCOPE = 'FIRM' AND FISCAL_YEARS = 'FY26' AND CELL_STATUS = 'OK'
+ORDER BY LEVEL_SORT"""),
+              ("Which AI products are significantly associated with WPS, by level?",
+               """SELECT STRATUM, EXPOSURE, OUTCOME, ROUND(RHO, 3) AS RHO, ROUND(CI_LOW, 3) AS CI_LOW, ROUND(CI_HIGH, 3) AS CI_HIGH
+FROM ACOCO_L2.REASONING.VENDOR_WPS_TEST
+WHERE SCOPE = 'FIRM' AND FISCAL_YEARS NOT LIKE '%pooled' AND EXPOSURE_KIND = 'PRODUCT' AND OUTCOME = 'WPS'
+  AND SIGNIFICANT AND CELL_STATUS = 'OK'
+ORDER BY STRATUM, RHO DESC"""),
+              ("What was average WPS by MD group in FY26?",
+               """SELECT g.MD_GROUP_NAME, ROUND(AVG(w.WPS), 1) AS AVG_WPS
+FROM ACOCO_L2.WORKFORCE_PERFORMANCE.DT_PERSON_QUARTER_WPS w
+JOIN ACOCO_L2.ONTOLOGY.ENT_PERSON p ON p.PERSON_ID = w.PERSON_ID
+JOIN ACOCO_L2.ONTOLOGY.ENT_MD_GROUP g ON g.MD_GROUP_ID = p.MD_GROUP_ID
+JOIN ACOCO_L2.CORE.DT_FISCAL_MONTH f ON f.MONTH_START = w.Q_START
+WHERE f.FISCAL_YEAR = 2026 GROUP BY g.MD_GROUP_NAME ORDER BY AVG_WPS DESC""")],
     ),
     "SV_PORTFOLIO_360": dict(
         description="ProServe360 overlay for the Managing Director: group P&L, capacity mix by time category vs target, "
@@ -410,7 +566,7 @@ GROUP BY li.CURRICULUM ORDER BY li.CURRICULUM""")],
                 "voluntary_leavers": F("VOLUNTARY_LEAVERS", "Voluntary leavers"),
                 "month_key": F("MONTH_START", "Month of the row (counts months for averages)")},
                 [("md_group", [("MD_GROUP_ID", "MD_GROUP_ID")]), ("fiscal_month", [("MONTH_START", "MONTH_START")])],
-                ["revenue", "total_cost", "margin", "margin_pct", "delivery_pct", "bid_pct", "learning_pct", "admin_pct",
+                ["revenue", "total_cost", "margin", "margin_pct", "billability_pct", "bid_pct", "learning_pct", "admin_pct",
                  "bench_pct", "bench_cost", "voluntary_attrition_pct"]),
             "capacity_mix": ("PORTFOLIO_360.DT_CAPACITY_MIX_LONG", None, {
                 "hours": F("HOURS", "Hours in the category"), "available_hours": F("AVAILABLE_HOURS", "Available hours"),
@@ -563,12 +719,18 @@ def check_single_paths(sv_name, sv):
 import collections  # noqa: E402
 
 
+class NoAliasDumper(yaml.SafeDumper):
+    """Shared Python lists (synonyms, test fields) must be written out, not as YAML anchors / aliases."""
+    def ignore_aliases(self, data):
+        return True
+
+
 def render():
     OUT.mkdir(parents=True, exist_ok=True)
     errors = []
     for sv_name, sv in SVS.items():
         errors += check_single_paths(sv_name, sv)
-        (OUT / f"{sv_name.lower()}.yaml").write_text(yaml.safe_dump(build_model(sv_name, sv), sort_keys=False, width=120))
+        (OUT / f"{sv_name.lower()}.yaml").write_text(yaml.dump(build_model(sv_name, sv), Dumper=NoAliasDumper, sort_keys=False, width=120))
     if errors:
         sys.exit("path errors:\n  " + "\n  ".join(errors))
     print(f"rendered {len(SVS)} semantic views to {OUT}")
@@ -582,6 +744,17 @@ def deploy(names):
                                "--fqn", f"ACOCO_L2.SEMANTIC.{sv_name}"], capture_output=True, text=True)
         tail = (proc.stdout + proc.stderr).strip()[-600:]
         ok = proc.returncode == 0 and "error" not in tail.lower()
+        if not ok and "authentication method" in tail:
+            # org policy blocks the CLI's auth method: deploy the same YAML through the SQL procedure
+            # (verify first; replacing an existing view copies its grants)
+            spec = path.read_text()
+            assert "$$" not in spec
+            try:
+                for verify in ("TRUE", "FALSE"):
+                    sf.query(f"CALL SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML('ACOCO_L2.SEMANTIC', $${spec}$$, {verify})")
+                ok, tail = True, ""
+            except Exception as e:  # noqa: BLE001
+                tail = str(e)[-600:]
         print(f"{'deployed' if ok else 'FAILED  '} {sv_name}" + ("" if ok else f"\n{tail}"))
         if not ok:
             sys.exit(1)

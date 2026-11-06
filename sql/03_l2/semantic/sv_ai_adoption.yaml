@@ -1,6 +1,7 @@
 name: SV_AI_ADOPTION
-description: 'People Development pillar (AI): AI tool use and spend, agent cost on projects, AI-active vs other productivity,
-  and learning payback. The stratified, confidence-tested results are in SERVING.VW_AI_PRODUCTIVITY_TEST.'
+description: 'AI adoption: AI tool, product and model use and spend (chat assistants 2023 - Apr 2025; Claude Code and Codex
+  from May 2025; Cortex from Nov 2025), agent cost on projects, AI-active vs other earned-hour efficiency, and learning payback.
+  WPS-based productivity tests are in SV_WORKFORCE_PRODUCTIVITY.'
 tables:
 - name: person
   description: Shared ontology entity PERSON (ACOCO_L2.ONTOLOGY.ENT_PERSON)
@@ -115,6 +116,43 @@ tables:
     expr: TOOL_KIND
     data_type: VARCHAR
     description: ASSISTANT (people use it) or AGENT (charged to projects)
+- name: ai_model
+  description: Shared ontology entity AI_MODEL (ACOCO_L2.ONTOLOGY.ENT_AI_MODEL)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_AI_MODEL
+  primary_key:
+    columns:
+    - AI_MODEL_ID
+  dimensions:
+  - name: ai_product
+    expr: PRODUCT
+    data_type: VARCHAR
+    description: 'AI product: CHATGPT / CLAUDE_CHAT (chat, 2023 - Apr 2025), CODEX / CLAUDE_CODE (from May 2025), CORTEX (from
+      Nov 2025)'
+    synonyms:
+    - product
+    - Claude Code
+    - Codex
+    - Cortex
+  - name: ai_product_name
+    expr: PRODUCT_NAME
+    data_type: VARCHAR
+    description: AI product name
+  - name: ai_model_name
+    expr: MODEL
+    data_type: VARCHAR
+    description: Model, e.g. claude-sonnet-4-5, gpt-5, openai-gpt-5 (via Cortex)
+    synonyms:
+    - model
+    - LLM
+  - name: model_family
+    expr: MODEL_FAMILY
+    data_type: VARCHAR
+    description: CLAUDE, GPT or OPEN (open models via Cortex)
+    synonyms:
+    - model vendor
 - name: project
   description: Shared ontology entity PROJECT (ACOCO_L2.ONTOLOGY.ENT_PROJECT)
   base_table:
@@ -191,7 +229,8 @@ tables:
   - name: curriculum
     expr: CURRICULUM
     data_type: VARCHAR
-    description: AGENTIC_AI or CORE curriculum
+    description: 'Curriculum: AGENTIC_AI_BUILD, PROMPT_COPILOT, CORTEX_DATA (AI), SAP_FUNCTIONAL, PROJECT_MGMT, COMMERCIAL_BID,
+      LEADERSHIP, INDUSTRY'
     synonyms:
     - learning path
 - name: skill
@@ -281,6 +320,10 @@ tables:
     expr: SESSIONS
     data_type: NUMBER
     description: Sessions
+  - name: tokens
+    expr: TOKENS
+    data_type: NUMBER
+    description: Tokens
   metrics:
   - name: ai_cost_usd
     expr: SUM(cost_usd)
@@ -290,6 +333,12 @@ tables:
   - name: ai_sessions
     expr: SUM(sessions)
     description: AI assistant sessions
+  - name: ai_tokens
+    expr: SUM(tokens)
+    description: AI tokens (input + output)
+    synonyms:
+    - tokens
+    - token usage
 - name: agent_on_project
   description: Fact AI_ADOPTION.DT_AI_AGENT_PROJECT_MONTH
   base_table:
@@ -435,7 +484,7 @@ tables:
   - name: payback_curriculum
     expr: CURRICULUM
     data_type: VARCHAR
-    description: AGENTIC_AI or CORE
+    description: Curriculum (8 curricula)
   - name: payback_significant
     expr: SIGNIFICANT
     data_type: BOOLEAN
@@ -502,6 +551,14 @@ relationships:
   relationship_columns:
   - left_column: AI_TOOL_ID
     right_column: AI_TOOL_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: ai_usage_to_ai_model
+  left_table: ai_usage
+  right_table: ai_model
+  relationship_columns:
+  - left_column: AI_MODEL_ID
+    right_column: AI_MODEL_ID
   join_type: left_outer
   relationship_type: many_to_one
 - name: agent_on_project_to_project
@@ -596,6 +653,16 @@ verified_queries:
   verified_at: 1793059200
   use_as_onboarding_question: true
 - name: vq_2
+  question: What is FY26 AI spend and tokens by product and model?
+  sql: 'SELECT m.PRODUCT, m.MODEL, ROUND(SUM(u.COST_USD), 0) AS AI_COST_USD, SUM(u.TOKENS) AS TOKENS
+
+    FROM ACOCO_L2.AI_ADOPTION.DT_AI_USAGE_DAILY u JOIN ACOCO_L2.ONTOLOGY.ENT_AI_MODEL m ON m.AI_MODEL_ID = u.AI_MODEL_ID
+
+    WHERE u.USAGE_DATE BETWEEN ''2025-10-01'' AND ''2026-09-30'' GROUP BY m.PRODUCT, m.MODEL ORDER BY AI_COST_USD DESC'
+  verified_by: ACoCo build (CP-07)
+  verified_at: 1793059200
+  use_as_onboarding_question: false
+- name: vq_3
   question: What is the average learning payback by curriculum?
   sql: 'SELECT li.CURRICULUM, ROUND(AVG(l.PAYBACK), 4) AS LEARNING_PAYBACK
 

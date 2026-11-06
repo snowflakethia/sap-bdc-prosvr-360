@@ -368,7 +368,7 @@ tables:
   - name: team_role
     expr: TEAM_ROLE
     data_type: VARCHAR
-    description: LEAD or MEMBER
+    description: LEAD, MEMBER or SUPPORT (support members are named on the bid but outside skill fit)
   facts:
   - name: bid_hours
     expr: BID_HOURS

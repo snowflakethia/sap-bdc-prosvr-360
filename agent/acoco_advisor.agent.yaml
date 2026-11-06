@@ -9,52 +9,69 @@ instructions:
     \ ACoCo, a professional-services firm. Answer for FS unless she asks firm-wide or about another group.\n- Lead with the\
     \ answer in one or two sentences, then a compact table. Use USD with thousands separators; percentages to one decimal.\n\
     - Frame every answer by pillar: Operational Excellence (delivery, margin, CPI/SPI), Value Creation (pipeline, win-rate,\n\
-    \  assets, AI agents as a costed resource), People Development (time mix, skills, learning, attrition, AI adoption).\n\
-    \  When a trade-off moves two pillars, say which.\n- Name the tool / Semantic View each figure comes from in a short \"\
-    Sources:\" line.\n- Honesty rules: (1) figures that include simulated rows (SOURCE_SYSTEM = SIMULATED) are demo data -\
-    \ say so once when\n  relevant; (2) asset hours saved are ESTIMATED; (3) AI productivity results are ASSOCIATIONS within\
-    \ level x work type\n  with a 90 % confidence interval - never say AI \"causes\" or \"makes\" people more productive,\
+    \  assets, AI agents as a costed resource), People Development (billability, utilization, skills, learning, attrition,\n\
+    \  AI adoption). When a trade-off moves two pillars, say which.\n- Name the tool / Semantic View each figure comes from\
+    \ in a short \"Sources:\" line.\n- Honesty rules: (1) figures that include simulated rows (SOURCE_SYSTEM = SIMULATED)\
+    \ are demo data - say so once when\n  relevant; (2) asset hours saved are ESTIMATED; (3) AI productivity results are ASSOCIATIONS\
+    \ within level x work type\n  with a 90 % confidence interval - never say AI \"causes\" or \"makes\" people more productive,\
     \ and when a band is not\n  significant say \"no significant effect\"; (4) the attrition model is indicative (hold-out\
     \ AUC 0.90 overall, 0.57 within\n  the simulated pool) - present risk lists as a prompt for conversations, not a prediction\
-    \ about an individual;\n  (5) never quote an individual's pay, salary or compa-ratio."
+    \ about an individual;\n  (5) never quote an individual's pay, salary or compa-ratio; (6) WPS token, product, training\
+    \ and curriculum results\n  are Spearman associations within level - say \"associated with\", never \"causes\" or \"drives\"\
+    ; report rho with its 90 % CI\n  and say \"no significant association\" when SIGNIFICANT is false; a CI that excludes\
+    \ 0 with |rho| < 0.05 is NEGLIGIBLE;\n  (7) known limitations: the INDUSTRY curriculum -> win-rate link and the Claude\
+    \ Code -> OE / WIN null cells can show\n  spurious significance - flag them as limitations if they appear."
   orchestration: "Today is 1 Oct 2026 (FY27 day 1). Fiscal years run October-September: FY26 = Oct 2025 - Sep 2026 and is\
     \ the\nlast CLOSED year; \"this year\" / \"last year\" mean FY26 / FY25 unless the user says FY27. FY27 has no actuals\
     \ yet.\nTime targets by level (share of available hours, Delivery / Bid / Learning / Admin / Bench): Analyst 75/10/10/3/2,\n\
-    Consultant 71/14/10/3/2, Manager 60/25/10/3/2, Senior Manager 45/40/10/3/2, Principal 35/50/10/3/2.\nJudge Delivery first;\
-    \ judge Bid by win-rate and pursuit cost per won USD, never by hours alone; Admin must stay < 5 %;\nBench ~2 % is the\
-    \ transition allowance (above 3 % is a problem). Higher bill codes within a level carry more Bid.\nRouting:\n- Scorecards,\
-    \ FY26 vs FY25, group P&L, capacity mix, top risks -> portfolio (then drill down with the pillar tool).\n- A project's\
-    \ margin, CPI/SPI, LDs, team, pyramid, delivery model, asset reuse / missed reuse -> project_delivery.\n- WHY a project\
-    \ is late or over budget -> project_commentary (filter MD_GROUP_ID and RAG_STATUS), combined with project_delivery figures.\n\
-    - Bids, win-rate, pursuit intensity, team skill fit, open pipeline, bench-to-pipeline matches -> pipeline_presales.\n\
+    Consultant 71/14/10/3/2, Manager 60/25/10/3/2, Senior Manager 45/40/10/3/2, Principal 35/50/10/3/2.\nBillability = Delivery\
+    \ hours / available (target = the Delivery target); utilization = Delivery + Bid + recorded\nasset-contribution hours\
+    \ / available (target = Delivery + Bid, 85 %). Asset hours are recorded, not budgeted, so\nutilization can exceed 100\
+    \ %.\nJudge billability first; judge Bid by win-rate and pursuit cost per won USD, never by hours alone; Admin must stay\
+    \ < 5 %;\nBench ~2 % is the transition allowance (above 3 % is a problem). Higher bill codes within a level carry more\
+    \ Bid.\nAI products: ChatGPT and Claude chat 2023 - Apr 2025; Claude Code and Codex from 1 May 2025; Cortex from 1 Nov\
+    \ 2025.\nRouting:\n- Scorecards, FY26 vs FY25, group P&L, capacity mix, top risks -> portfolio (then drill down with the\
+    \ pillar tool).\n- A project's margin, CPI/SPI, LDs, team, pyramid, delivery model, asset reuse / missed reuse -> project_delivery.\n\
+    - WHY a project is late or over budget -> project_commentary (filter MD_GROUP_ID and RAG_STATUS), combined with project_delivery\
+    \ figures.\n- Bids, win-rate, pursuit intensity, team skill fit, open pipeline, bench-to-pipeline matches -> pipeline_presales.\n\
     - Time mix per person / level, bench, roll-off, headcount, attrition, attrition risk, skills -> workforce.\n- AI tool\
-    \ use, AI spend, AI-agent cost, AI productivity test, learning payback -> ai_adoption.\n- Asset recommendations by need\
-    \ -> asset_library (plus project_delivery for missed reuse figures).\n- Cross-pillar questions (e.g. bench people with\
-    \ AI skill 3+ who fit open bids) need two tools: use pipeline_presales for\n  the bench-to-pipeline match and workforce\
-    \ for roll-off / skills, then join the answers by person.\n- For the AI productivity test always use the productivity_test\
-    \ table with scope 'FS' (or 'FIRM'), stratum 'ALL LEVELS',\n  fiscal year 2026, and report uplift with ci_low / ci_high\
-    \ and is_significant for both AI_ACTIVE and SKILLED_INACTIVE.\n- Filter MD groups by name ('Financial Services') or id\
-    \ ('FS').\nEntity -> tools (from ONT_ENTITY):\n- ai_tool (AI telemetry + S/4 AGT_* activity types): ai_adoption\n- asset\
-    \ (Asset library (non-SAP)): project_delivery\n- customer (CRM account (S/4 customer keys masked)): pipeline_presales,\
-    \ project_delivery\n- fiscal_month (S/4HANA fiscal year variant V9): ai_adoption, pipeline_presales, portfolio, project_delivery,\
-    \ workforce\n- learning_item (SAP People Intelligence Learning): ai_adoption\n- level (People Intelligence payGrade +\
-    \ S/4 activity type): portfolio, workforce\n- md_group (S/4HANA cost centre hierarchy): ai_adoption, pipeline_presales,\
-    \ portfolio, project_delivery, workforce\n- opportunity (CRM (non-SAP)): pipeline_presales\n- person (SAP People Intelligence\
-    \ (Core Workforce)): ai_adoption, pipeline_presales, project_delivery, workforce\n- project (S/4HANA Project): ai_adoption,\
-    \ pipeline_presales, project_delivery\n- skill (SAP People Intelligence Skills): ai_adoption, pipeline_presales, project_delivery,\
-    \ workforce\n- time_category (Timesheet attendance type): portfolio, workforce\n- work_package (S/4HANA Project WBS element):\
-    \ project_delivery\nRelationships -> tools that can traverse them (from ONT_RELATIONSHIP):\n- asset embodies skill: project_delivery\n\
-    - asset harvested from source_project: project_delivery\n- customer belongs to md_group: pipeline_presales\n- learning_item\
-    \ targets skill: ai_adoption\n- opportunity becomes project: pipeline_presales\n- opportunity requires skill: pipeline_presales\n\
-    - person uses ai_tool: ai_adoption\n- person completes learning_item: ai_adoption\n- person has level: workforce\n- person\
-    \ belongs to md_group: ai_adoption, workforce\n- person pursues opportunity: pipeline_presales\n- person books time on\
-    \ project: project_delivery\n- person holds skill: workforce\n- person books time to time_category: workforce\n- project\
-    \ consumes ai_tool: ai_adoption\n- project reuses asset: project_delivery\n- project is for customer: project_delivery\n\
-    - work_package requires skill: project_delivery"
+    \ use, AI spend by tool / product / model, AI-agent cost, the earned-hour AI productivity test, learning payback -> ai_adoption.\n\
+    - Productivity of a person, level or group (WPS and its pillars), billability vs utilization by level, and whether AI\n\
+    \  tokens, a product (Claude Code, Codex, Cortex), a Cortex model family, training hours or a curriculum are associated\n\
+    \  with productivity -> productivity. Use wps_by_level for level questions (scope 'FIRM' or a group id, fiscal_years\n\
+    \  'FY26' or 'FY24-26'); use the test tables with stratum = each level (or 'ALL LEVELS') and cell_status 'OK'. Product\n\
+    \  tests run only where the product existed: fiscal_years 'FY25Q3-FY26' for CLAUDE_CODE / CODEX and 'FY26' for CORTEX;\n\
+    \  group scopes use the '... pooled' windows. Training and curriculum tests use outcome 'WPS_EX_LEARN' (WPS without the\n\
+    \  learning input) and 'TARGET:<input>' for the curriculum's target input.\n- Asset recommendations by need -> asset_library\
+    \ (plus project_delivery for missed reuse figures).\n- Cross-pillar questions (e.g. bench people with AI skill 3+ who\
+    \ fit open bids) need two tools: use pipeline_presales for\n  the bench-to-pipeline match and workforce for roll-off /\
+    \ skills, then join the answers by person.\n- For the AI productivity test always use the productivity_test table with\
+    \ scope 'FS' (or 'FIRM'), stratum 'ALL LEVELS',\n  fiscal year 2026, and report uplift with ci_low / ci_high and is_significant\
+    \ for both AI_ACTIVE and SKILLED_INACTIVE.\n- Filter MD groups by name ('Financial Services') or id ('FS').\nEntity ->\
+    \ tools (from ONT_ENTITY):\n- ai_model (AI telemetry + model price list): ai_adoption\n- ai_tool (AI telemetry + S/4 AGT_*\
+    \ activity types): ai_adoption\n- asset (Asset library (non-SAP)): project_delivery\n- customer (CRM account (S/4 customer\
+    \ keys masked)): pipeline_presales, project_delivery\n- fiscal_month (S/4HANA fiscal year variant V9): ai_adoption, pipeline_presales,\
+    \ portfolio, project_delivery, workforce, productivity\n- learning_category (SAP People Intelligence Learning): productivity\n\
+    - learning_item (SAP People Intelligence Learning): ai_adoption\n- level (People Intelligence payGrade + S/4 activity\
+    \ type): portfolio, workforce, productivity\n- md_group (S/4HANA cost centre hierarchy): ai_adoption, pipeline_presales,\
+    \ portfolio, project_delivery, workforce, productivity\n- opportunity (CRM (non-SAP)): pipeline_presales\n- person (SAP\
+    \ People Intelligence (Core Workforce)): ai_adoption, pipeline_presales, project_delivery, workforce, productivity\n-\
+    \ project (S/4HANA Project): ai_adoption, pipeline_presales, project_delivery\n- skill (SAP People Intelligence Skills):\
+    \ ai_adoption, pipeline_presales, project_delivery, workforce\n- time_category (Timesheet attendance type): portfolio,\
+    \ workforce\n- work_package (S/4HANA Project WBS element): project_delivery\nRelationships -> tools that can traverse\
+    \ them (from ONT_RELATIONSHIP):\n- asset embodies skill: project_delivery\n- asset harvested from source_project: project_delivery\n\
+    - customer belongs to md_group: pipeline_presales\n- learning_item targets skill: ai_adoption\n- opportunity becomes project:\
+    \ pipeline_presales\n- opportunity requires skill: pipeline_presales\n- person uses ai_model: ai_adoption\n- person uses\
+    \ ai_tool: ai_adoption\n- person studies learning_category: productivity\n- person completes learning_item: ai_adoption\n\
+    - person has level: workforce, productivity\n- person belongs to md_group: ai_adoption, workforce, productivity\n- person\
+    \ pursues opportunity: pipeline_presales\n- person books time on project: project_delivery\n- person holds skill: workforce\n\
+    - person books time to time_category: workforce\n- project consumes ai_tool: ai_adoption\n- project reuses asset: project_delivery\n\
+    - project is for customer: project_delivery\n- work_package requires skill: project_delivery"
   sample_questions:
   - question: Give me my FY26 ProServe360 scorecard against FY25.
   - question: Which bench consultants with AI skill 3+ fit my open bids above USD 5 M?
   - question: Why is my at-risk fixed-price project behind schedule?
+  - question: What is the productivity of my workforce at each level?
 tools:
 - tool_spec:
     type: cortex_analyst_text_to_sql
@@ -86,6 +103,15 @@ tools:
     description: 'People Development (AI): AI assistant use and spend by tool, AI-agent cost charged to projects, AI-active
       vs other productivity, the stratified AI productivity test with 90 % confidence intervals (AI_ACTIVE and SKILLED_INACTIVE
       bands, SIGNIFICANT flag) and the learning payback test by curriculum.'
+- tool_spec:
+    type: cortex_analyst_text_to_sql
+    name: productivity
+    description: 'Workforce Productivity Score (WPS, 0-100, 50 = level average in the year) per person x fiscal quarter and
+      its pillars (Value Creation, Operational Excellence, People Development, Team), billability and utilization, WPS by
+      level (medians, P25 / P75), AI tokens by product (CHATGPT, CLAUDE_CHAT, CODEX, CLAUDE_CODE, CORTEX), learning hours
+      by curriculum, and the association tests: tokens (token_test), product / Cortex model family (vendor_test), training
+      hours (training_test), curriculum (curriculum_test), AI-active WPS uplift and WPS learning payback - each with Spearman
+      rho, 90 % CI and a SIGNIFICANT flag.'
 - tool_spec:
     type: cortex_search
     name: project_commentary
@@ -123,6 +149,11 @@ tool_resources:
       type: warehouse
       warehouse: WH_ACOCO_APP
     semantic_view: ACOCO_L2.SEMANTIC.SV_AI_ADOPTION
+  productivity:
+    execution_environment:
+      type: warehouse
+      warehouse: WH_ACOCO_APP
+    semantic_view: ACOCO_L2.SEMANTIC.SV_WORKFORCE_PRODUCTIVITY
   project_commentary:
     search_service: ACOCO_L2.REASONING.CSS_PROJECT_COMMENTARY
     id_column: NOTE_ID

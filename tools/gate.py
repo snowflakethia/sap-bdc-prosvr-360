@@ -467,8 +467,9 @@ def gate_cp07():
                    "0 errors", f"{len(oc['errors'])} {oc['errors'][:3]}; {oc['entities']} entities, {oc['relationships']} "
                    f"relationships, {oc['metrics']} metrics {oc['metrics_by_pillar']}", not oc["errors"]))
     svs = [r["name"] for r in sf.query("SHOW SEMANTIC VIEWS IN SCHEMA ACOCO_L2.SEMANTIC")]
-    want = ["SV_AI_ADOPTION", "SV_PIPELINE_PRESALES", "SV_PORTFOLIO_360", "SV_PROJECT_DELIVERY", "SV_WORKFORCE_PERFORMANCE"]
-    checks.append(("CP07-02", "five Semantic Views deployed", str(want), str(sorted(svs)), sorted(svs) == want))
+    want = ["SV_AI_ADOPTION", "SV_PIPELINE_PRESALES", "SV_PORTFOLIO_360", "SV_PROJECT_DELIVERY", "SV_WORKFORCE_PERFORMANCE",
+            "SV_WORKFORCE_PRODUCTIVITY"]
+    checks.append(("CP07-02", "six Semantic Views deployed (P6 adds SV_WORKFORCE_PRODUCTIVITY)", str(want), str(sorted(svs)), sorted(svs) == want))
     bad, n = [], 0
     for f in sorted((ROOT / "sql" / "03_l2" / "semantic").glob("*.yaml")):
         for vq in yaml.safe_load(f.read_text()).get("verified_queries", []):
@@ -483,8 +484,8 @@ def gate_cp07():
     subprocess.run([py, "-W", "ignore", str(ROOT / "tools" / "analyst_probe.py")], capture_output=True)
     ap = json.loads((ROOT / "logs" / "analyst_probe.json").read_text())
     fails = [f"{r['semantic_view']}: {r.get('error')}" for r in ap if not r.get("executed")]
-    checks.append(("CP07-04", "Cortex Analyst answers one question per Semantic View with SQL that runs", "5/5",
-                   f"{len(ap) - len(fails)}/{len(ap)} {fails}", len(ap) == 5 and not fails))
+    checks.append(("CP07-04", "Cortex Analyst answers one question per Semantic View with SQL that runs", "6/6",
+                   f"{len(ap) - len(fails)}/{len(ap)} {fails}", len(ap) == 6 and not fails))
     sv = {r["PERSON_LEVEL"]: round(float(r["BENCH_PCT"]), 1) for r in sf.query(
         """SELECT * FROM SEMANTIC_VIEW(ACOCO_L2.SEMANTIC.SV_WORKFORCE_PERFORMANCE DIMENSIONS person.person_level
            METRICS scorecard.bench_pct WHERE md_group.md_group = 'Financial Services' AND fiscal_month.fiscal_year = 2026)""")}
@@ -505,12 +506,12 @@ def gate_cp08():
     ag = sf.query("SHOW AGENTS LIKE 'ACOCO_ADVISOR' IN SCHEMA ACOCO_DB.AGENT")
     spec = (ROOT / "agent" / "acoco_advisor.agent.yaml").read_text()
     n_an, n_cs = spec.count("type: cortex_analyst_text_to_sql"), spec.count("type: cortex_search")
-    checks.append(("CP08-01", "agent ACOCO_DB.AGENT.ACOCO_ADVISOR exists with 5 Cortex Analyst + 2 Cortex Search tools",
-                   "exists, 5 + 2", f"exists={bool(ag)}, {n_an} + {n_cs}", bool(ag) and n_an == 5 and n_cs == 2))
+    checks.append(("CP08-01", "agent ACOCO_DB.AGENT.ACOCO_ADVISOR exists with 6 Cortex Analyst + 2 Cortex Search tools",
+                   "exists, 6 + 2", f"exists={bool(ag)}, {n_an} + {n_cs}", bool(ag) and n_an == 6 and n_cs == 2))
     reg = json.loads((ROOT / "logs" / "agent_regression.json").read_text())["results"]
     route = [r["id"] for r in reg if not r["routing"]]
-    checks.append(("CP08-02", "regression: 20 prompts, routing correct", "20/20", f"{len(reg) - len(route)}/{len(reg)} misses {route}",
-                   len(reg) == 20 and not route))
+    checks.append(("CP08-02", "regression: 25 prompts (20 + P6 Q2-Q6), routing correct", "25/25", f"{len(reg) - len(route)}/{len(reg)} misses {route}",
+                   len(reg) == 25 and not route))
     fig = [r["id"] for r in reg if not (r["figures"] and r["phrases"])]
     checks.append(("CP08-03", "figures within tolerance of measured_anchors.md and required phrases present (R13 'no significant', association)",
                    "0 misses", str(fig), not fig))

@@ -199,12 +199,13 @@ tables:
     description: Margin as % of revenue
     synonyms:
     - profit margin
-  - name: delivery_pct
+  - name: billability_pct
     expr: 100 * SUM(delivery_hours) / NULLIF(SUM(available_hours), 0)
-    description: 'Billability: Delivery hours as % of available hours (Employee Availability)'
+    description: 'Billability: client-billable (Delivery) hours as % of available hours (Employee Availability)'
     synonyms:
     - billability
-    - utilisation of delivery
+    - delivery share
+    - billable %
   - name: bid_pct
     expr: 100 * SUM(bid_hours) / NULLIF(SUM(available_hours), 0)
     description: Bid (pre-sales) hours as % of available hours

@@ -1,0 +1,909 @@
+name: SV_WORKFORCE_PRODUCTIVITY
+description: 'Workforce Productivity Score (P6): WPS 0-100 per person x fiscal quarter (50 = level average in the year), its
+  pillars Value Creation, Operational Excellence, People Development and Team, billability and utilization vs targets, AI
+  tokens by product, learning by curriculum, and the association tests R13w-R18 (Spearman rho with 90 % CI). Results are associations,
+  not causes.'
+tables:
+- name: person
+  description: Shared ontology entity PERSON (ACOCO_L2.ONTOLOGY.ENT_PERSON)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_PERSON
+  primary_key:
+    columns:
+    - PERSON_ID
+  dimensions:
+  - name: person_id
+    expr: PERSON_ID
+    data_type: VARCHAR
+    description: People Intelligence userId
+    synonyms:
+    - employee id
+    - user id
+  - name: person_name
+    expr: DISPLAY_NAME
+    data_type: VARCHAR
+    description: Person's display name
+    synonyms:
+    - name
+    - employee
+    - consultant
+  - name: person_level
+    expr: LEVEL
+    data_type: VARCHAR
+    description: Career level at the as-of date (Analyst .. Principal)
+    synonyms:
+    - level
+    - grade
+    - rank
+  - name: bill_code
+    expr: BILL_CODE
+    data_type: NUMBER
+    description: Bill code 30-79 within the level band (higher = more senior, more bid time)
+    synonyms:
+    - billing code
+  - name: is_active
+    expr: IS_ACTIVE_AS_OF
+    data_type: BOOLEAN
+    description: Employed on the as-of date (1 Oct 2026)
+    synonyms:
+    - active
+    - current employee
+  - name: is_managing_director
+    expr: IS_MANAGING_DIRECTOR
+    data_type: BOOLEAN
+    description: Holds the Managing Director role for a group
+    synonyms:
+    - MD
+  - name: person_source
+    expr: SOURCE_SYSTEM
+    data_type: VARCHAR
+    description: BDC_CLD = real People Intelligence person; SIMULATED = simulated pool
+- name: md_group
+  description: Shared ontology entity MD_GROUP (ACOCO_L2.ONTOLOGY.ENT_MD_GROUP)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_MD_GROUP
+  primary_key:
+    columns:
+    - MD_GROUP_ID
+  dimensions:
+  - name: md_group_id
+    expr: MD_GROUP_ID
+    data_type: VARCHAR
+    description: MD group code (FS, CMT, HPS, PRD, RES, XAI)
+    synonyms:
+    - group code
+  - name: md_group
+    expr: MD_GROUP_NAME
+    data_type: VARCHAR
+    description: MD group name, e.g. Financial Services
+    synonyms:
+    - group
+    - industry group
+    - practice
+  - name: managing_director
+    expr: MANAGING_DIRECTOR_NAME
+    data_type: VARCHAR
+    description: Managing Director of the group
+    synonyms:
+    - MD name
+    - partner
+- name: level
+  description: Shared ontology entity LEVEL (ACOCO_L2.ONTOLOGY.ENT_LEVEL)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_LEVEL
+  primary_key:
+    columns:
+    - LEVEL
+  dimensions:
+  - name: level
+    expr: LEVEL
+    data_type: VARCHAR
+    description: Career level
+    synonyms:
+    - grade
+  - name: level_sort
+    expr: LEVEL_SORT
+    data_type: NUMBER
+    description: 1 = Analyst .. 5 = Principal
+  - name: activity_type
+    expr: ACTIVITY_TYPE
+    data_type: VARCHAR
+    description: S/4 activity type that prices the level (ML-100 .. ML-105)
+- name: fiscal_month
+  description: Shared ontology entity FISCAL_MONTH (ACOCO_L2.CORE.DT_FISCAL_MONTH)
+  base_table:
+    database: ACOCO_L2
+    schema: CORE
+    table: DT_FISCAL_MONTH
+  primary_key:
+    columns:
+    - MONTH_START
+  dimensions:
+  - name: fiscal_year
+    expr: FISCAL_YEAR
+    data_type: NUMBER
+    description: ACoCo fiscal year (Oct-Sep, V9); FY26 = Oct 2025 - Sep 2026
+    synonyms:
+    - FY
+    - year
+  - name: fiscal_period
+    expr: FISCAL_PERIOD
+    data_type: NUMBER
+    description: Fiscal period 1-12 (1 = October)
+    synonyms:
+    - period
+  - name: fiscal_quarter
+    expr: FISCAL_QUARTER
+    data_type: NUMBER
+    description: Fiscal quarter 1-4 (1 = Oct-Dec)
+    synonyms:
+    - quarter
+  - name: month_label
+    expr: MONTH_LABEL
+    data_type: VARCHAR
+    description: Calendar month label, e.g. SEP 2026
+    synonyms:
+    - month
+  time_dimensions:
+  - name: month_start
+    expr: MONTH_START
+    data_type: DATE
+    description: First day of the fiscal month (join key)
+- name: learning_category
+  description: Shared ontology entity LEARNING_CATEGORY (ACOCO_L2.ONTOLOGY.ENT_LEARNING_CATEGORY)
+  base_table:
+    database: ACOCO_L2
+    schema: ONTOLOGY
+    table: ENT_LEARNING_CATEGORY
+  primary_key:
+    columns:
+    - CURRICULUM
+  dimensions:
+  - name: learning_category
+    expr: CURRICULUM
+    data_type: VARCHAR
+    description: Curriculum code (8 curricula)
+    synonyms:
+    - curriculum
+    - training category
+  - name: learning_category_name
+    expr: CURRICULUM_NAME
+    data_type: VARCHAR
+    description: Curriculum name
+    synonyms:
+    - training
+    - course category
+  - name: is_ai_curriculum
+    expr: IS_AI_CURRICULUM
+    data_type: BOOLEAN
+    description: One of the three AI curricula
+    synonyms:
+    - AI training
+  - name: target_pillar
+    expr: TARGET_PILLAR
+    data_type: VARCHAR
+    description: WPS pillar the curriculum is meant to move (VC, OE, PD, TM)
+  - name: target_input
+    expr: TARGET_INPUT
+    data_type: VARCHAR
+    description: WPS input the curriculum is meant to move (EFF, SCHED, WIN, BILL, TEAM)
+- name: person_quarter
+  description: Fact WORKFORCE_PERFORMANCE.DT_PERSON_QUARTER_WPS
+  base_table:
+    database: ACOCO_L2
+    schema: WORKFORCE_PERFORMANCE
+    table: DT_PERSON_QUARTER_WPS
+  primary_key:
+    columns:
+    - PERSON_QUARTER_ID
+  dimensions:
+  - name: tm_applies
+    expr: TM_APPLIES
+    data_type: BOOLEAN
+    description: Team pillar applies (Manager+ with >= 3 scored team members)
+  - name: team_scope
+    expr: TEAM_SCOPE
+    data_type: VARCHAR
+    description: DIRECT (Manager) or TREE (Senior Manager+, reporting tree)
+  - name: wps_fiscal_quarter_label
+    expr: FISCAL_QUARTER_LABEL
+    data_type: VARCHAR
+    description: Fiscal quarter, e.g. FY26Q4
+    synonyms:
+    - quarter label
+  facts:
+  - name: person_quarter_key
+    expr: PERSON_QUARTER_ID
+    data_type: VARCHAR
+    description: Person-quarter
+  - name: wps
+    expr: WPS
+    data_type: FLOAT
+    description: Workforce Productivity Score 0-100
+  - name: vc
+    expr: VC
+    data_type: FLOAT
+    description: Value Creation pillar 0-100
+  - name: oe
+    expr: OE
+    data_type: FLOAT
+    description: Operational Excellence pillar 0-100
+  - name: pd
+    expr: PD
+    data_type: FLOAT
+    description: People Development pillar 0-100
+  - name: tm
+    expr: TM
+    data_type: FLOAT
+    description: Team pillar 0-100 (null when it does not apply)
+  - name: wps_ex_learn
+    expr: WPS_EX_LEARN
+    data_type: FLOAT
+    description: WPS without the learning input
+  - name: available_hours
+    expr: AVAILABLE_HOURS
+    data_type: NUMBER
+    description: Available hours
+  - name: delivery_hours
+    expr: DELIVERY_HOURS
+    data_type: NUMBER
+    description: Delivery hours
+  - name: asset_contribution_hours
+    expr: ASSET_CONTRIBUTION_HOURS
+    data_type: NUMBER
+    description: Recorded asset-building hours
+  metrics:
+  - name: avg_wps
+    expr: AVG(wps)
+    description: Workforce Productivity Score, 0-100 (50 = average of the level in the fiscal year)
+    synonyms:
+    - WPS
+    - productivity score
+  - name: median_wps
+    expr: MEDIAN(wps)
+    description: Median WPS (0-100, 50 = level average)
+    synonyms:
+    - median productivity
+  - name: avg_value_creation
+    expr: AVG(vc)
+    description: Value Creation pillar score (win-rate, earned-hour efficiency), 0-100
+    synonyms:
+    - VC pillar
+  - name: avg_operational_excellence
+    expr: AVG(oe)
+    description: Operational Excellence pillar score (schedule, earned-hour efficiency), 0-100
+    synonyms:
+    - OE pillar
+  - name: avg_people_development
+    expr: AVG(pd)
+    description: People Development pillar score (billability, utilization, asset reuse, learning, asset creation), 0-100
+    synonyms:
+    - PD pillar
+  - name: avg_team
+    expr: AVG(tm)
+    description: Team pillar score (mean WPS of the team; Manager+ with >= 3 scored team members), 0-100
+    synonyms:
+    - TM pillar
+  - name: avg_wps_ex_learn
+    expr: AVG(wps_ex_learn)
+    description: WPS recomputed without the learning input (used to test training)
+  - name: team_pillar_coverage_pct
+    expr: 100 * AVG(IFF(tm_applies, 1, 0))
+    description: Share of person-quarters where the Team pillar applies
+  - name: scored_person_quarters
+    expr: COUNT(person_quarter_key)
+    description: Person-quarters scored (>= 80 available hours)
+  - name: billability_pct
+    expr: 100 * SUM(delivery_hours) / NULLIF(SUM(available_hours), 0)
+    description: 'Billability: client-billable (Delivery) hours as % of available hours (Employee Availability)'
+    synonyms:
+    - billability
+    - delivery share
+    - billable %
+- name: token_quarter
+  description: Fact AI_ADOPTION.DT_AI_TOKENS_PERSON_QUARTER
+  base_table:
+    database: ACOCO_L2
+    schema: AI_ADOPTION
+    table: DT_AI_TOKENS_PERSON_QUARTER
+  primary_key:
+    columns:
+    - ROW_ID
+  dimensions:
+  - name: token_product
+    expr: PRODUCT
+    data_type: VARCHAR
+    description: AI product (CHATGPT, CLAUDE_CHAT, CODEX, CLAUDE_CODE, CORTEX)
+    synonyms:
+    - product
+  - name: token_model_family
+    expr: MODEL_FAMILY
+    data_type: VARCHAR
+    description: CLAUDE, GPT or OPEN
+  - name: token_fiscal_year
+    expr: FISCAL_YEAR
+    data_type: NUMBER
+    description: Fiscal year
+  - name: token_fiscal_quarter
+    expr: FISCAL_QUARTER
+    data_type: NUMBER
+    description: Fiscal quarter 1-4
+  facts:
+  - name: tokens
+    expr: TOKENS
+    data_type: NUMBER
+    description: Tokens
+  - name: cost_usd
+    expr: COST_USD
+    data_type: NUMBER
+    description: Spend USD
+  - name: delivery_hours
+    expr: DELIVERY_HOURS
+    data_type: NUMBER
+    description: Delivery hours
+  metrics:
+  - name: ai_tokens
+    expr: SUM(tokens)
+    description: AI tokens (input + output)
+    synonyms:
+    - tokens
+    - token usage
+  - name: ai_token_cost_usd
+    expr: SUM(cost_usd)
+    description: AI spend priced per model (USD)
+  - name: total_tokens_per_delivery_hour
+    expr: SUM(tokens) / NULLIF(SUM(delivery_hours), 0)
+    description: AI tokens per delivery hour
+    synonyms:
+    - token intensity
+- name: learning_quarter
+  description: Fact WORKFORCE_PERFORMANCE.DT_LEARNING_PERSON_QUARTER
+  base_table:
+    database: ACOCO_L2
+    schema: WORKFORCE_PERFORMANCE
+    table: DT_LEARNING_PERSON_QUARTER
+  primary_key:
+    columns:
+    - ROW_ID
+  dimensions:
+  - name: is_required_at_level
+    expr: IS_REQUIRED_AT_LEVEL
+    data_type: BOOLEAN
+    description: Curriculum is required at the person's level
+  - name: learning_fiscal_year
+    expr: FISCAL_YEAR
+    data_type: NUMBER
+    description: Fiscal year
+  - name: learning_fiscal_quarter
+    expr: FISCAL_QUARTER
+    data_type: NUMBER
+    description: Fiscal quarter 1-4
+  facts:
+  - name: learning_hours
+    expr: LEARNING_HOURS
+    data_type: NUMBER
+    description: Learning hours
+  - name: completions
+    expr: COMPLETIONS
+    data_type: NUMBER
+    description: Completions
+  - name: avg_assessment_score
+    expr: AVG_ASSESSMENT_SCORE
+    data_type: NUMBER
+    description: Mean assessment score
+  metrics:
+  - name: curriculum_learning_hours
+    expr: SUM(learning_hours)
+    description: Learning hours in the curriculum
+    synonyms:
+    - training hours
+  - name: curriculum_completions
+    expr: SUM(completions)
+    description: Learning-item completions
+  - name: total_avg_assessment_score
+    expr: AVG(avg_assessment_score)
+    description: Mean assessment score of completions (0-100)
+- name: wps_by_level
+  description: Fact REASONING.WPS_BY_LEVEL
+  base_table:
+    database: ACOCO_L2
+    schema: REASONING
+    table: WPS_BY_LEVEL
+  dimensions:
+  - name: level_scope
+    expr: SCOPE
+    data_type: VARCHAR
+    description: FIRM or MD group id
+  - name: level_fiscal_years
+    expr: FISCAL_YEARS
+    data_type: VARCHAR
+    description: Fiscal year(s)
+  - name: level_cell
+    expr: LEVEL
+    data_type: VARCHAR
+    description: Level of the cell
+  - name: level_cell_status
+    expr: CELL_STATUS
+    data_type: VARCHAR
+    description: OK or SMALL_CELL
+  facts:
+  - name: wps_median
+    expr: WPS_MEDIAN
+    data_type: FLOAT
+    description: Median WPS
+  - name: billability_median
+    expr: BILLABILITY_MEDIAN
+    data_type: NUMBER
+    description: Median billability 0-1
+  - name: utilization_median
+    expr: UTILIZATION_MEDIAN
+    data_type: NUMBER
+    description: Median utilization 0-1
+  metrics:
+  - name: level_median_wps
+    expr: AVG(wps_median)
+    description: Median WPS of the level cell (one row per scope x years x level)
+  - name: level_median_billability_pct
+    expr: 100 * AVG(billability_median)
+    description: Median billability of the level cell (%)
+  - name: level_median_utilization_pct
+    expr: 100 * AVG(utilization_median)
+    description: Median utilization of the level cell (%)
+- name: token_test
+  description: Fact REASONING.TOKEN_WPS_TEST
+  base_table:
+    database: ACOCO_L2
+    schema: REASONING
+    table: TOKEN_WPS_TEST
+  dimensions:
+  - name: token_test_scope
+    expr: SCOPE
+    data_type: VARCHAR
+    description: FIRM or MD group id
+  - name: token_test_fiscal_years
+    expr: FISCAL_YEARS
+    data_type: VARCHAR
+    description: Fiscal year(s) tested, e.g. FY24-26 (pooled) or FY26
+  - name: token_test_stratum
+    expr: STRATUM
+    data_type: VARCHAR
+    description: ALL LEVELS or a level
+  - name: token_test_outcome
+    expr: OUTCOME
+    data_type: VARCHAR
+    description: WPS or a pillar / input (VC, OE, PD, TM, WIN, EFF, ...)
+  - name: token_test_significant
+    expr: SIGNIFICANT
+    data_type: BOOLEAN
+    description: 90 % CI excludes 0 AND |rho| >= 0.05
+  - name: token_test_effect_size
+    expr: EFFECT_SIZE
+    data_type: VARCHAR
+    description: SIGNIFICANT / NEGLIGIBLE / NOT_SIGNIFICANT
+  - name: token_test_cell_status
+    expr: CELL_STATUS
+    data_type: VARCHAR
+    description: OK or SMALL_CELL (< 15 people or < 30 person-quarters; suppressed)
+  - name: token_test_exposure
+    expr: EXPOSURE
+    data_type: VARCHAR
+    description: Token measure (tokens per delivery hour, ...)
+  facts:
+  - name: rho
+    expr: RHO
+    data_type: FLOAT
+    description: Spearman rho within level (partial rho for R16 / R18)
+  - name: ci_low
+    expr: CI_LOW
+    data_type: FLOAT
+    description: 90 % person-cluster bootstrap CI low
+  - name: ci_high
+    expr: CI_HIGH
+    data_type: FLOAT
+    description: 90 % CI high
+  metrics:
+  - name: association_rho
+    expr: AVG(rho)
+    description: Spearman rho of the exposure with the outcome within level (one row per test cell); associated with, not
+      causes
+    synonyms:
+    - correlation
+    - association
+  - name: association_ci_low
+    expr: AVG(ci_low)
+    description: Lower bound of the 90 % person-cluster bootstrap CI
+  - name: association_ci_high
+    expr: AVG(ci_high)
+    description: Upper bound of the 90 % person-cluster bootstrap CI
+- name: vendor_test
+  description: Fact REASONING.VENDOR_WPS_TEST
+  base_table:
+    database: ACOCO_L2
+    schema: REASONING
+    table: VENDOR_WPS_TEST
+  dimensions:
+  - name: vendor_test_scope
+    expr: SCOPE
+    data_type: VARCHAR
+    description: FIRM or MD group id
+  - name: vendor_test_fiscal_years
+    expr: FISCAL_YEARS
+    data_type: VARCHAR
+    description: Fiscal year(s) tested, e.g. FY24-26 (pooled) or FY26
+  - name: vendor_test_stratum
+    expr: STRATUM
+    data_type: VARCHAR
+    description: ALL LEVELS or a level
+  - name: vendor_test_outcome
+    expr: OUTCOME
+    data_type: VARCHAR
+    description: WPS or a pillar / input (VC, OE, PD, TM, WIN, EFF, ...)
+  - name: vendor_test_significant
+    expr: SIGNIFICANT
+    data_type: BOOLEAN
+    description: 90 % CI excludes 0 AND |rho| >= 0.05
+  - name: vendor_test_effect_size
+    expr: EFFECT_SIZE
+    data_type: VARCHAR
+    description: SIGNIFICANT / NEGLIGIBLE / NOT_SIGNIFICANT
+  - name: vendor_test_cell_status
+    expr: CELL_STATUS
+    data_type: VARCHAR
+    description: OK or SMALL_CELL (< 15 people or < 30 person-quarters; suppressed)
+  - name: vendor_test_exposure
+    expr: EXPOSURE
+    data_type: VARCHAR
+    description: Product or model family (share of tokens); tested only in product-available quarters
+  - name: vendor_test_exposure_kind
+    expr: EXPOSURE_KIND
+    data_type: VARCHAR
+    description: PRODUCT or MODEL_FAMILY
+  facts:
+  - name: rho
+    expr: RHO
+    data_type: FLOAT
+    description: Spearman rho within level (partial rho for R16 / R18)
+  - name: ci_low
+    expr: CI_LOW
+    data_type: FLOAT
+    description: 90 % person-cluster bootstrap CI low
+  - name: ci_high
+    expr: CI_HIGH
+    data_type: FLOAT
+    description: 90 % CI high
+  metrics:
+  - name: association_rho
+    expr: AVG(rho)
+    description: Spearman rho of the exposure with the outcome within level (one row per test cell); associated with, not
+      causes
+    synonyms:
+    - correlation
+    - association
+  - name: association_ci_low
+    expr: AVG(ci_low)
+    description: Lower bound of the 90 % person-cluster bootstrap CI
+  - name: association_ci_high
+    expr: AVG(ci_high)
+    description: Upper bound of the 90 % person-cluster bootstrap CI
+- name: training_test
+  description: Fact REASONING.TRAINING_WPS_TEST
+  base_table:
+    database: ACOCO_L2
+    schema: REASONING
+    table: TRAINING_WPS_TEST
+  dimensions:
+  - name: training_test_scope
+    expr: SCOPE
+    data_type: VARCHAR
+    description: FIRM or MD group id
+  - name: training_test_fiscal_years
+    expr: FISCAL_YEARS
+    data_type: VARCHAR
+    description: Fiscal year(s) tested, e.g. FY24-26 (pooled) or FY26
+  - name: training_test_stratum
+    expr: STRATUM
+    data_type: VARCHAR
+    description: ALL LEVELS or a level
+  - name: training_test_outcome
+    expr: OUTCOME
+    data_type: VARCHAR
+    description: WPS or a pillar / input (VC, OE, PD, TM, WIN, EFF, ...)
+  - name: training_test_significant
+    expr: SIGNIFICANT
+    data_type: BOOLEAN
+    description: 90 % CI excludes 0 AND |rho| >= 0.05
+  - name: training_test_effect_size
+    expr: EFFECT_SIZE
+    data_type: VARCHAR
+    description: SIGNIFICANT / NEGLIGIBLE / NOT_SIGNIFICANT
+  - name: training_test_cell_status
+    expr: CELL_STATUS
+    data_type: VARCHAR
+    description: OK or SMALL_CELL (< 15 people or < 30 person-quarters; suppressed)
+  - name: training_test_exposure
+    expr: EXPOSURE
+    data_type: VARCHAR
+    description: Learning share of available hours
+  facts:
+  - name: rho
+    expr: RHO
+    data_type: FLOAT
+    description: Spearman rho within level (partial rho for R16 / R18)
+  - name: ci_low
+    expr: CI_LOW
+    data_type: FLOAT
+    description: 90 % person-cluster bootstrap CI low
+  - name: ci_high
+    expr: CI_HIGH
+    data_type: FLOAT
+    description: 90 % CI high
+  metrics:
+  - name: association_rho
+    expr: AVG(rho)
+    description: Spearman rho of the exposure with the outcome within level (one row per test cell); associated with, not
+      causes
+    synonyms:
+    - correlation
+    - association
+  - name: association_ci_low
+    expr: AVG(ci_low)
+    description: Lower bound of the 90 % person-cluster bootstrap CI
+  - name: association_ci_high
+    expr: AVG(ci_high)
+    description: Upper bound of the 90 % person-cluster bootstrap CI
+- name: curriculum_test
+  description: Fact REASONING.CURRICULUM_WPS_TEST
+  base_table:
+    database: ACOCO_L2
+    schema: REASONING
+    table: CURRICULUM_WPS_TEST
+  dimensions:
+  - name: curriculum_test_scope
+    expr: SCOPE
+    data_type: VARCHAR
+    description: FIRM or MD group id
+  - name: curriculum_test_fiscal_years
+    expr: FISCAL_YEARS
+    data_type: VARCHAR
+    description: Fiscal year(s) tested, e.g. FY24-26 (pooled) or FY26
+  - name: curriculum_test_stratum
+    expr: STRATUM
+    data_type: VARCHAR
+    description: ALL LEVELS or a level
+  - name: curriculum_test_outcome
+    expr: OUTCOME
+    data_type: VARCHAR
+    description: WPS or a pillar / input (VC, OE, PD, TM, WIN, EFF, ...)
+  - name: curriculum_test_significant
+    expr: SIGNIFICANT
+    data_type: BOOLEAN
+    description: 90 % CI excludes 0 AND |rho| >= 0.05
+  - name: curriculum_test_effect_size
+    expr: EFFECT_SIZE
+    data_type: VARCHAR
+    description: SIGNIFICANT / NEGLIGIBLE / NOT_SIGNIFICANT
+  - name: curriculum_test_cell_status
+    expr: CELL_STATUS
+    data_type: VARCHAR
+    description: OK or SMALL_CELL (< 15 people or < 30 person-quarters; suppressed)
+  - name: curriculum_test_curriculum
+    expr: CURRICULUM
+    data_type: VARCHAR
+    description: Curriculum tested
+  - name: curriculum_test_target_input
+    expr: TARGET_INPUT
+    data_type: VARCHAR
+    description: WPS input the curriculum targets
+  facts:
+  - name: rho
+    expr: RHO
+    data_type: FLOAT
+    description: Spearman rho within level (partial rho for R16 / R18)
+  - name: ci_low
+    expr: CI_LOW
+    data_type: FLOAT
+    description: 90 % person-cluster bootstrap CI low
+  - name: ci_high
+    expr: CI_HIGH
+    data_type: FLOAT
+    description: 90 % CI high
+  metrics:
+  - name: association_rho
+    expr: AVG(rho)
+    description: Spearman rho of the exposure with the outcome within level (one row per test cell); associated with, not
+      causes
+    synonyms:
+    - correlation
+    - association
+  - name: association_ci_low
+    expr: AVG(ci_low)
+    description: Lower bound of the 90 % person-cluster bootstrap CI
+  - name: association_ci_high
+    expr: AVG(ci_high)
+    description: Upper bound of the 90 % person-cluster bootstrap CI
+- name: ai_wps_test
+  description: Fact REASONING.AI_WPS_TEST
+  base_table:
+    database: ACOCO_L2
+    schema: REASONING
+    table: AI_WPS_TEST
+  dimensions:
+  - name: ai_wps_scope
+    expr: SCOPE
+    data_type: VARCHAR
+    description: FIRM or MD group id
+  - name: ai_wps_fiscal_years
+    expr: FISCAL_YEARS
+    data_type: VARCHAR
+    description: Fiscal year(s)
+  - name: ai_wps_stratum
+    expr: STRATUM
+    data_type: VARCHAR
+    description: ALL LEVELS or a level
+  - name: ai_wps_significant
+    expr: SIGNIFICANT
+    data_type: BOOLEAN
+    description: 90 % CI excludes 0
+  facts:
+  - name: uplift_wps
+    expr: UPLIFT_WPS
+    data_type: FLOAT
+    description: WPS uplift of AI-active person-quarters
+  - name: ci_low
+    expr: CI_LOW
+    data_type: FLOAT
+    description: 90 % CI low
+  - name: ci_high
+    expr: CI_HIGH
+    data_type: FLOAT
+    description: 90 % CI high
+  metrics:
+  - name: wps_uplift
+    expr: AVG(uplift_wps)
+    description: 'R13 re-based: WPS of AI-active person-quarters minus the rest (WPS points)'
+  - name: association_ci_low
+    expr: AVG(ci_low)
+    description: Lower bound of the 90 % person-cluster bootstrap CI
+  - name: association_ci_high
+    expr: AVG(ci_high)
+    description: Upper bound of the 90 % person-cluster bootstrap CI
+- name: payback_wps_test
+  description: Fact REASONING.LEARNING_WPS_PAYBACK_TEST
+  base_table:
+    database: ACOCO_L2
+    schema: REASONING
+    table: LEARNING_WPS_PAYBACK_TEST
+  dimensions:
+  - name: payback_wps_scope
+    expr: SCOPE
+    data_type: VARCHAR
+    description: FIRM or MD group id
+  - name: payback_wps_curriculum
+    expr: CURRICULUM
+    data_type: VARCHAR
+    description: Curriculum
+  - name: payback_wps_significant
+    expr: SIGNIFICANT
+    data_type: BOOLEAN
+    description: 90 % CI excludes 0
+  facts:
+  - name: payback_wps
+    expr: PAYBACK_WPS
+    data_type: FLOAT
+    description: WPS payback of the curriculum
+  - name: ci_low
+    expr: CI_LOW
+    data_type: FLOAT
+    description: 90 % CI low
+  - name: ci_high
+    expr: CI_HIGH
+    data_type: FLOAT
+    description: 90 % CI high
+  metrics:
+  - name: wps_payback
+    expr: AVG(payback_wps)
+    description: 'R14 re-based: WPS change after a curriculum episode minus the matched comparison (WPS points)'
+  - name: association_ci_low
+    expr: AVG(ci_low)
+    description: Lower bound of the 90 % person-cluster bootstrap CI
+  - name: association_ci_high
+    expr: AVG(ci_high)
+    description: Upper bound of the 90 % person-cluster bootstrap CI
+relationships:
+- name: person_quarter_to_person
+  left_table: person_quarter
+  right_table: person
+  relationship_columns:
+  - left_column: PERSON_ID
+    right_column: PERSON_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: person_quarter_to_fiscal_month
+  left_table: person_quarter
+  right_table: fiscal_month
+  relationship_columns:
+  - left_column: Q_START
+    right_column: MONTH_START
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: token_quarter_to_person
+  left_table: token_quarter
+  right_table: person
+  relationship_columns:
+  - left_column: PERSON_ID
+    right_column: PERSON_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: learning_quarter_to_person
+  left_table: learning_quarter
+  right_table: person
+  relationship_columns:
+  - left_column: PERSON_ID
+    right_column: PERSON_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: learning_quarter_to_learning_category
+  left_table: learning_quarter
+  right_table: learning_category
+  relationship_columns:
+  - left_column: CURRICULUM
+    right_column: CURRICULUM
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: person_to_md_group
+  left_table: person
+  right_table: md_group
+  relationship_columns:
+  - left_column: MD_GROUP_ID
+    right_column: MD_GROUP_ID
+  join_type: left_outer
+  relationship_type: many_to_one
+- name: person_to_level
+  left_table: person
+  right_table: level
+  relationship_columns:
+  - left_column: LEVEL
+    right_column: LEVEL
+  join_type: left_outer
+  relationship_type: many_to_one
+verified_queries:
+- name: vq_1
+  question: What was the median WPS and billability by level in FY26?
+  sql: "SELECT LEVEL, ROUND(WPS_MEDIAN, 1) AS MEDIAN_WPS, ROUND(100 * BILLABILITY_MEDIAN, 1) AS MEDIAN_BILLABILITY_PCT,\n\
+    \       ROUND(100 * UTILIZATION_MEDIAN, 1) AS MEDIAN_UTILIZATION_PCT\nFROM ACOCO_L2.REASONING.WPS_BY_LEVEL WHERE SCOPE\
+    \ = 'FIRM' AND FISCAL_YEARS = 'FY26' AND CELL_STATUS = 'OK'\nORDER BY LEVEL_SORT"
+  verified_by: ACoCo build (CP-07)
+  verified_at: 1793059200
+  use_as_onboarding_question: true
+- name: vq_2
+  question: Which AI products are significantly associated with WPS, by level?
+  sql: "SELECT STRATUM, EXPOSURE, OUTCOME, ROUND(RHO, 3) AS RHO, ROUND(CI_LOW, 3) AS CI_LOW, ROUND(CI_HIGH, 3) AS CI_HIGH\n\
+    FROM ACOCO_L2.REASONING.VENDOR_WPS_TEST\nWHERE SCOPE = 'FIRM' AND FISCAL_YEARS NOT LIKE '%pooled' AND EXPOSURE_KIND =\
+    \ 'PRODUCT' AND OUTCOME = 'WPS'\n  AND SIGNIFICANT AND CELL_STATUS = 'OK'\nORDER BY STRATUM, RHO DESC"
+  verified_by: ACoCo build (CP-07)
+  verified_at: 1793059200
+  use_as_onboarding_question: false
+- name: vq_3
+  question: What was average WPS by MD group in FY26?
+  sql: 'SELECT g.MD_GROUP_NAME, ROUND(AVG(w.WPS), 1) AS AVG_WPS
+
+    FROM ACOCO_L2.WORKFORCE_PERFORMANCE.DT_PERSON_QUARTER_WPS w
+
+    JOIN ACOCO_L2.ONTOLOGY.ENT_PERSON p ON p.PERSON_ID = w.PERSON_ID
+
+    JOIN ACOCO_L2.ONTOLOGY.ENT_MD_GROUP g ON g.MD_GROUP_ID = p.MD_GROUP_ID
+
+    JOIN ACOCO_L2.CORE.DT_FISCAL_MONTH f ON f.MONTH_START = w.Q_START
+
+    WHERE f.FISCAL_YEAR = 2026 GROUP BY g.MD_GROUP_NAME ORDER BY AVG_WPS DESC'
+  verified_by: ACoCo build (CP-07)
+  verified_at: 1793059200
+  use_as_onboarding_question: false
+custom_instructions: Fiscal years run October to September (FY26 = Oct 2025 - Sep 2026); the as-of date is 1 Oct 2026, so
+  FY26 is the last closed year. Percentages are 0-100. Filter MD groups by md_group name (e.g. 'Financial Services').

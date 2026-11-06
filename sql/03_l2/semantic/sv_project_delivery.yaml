@@ -383,9 +383,10 @@ tables:
     description: AI-agent hours charged to projects
   - name: productivity_index
     expr: SUM(earned_hours) / NULLIF(SUM(delivery_hours), 0)
-    description: Earned hours / actual delivery hours (> 1 = faster than plan)
+    description: 'Earned-hour efficiency: earned hours / actual delivery hours (> 1 = faster than plan); one input of the
+      WPS'
     synonyms:
-    - productivity
+    - earned-hour efficiency
 - name: project_health
   description: Fact PROJECT_DELIVERY.DT_PROJECT_HEALTH
   base_table:

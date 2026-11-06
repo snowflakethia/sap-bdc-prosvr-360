@@ -21,6 +21,7 @@ QUESTIONS = {
     "SV_PIPELINE_PRESALES": "What is the win rate by skill fit band?",
     "SV_AI_ADOPTION": "What was AI assistant spend by AI tool in fiscal year 2026?",
     "SV_PORTFOLIO_360": "What was the margin percentage by MD group in fiscal year 2026?",
+    "SV_WORKFORCE_PRODUCTIVITY": "What was the average WPS by person level in fiscal year 2026?",
 }
 
 

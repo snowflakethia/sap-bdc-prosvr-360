@@ -243,13 +243,25 @@ tables:
     expr: EARNED_HOURS
     data_type: NUMBER
     description: Earned hours
+  - name: utilized_hours
+    expr: UTILIZED_HOURS
+    data_type: NUMBER
+    description: Delivery + bid + recorded asset-contribution hours
   metrics:
-  - name: delivery_pct
+  - name: billability_pct
     expr: 100 * SUM(delivery_hours) / NULLIF(SUM(available_hours), 0)
-    description: 'Billability: Delivery hours as % of available hours (Employee Availability)'
+    description: 'Billability: client-billable (Delivery) hours as % of available hours (Employee Availability)'
     synonyms:
     - billability
-    - utilisation of delivery
+    - delivery share
+    - billable %
+  - name: utilization_pct
+    expr: 100 * SUM(utilized_hours) / NULLIF(SUM(available_hours), 0)
+    description: 'Utilization: Delivery + Bid + recorded asset-contribution hours as % of available hours (asset hours are
+      recorded, not budgeted, so it can exceed 100)'
+    synonyms:
+    - utilisation
+    - utilization rate
   - name: bid_pct
     expr: 100 * SUM(bid_hours) / NULLIF(SUM(available_hours), 0)
     description: Bid (pre-sales) hours as % of available hours
@@ -277,9 +289,10 @@ tables:
     description: Bench hours x level cost rate (USD)
   - name: total_productivity_index
     expr: SUM(earned_hours) / NULLIF(SUM(delivery_hours), 0)
-    description: Earned hours / actual delivery hours (> 1 = faster than plan)
+    description: 'Earned-hour efficiency: earned hours / actual delivery hours (> 1 = faster than plan); one input of the
+      WPS'
     synonyms:
-    - productivity
+    - earned-hour efficiency
 - name: time_booking
   description: Fact WORKFORCE_PERFORMANCE.DT_PERSON_MONTH_TIME
   base_table:

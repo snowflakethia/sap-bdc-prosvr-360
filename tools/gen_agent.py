@@ -49,6 +49,13 @@ TOOLS = [
      "People Development (AI): AI assistant use and spend by tool, AI-agent cost charged to projects, AI-active vs other "
      "productivity, the stratified AI productivity test with 90 % confidence intervals (AI_ACTIVE and SKILLED_INACTIVE bands, "
      "SIGNIFICANT flag) and the learning payback test by curriculum."),
+    ("productivity", "SV_WORKFORCE_PRODUCTIVITY",
+     "Workforce Productivity Score (WPS, 0-100, 50 = level average in the year) per person x fiscal quarter and its pillars "
+     "(Value Creation, Operational Excellence, People Development, Team), billability and utilization, WPS by level "
+     "(medians, P25 / P75), AI tokens by product (CHATGPT, CLAUDE_CHAT, CODEX, CLAUDE_CODE, CORTEX), learning hours by "
+     "curriculum, and the association tests: tokens (token_test), product / Cortex model family (vendor_test), training "
+     "hours (training_test), curriculum (curriculum_test), AI-active WPS uplift and WPS learning payback - each with "
+     "Spearman rho, 90 % CI and a SIGNIFICANT flag."),
 ]
 SEARCH = [
     ("project_commentary", "ACOCO_L2.REASONING.CSS_PROJECT_COMMENTARY", "NOTE_ID", "PROJECT_ID",
@@ -76,28 +83,43 @@ def spec():
 of ACoCo, a professional-services firm. Answer for FS unless she asks firm-wide or about another group.
 - Lead with the answer in one or two sentences, then a compact table. Use USD with thousands separators; percentages to one decimal.
 - Frame every answer by pillar: Operational Excellence (delivery, margin, CPI/SPI), Value Creation (pipeline, win-rate,
-  assets, AI agents as a costed resource), People Development (time mix, skills, learning, attrition, AI adoption).
-  When a trade-off moves two pillars, say which.
+  assets, AI agents as a costed resource), People Development (billability, utilization, skills, learning, attrition,
+  AI adoption). When a trade-off moves two pillars, say which.
 - Name the tool / Semantic View each figure comes from in a short "Sources:" line.
 - Honesty rules: (1) figures that include simulated rows (SOURCE_SYSTEM = SIMULATED) are demo data - say so once when
   relevant; (2) asset hours saved are ESTIMATED; (3) AI productivity results are ASSOCIATIONS within level x work type
   with a 90 % confidence interval - never say AI "causes" or "makes" people more productive, and when a band is not
   significant say "no significant effect"; (4) the attrition model is indicative (hold-out AUC 0.90 overall, 0.57 within
   the simulated pool) - present risk lists as a prompt for conversations, not a prediction about an individual;
-  (5) never quote an individual's pay, salary or compa-ratio."""
+  (5) never quote an individual's pay, salary or compa-ratio; (6) WPS token, product, training and curriculum results
+  are Spearman associations within level - say "associated with", never "causes" or "drives"; report rho with its 90 % CI
+  and say "no significant association" when SIGNIFICANT is false; a CI that excludes 0 with |rho| < 0.05 is NEGLIGIBLE;
+  (7) known limitations: the INDUSTRY curriculum -> win-rate link and the Claude Code -> OE / WIN null cells can show
+  spurious significance - flag them as limitations if they appear."""
     orchestration = f"""Today is 1 Oct 2026 (FY27 day 1). Fiscal years run October-September: FY26 = Oct 2025 - Sep 2026 and is the
 last CLOSED year; "this year" / "last year" mean FY26 / FY25 unless the user says FY27. FY27 has no actuals yet.
 Time targets by level (share of available hours, Delivery / Bid / Learning / Admin / Bench): Analyst 75/10/10/3/2,
 Consultant 71/14/10/3/2, Manager 60/25/10/3/2, Senior Manager 45/40/10/3/2, Principal 35/50/10/3/2.
-Judge Delivery first; judge Bid by win-rate and pursuit cost per won USD, never by hours alone; Admin must stay < 5 %;
+Billability = Delivery hours / available (target = the Delivery target); utilization = Delivery + Bid + recorded
+asset-contribution hours / available (target = Delivery + Bid, 85 %). Asset hours are recorded, not budgeted, so
+utilization can exceed 100 %.
+Judge billability first; judge Bid by win-rate and pursuit cost per won USD, never by hours alone; Admin must stay < 5 %;
 Bench ~2 % is the transition allowance (above 3 % is a problem). Higher bill codes within a level carry more Bid.
+AI products: ChatGPT and Claude chat 2023 - Apr 2025; Claude Code and Codex from 1 May 2025; Cortex from 1 Nov 2025.
 Routing:
 - Scorecards, FY26 vs FY25, group P&L, capacity mix, top risks -> portfolio (then drill down with the pillar tool).
 - A project's margin, CPI/SPI, LDs, team, pyramid, delivery model, asset reuse / missed reuse -> project_delivery.
 - WHY a project is late or over budget -> project_commentary (filter MD_GROUP_ID and RAG_STATUS), combined with project_delivery figures.
 - Bids, win-rate, pursuit intensity, team skill fit, open pipeline, bench-to-pipeline matches -> pipeline_presales.
 - Time mix per person / level, bench, roll-off, headcount, attrition, attrition risk, skills -> workforce.
-- AI tool use, AI spend, AI-agent cost, AI productivity test, learning payback -> ai_adoption.
+- AI tool use, AI spend by tool / product / model, AI-agent cost, the earned-hour AI productivity test, learning payback -> ai_adoption.
+- Productivity of a person, level or group (WPS and its pillars), billability vs utilization by level, and whether AI
+  tokens, a product (Claude Code, Codex, Cortex), a Cortex model family, training hours or a curriculum are associated
+  with productivity -> productivity. Use wps_by_level for level questions (scope 'FIRM' or a group id, fiscal_years
+  'FY26' or 'FY24-26'); use the test tables with stratum = each level (or 'ALL LEVELS') and cell_status 'OK'. Product
+  tests run only where the product existed: fiscal_years 'FY25Q3-FY26' for CLAUDE_CODE / CODEX and 'FY26' for CORTEX;
+  group scopes use the '... pooled' windows. Training and curriculum tests use outcome 'WPS_EX_LEARN' (WPS without the
+  learning input) and 'TARGET:<input>' for the curriculum's target input.
 - Asset recommendations by need -> asset_library (plus project_delivery for missed reuse figures).
 - Cross-pillar questions (e.g. bench people with AI skill 3+ who fit open bids) need two tools: use pipeline_presales for
   the bench-to-pipeline match and workforce for roll-off / skills, then join the answers by person.
@@ -119,7 +141,8 @@ Routing:
                                   sample_questions=[dict(question=q) for q in (
                                       "Give me my FY26 ProServe360 scorecard against FY25.",
                                       "Which bench consultants with AI skill 3+ fit my open bids above USD 5 M?",
-                                      "Why is my at-risk fixed-price project behind schedule?")]),
+                                      "Why is my at-risk fixed-price project behind schedule?",
+                                      "What is the productivity of my workforce at each level?")]),
                 tools=tools, tool_resources=res)
 
 
@@ -138,6 +161,12 @@ def deploy():
         p = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
         tail = (p.stdout + p.stderr).strip()[-500:]
         print(f"{cmd[2]}: rc {p.returncode} {tail[-200:]}")
+        if p.returncode != 0 and "authentication method" in tail:
+            # org policy blocks the CLI's auth method: create the same specification with SQL
+            assert "$$" not in content
+            sf.query(f"CREATE OR REPLACE AGENT {AGENT_FQN} COPY GRANTS FROM SPECIFICATION $${content}$$")
+            print("agent deployed via CREATE OR REPLACE AGENT ... FROM SPECIFICATION")
+            break
         if p.returncode != 0:
             sys.exit(1)
     sf.query(f"ALTER AGENT {AGENT_FQN} SET COMMENT = 'ACoCo Advisor for the FS Partner MD (PRD 10); generated by tools/gen_agent.py'")
@@ -190,7 +219,7 @@ def prompts():
          {"pipeline_presales"}, [(fit_hi - 3, fit_hi + 3, "high-fit win-rate")], []),
         (12, "PMD-11", "If the bid that best fits my roll-off people slips 30 days, who stays on the bench and what does it cost?",
          {"pipeline_presales|workforce"}, [], []),
-        (13, "PMD-12", "Does the agentic-AI curriculum pay back in later productivity?", {"ai_adoption"}, [], []),
+        (13, "PMD-12", "Does the agentic-AI curriculum pay back in later productivity?", {"ai_adoption|productivity"}, [], []),
         (14, "WHY-1", "Why are my red FS projects late?", {"project_commentary"}, [], []),
         (15, "WHY-2", "Why did FS margin change between FY25 and FY26?", {"portfolio|project_delivery"}, [], []),
         (16, "WHY-3", f"What do the project managers say is the main problem on {story}?", {"project_commentary"}, [], [story]),
@@ -199,6 +228,13 @@ def prompts():
         (19, "R12", "Recommend assets for a data migration bid.", {"asset_library|project_delivery"}, [], []),
         (20, "R13", "Does AI make my skilled-but-inactive consultants more productive?", {"ai_adoption"},
          [], ["no significant", "associat"]),
+        (21, "P6-Q2", "What is the productivity (WPS) of the workforce at each level, and how do billability and utilization compare?",
+         {"productivity"}, [], ["WPS"]),
+        (22, "P6-Q3", "Is AI token usage associated with productivity within each level?", {"productivity"}, [], ["associat"]),
+        (23, "P6-Q4", "Is Claude Code, Codex or Cortex usage associated with productivity within each level?", {"productivity"},
+         [], ["associat"]),
+        (24, "P6-Q5", "Are training hours associated with productivity within each level?", {"productivity"}, [], ["associat"]),
+        (25, "P6-Q6", "Which curricula are associated with higher productivity, by level?", {"productivity"}, [], ["associat"]),
     ], dict(story=story, fs_bench=fs_bench, fs_deliv=fs_deliv, roll_off=ro, uplift=up)
 
 
@@ -250,7 +286,7 @@ def regress(only):
         route_ok = all(any(alt in used for alt in group.split("|")) for group in expect)
         fig_ok = all(num_in(r["text"], lo, hi) for lo, hi, _ in figs)
         phrase_ok = all(p.lower() in r["text"].lower() for p in phrases)
-        if pid == 20:   # R13 honesty: must not claim causation
+        if pid == 20 or pid >= 22:   # R13 / P6 honesty: must not claim causation
             phrase_ok = phrase_ok and not re.search(r"\b(causes?|caused|makes? (them|people|consultants) more)\b", r["text"], re.I)
         res = dict(id=pid, story=story, prompt=q, expected=sorted(expect), used=r["tools"], routing=route_ok,
                    figures=fig_ok, phrases=phrase_ok, seconds=r["seconds"], answer=r["text"][:1500],
@@ -258,7 +294,11 @@ def regress(only):
         results.append(res)
         print(f"{'PASS' if res['ok'] else 'FAIL'} {pid:>2} {story:<7} {r['seconds']}s tools={r['tools']} "
               f"route={route_ok} fig={fig_ok} phrase={phrase_ok}")
-    (ROOT / "logs" / "agent_regression.json").write_text(json.dumps(dict(context=ctx, results=results), indent=1))
+    log = ROOT / "logs" / "agent_regression.json"
+    if only and log.exists():   # a partial rerun replaces only its prompts in the last full run
+        keep = [r for r in json.loads(log.read_text())["results"] if r["id"] not in only]
+        results = sorted(keep + results, key=lambda r: r["id"])
+    log.write_text(json.dumps(dict(context=ctx, results=results), indent=1))
     write_md(results, ctx)
     return results
 

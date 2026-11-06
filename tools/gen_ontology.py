@@ -118,6 +118,9 @@ BUSINESS_RELATIONSHIPS = [
     ("work_package", "requires", "skill", "many_to_many", "wp_skill", "WBS_ID, SKILL_ID"),
     ("project", "consumes", "ai_tool", "many_to_many", "agent_on_project", "PROJECT_ID, AI_TOOL_ID (AGT_*)"),
     ("customer", "belongs to", "md_group", "many_to_one", None, "MD_GROUP_ID"),
+    # P6 (spec 4)
+    ("person", "uses", "ai_model", "many_to_many", "ai_usage", "PERSON_ID, AI_MODEL_ID"),
+    ("person", "studies", "learning_category", "many_to_many", "learning_quarter", "PERSON_ID, CURRICULUM (per fiscal quarter)"),
 ]
 # structural edges the views also use (not business relationships of their own)
 STRUCTURAL_EDGES = {("work_package", "project"), ("project", "md_group")}
@@ -186,7 +189,9 @@ def registry():
             "work_package": "A WBS work package of a project", "opportunity": "A CRM bid for client work",
             "skill": "A skill in the People Intelligence catalogue (incl. the Agentic-AI family)",
             "learning_item": "A course in the AI or core curriculum", "asset": "A reusable delivery asset harvested from a project",
-            "ai_tool": "An AI assistant people use, or an AI agent charged to projects", "time_category": "One of the five uses of time"}
+            "ai_tool": "An AI assistant people use, or an AI agent charged to projects", "time_category": "One of the five uses of time",
+            "ai_model": "A model offered by an AI product, with its release window and token prices",
+            "learning_category": "One of eight curricula, with the WPS pillar and input it targets"}
     # entity -> L1 owning object (from its key-count query) and that object's L0 sources (l1_map.yml), for C4 lineage.
     import yaml
     l1map = yaml.safe_load((ROOT / "tools" / "l1_map.yml").read_text())["domains"]
