@@ -630,13 +630,26 @@ domains:
       AI_MODEL:
         key: [AI_TOOL_ID, MODEL]
         columns: {AI_TOOL_ID: VARCHAR, PRODUCT: VARCHAR, MODEL: VARCHAR, MODEL_FAMILY: VARCHAR,
-                  INPUT_USD_PER_MTOK: 'NUMBER(8,3)', OUTPUT_USD_PER_MTOK: 'NUMBER(8,3)'}
+                  INPUT_USD_PER_MTOK: 'NUMBER(8,3)', OUTPUT_USD_PER_MTOK: 'NUMBER(8,3)', AVAILABLE_FROM: DATE,
+                  AVAILABLE_TO: DATE}
         sources:
-          # P6 spec 4.1: model price list (simulated list prices); mix shares are generator-only
+          # P6 spec 4.1: model price list (simulated list prices) with availability window; mix shares are generator-only
           - system: ACOCO_CONFIG
             from: ACOCO_DB.OPS.AI_MODEL_PRICE m
             select: {AI_TOOL_ID: m.VENDOR, PRODUCT: m.PRODUCT, MODEL: m.MODEL, MODEL_FAMILY: m.MODEL_FAMILY,
-                     INPUT_USD_PER_MTOK: m.INPUT_USD_PER_MTOK, OUTPUT_USD_PER_MTOK: m.OUTPUT_USD_PER_MTOK}
+                     INPUT_USD_PER_MTOK: m.INPUT_USD_PER_MTOK, OUTPUT_USD_PER_MTOK: m.OUTPUT_USD_PER_MTOK,
+                     AVAILABLE_FROM: m.AVAILABLE_FROM, AVAILABLE_TO: m.AVAILABLE_TO}
+
+      AI_PRODUCT:
+        key: [PRODUCT]
+        columns: {PRODUCT: VARCHAR, AI_TOOL_ID: VARCHAR, PRODUCT_NAME: VARCHAR, PRODUCT_KIND: VARCHAR,
+                  AVAILABLE_FROM: DATE, AVAILABLE_TO: DATE}
+        sources:
+          # P6: products per vendor channel and when ACoCo had them (decision 2026-11-05, D-P6-28)
+          - system: ACOCO_CONFIG
+            from: ACOCO_DB.OPS.AI_PRODUCT p
+            select: {PRODUCT: p.PRODUCT, AI_TOOL_ID: p.VENDOR, PRODUCT_NAME: p.PRODUCT_NAME, PRODUCT_KIND: p.PRODUCT_KIND,
+                     AVAILABLE_FROM: p.AVAILABLE_FROM, AVAILABLE_TO: p.AVAILABLE_TO}
 
       AI_IDENTITY_MAP:
         key: [PERSON_ID]

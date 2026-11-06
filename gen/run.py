@@ -70,11 +70,16 @@ def read_inputs(sf: Sf):
     # P6 control tables (sql/00_control/04_p6_config.sql)
     truth = sf.df("select * from ACOCO_DB.OPS.SIM_TRUTH_EFFECTS order by effect_id, level")
     truth["COEF"] = truth["COEF"].astype(float)
-    prices = sf.df("select * from ACOCO_DB.OPS.AI_MODEL_PRICE order by vendor, model")
+    prices = sf.df("select * from ACOCO_DB.OPS.AI_MODEL_PRICE order by product, model")
+    ai_products = sf.df("select * from ACOCO_DB.OPS.AI_PRODUCT order by vendor, available_from")
+    for df in (prices, ai_products):
+        for c in ("AVAILABLE_FROM", "AVAILABLE_TO"):
+            df[c] = [d if pd.notna(d) else None for d in pd.to_datetime(df[c]).dt.date]
     req_curr = sf.df("select * from ACOCO_DB.OPS.LEVEL_REQUIRED_CURRICULUM order by level, curriculum")
     return dict(params=params, levels=levels, targets=targets, paygrade=paygrade, sfcc=sfcc, mdcc=mdcc,
                 activity_ce=activity_ce, customers=customers, real_people=real_people, real_monthly=real_people,
-                real_avail_week=real_avail, assign_map=assign_map, truth=truth, prices=prices, req_curr=req_curr)
+                real_avail_week=real_avail, assign_map=assign_map, truth=truth, prices=prices, req_curr=req_curr,
+                ai_products=ai_products)
 
 
 def generate(inputs) -> dict:

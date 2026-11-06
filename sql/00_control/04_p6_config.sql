@@ -5,28 +5,59 @@
 USE ROLE ACCOUNTADMIN;
 USE WAREHOUSE WH_ACOCO_BUILD;
 
--- Simulated list prices, USD per million tokens (spec 4.1). Model names checked against SHOW MODELS 2026-11-05.
+-- AI products and when they were available to ACoCo (decision 2026-11-05): chat assistants before the coding
+-- products; Claude Code and Codex from 1 May 2025, Cortex Code / AISQL from 1 Nov 2025. Chat start dates are the
+-- simulation's assumption (ChatGPT Enterprise / Claude for Work rollout), so FY22 has no AI usage.
+CREATE OR REPLACE TABLE ACOCO_DB.OPS.AI_PRODUCT (
+  PRODUCT        VARCHAR NOT NULL PRIMARY KEY,
+  VENDOR         VARCHAR NOT NULL,
+  PRODUCT_NAME   VARCHAR NOT NULL,
+  PRODUCT_KIND   VARCHAR NOT NULL,
+  AVAILABLE_FROM DATE NOT NULL,
+  AVAILABLE_TO   DATE
+) COMMENT = 'AI products by vendor channel with availability window (P6 spec 4.1); one product per vendor channel on any date';
+INSERT INTO ACOCO_DB.OPS.AI_PRODUCT VALUES
+  ('CHATGPT',     'OPENAI',    'ChatGPT Enterprise',  'CHAT_ASSISTANT', '2023-01-01', '2025-04-30'),
+  ('CODEX',       'OPENAI',    'Codex',               'CODING_AGENT',   '2025-05-01', NULL),
+  ('CLAUDE_CHAT', 'ANTHROPIC', 'Claude for Work',     'CHAT_ASSISTANT', '2023-07-01', '2025-04-30'),
+  ('CLAUDE_CODE', 'ANTHROPIC', 'Claude Code',         'CODING_AGENT',   '2025-05-01', NULL),
+  ('CORTEX',      'CORTEX',    'Cortex Code / AISQL', 'CODING_AGENT',   '2025-11-01', NULL);
+
+-- Models by product with availability windows (approximate public release dates; a model is used from its release
+-- until it is superseded) and simulated list prices, USD per million tokens. MIX_SHARE is renormalised over the
+-- models available on a day. Cortex model names checked against SHOW MODELS 2026-11-05.
 CREATE OR REPLACE TABLE ACOCO_DB.OPS.AI_MODEL_PRICE (
-  VENDOR             VARCHAR NOT NULL,
-  PRODUCT            VARCHAR NOT NULL,
-  MODEL              VARCHAR NOT NULL,
-  MODEL_FAMILY       VARCHAR NOT NULL,
-  MIX_SHARE          NUMBER(4,2) NOT NULL,
+  VENDOR              VARCHAR NOT NULL,
+  PRODUCT             VARCHAR NOT NULL,
+  MODEL               VARCHAR NOT NULL,
+  MODEL_FAMILY        VARCHAR NOT NULL,
+  MIX_SHARE           NUMBER(4,2) NOT NULL,
   INPUT_USD_PER_MTOK  NUMBER(8,3) NOT NULL,
   OUTPUT_USD_PER_MTOK NUMBER(8,3) NOT NULL,
-  PRIMARY KEY (VENDOR, MODEL)
-) COMMENT = 'AI model price list by vendor x model (simulated list prices) and the generator model mix (P6 spec 4.1)';
+  AVAILABLE_FROM      DATE NOT NULL,
+  AVAILABLE_TO        DATE,
+  PRIMARY KEY (PRODUCT, MODEL)
+) COMMENT = 'AI model price list by product x model with availability window (simulated list prices) and the generator model mix (P6 spec 4.1)';
 INSERT INTO ACOCO_DB.OPS.AI_MODEL_PRICE VALUES
-  ('ANTHROPIC', 'CLAUDE_CODE', 'claude-sonnet-4-5', 'CLAUDE',  0.85, 4.50, 22.50),
-  ('ANTHROPIC', 'CLAUDE_CODE', 'claude-haiku-4-5',  'CLAUDE',  0.15, 1.50,  7.50),
-  ('OPENAI',    'CODEX',       'gpt-5',             'GPT',     0.80, 2.50, 20.00),
-  ('OPENAI',    'CODEX',       'gpt-4.1',           'GPT',     0.20, 2.00,  8.00),
-  ('CORTEX',    'CORTEX',      'claude-sonnet-4-5', 'CLAUDE',  0.35, 2.40, 12.00),
-  ('CORTEX',    'CORTEX',      'claude-haiku-4-5',  'CLAUDE',  0.10, 0.80,  4.00),
-  ('CORTEX',    'CORTEX',      'openai-gpt-5',      'GPT',     0.35, 1.60, 12.80),
-  ('CORTEX',    'CORTEX',      'openai-gpt-4.1',    'GPT',     0.10, 1.20,  4.80),
-  ('CORTEX',    'CORTEX',      'llama3.1-70b',      'OPEN',    0.05, 0.90,  0.90),
-  ('CORTEX',    'CORTEX',      'mistral-large2',    'OPEN',    0.05, 1.00,  3.00);
+  ('OPENAI',    'CHATGPT',     'gpt-3.5-turbo',     'GPT',    1.00,  1.50,  2.00, '2023-01-01', '2023-03-13'),
+  ('OPENAI',    'CHATGPT',     'gpt-4',             'GPT',    1.00, 30.00, 60.00, '2023-03-14', '2024-05-12'),
+  ('OPENAI',    'CHATGPT',     'gpt-4o',            'GPT',    1.00,  5.00, 15.00, '2024-05-13', NULL),
+  ('ANTHROPIC', 'CLAUDE_CHAT', 'claude-2',          'CLAUDE', 1.00,  8.00, 24.00, '2023-07-01', '2024-03-03'),
+  ('ANTHROPIC', 'CLAUDE_CHAT', 'claude-3-sonnet',   'CLAUDE', 1.00,  3.00, 15.00, '2024-03-04', '2024-06-19'),
+  ('ANTHROPIC', 'CLAUDE_CHAT', 'claude-3-5-sonnet', 'CLAUDE', 1.00,  3.00, 15.00, '2024-06-20', NULL),
+  ('ANTHROPIC', 'CLAUDE_CODE', 'claude-3-7-sonnet', 'CLAUDE', 1.00,  3.00, 15.00, '2025-05-01', '2025-05-21'),
+  ('ANTHROPIC', 'CLAUDE_CODE', 'claude-sonnet-4',   'CLAUDE', 1.00,  3.00, 15.00, '2025-05-22', '2025-09-28'),
+  ('ANTHROPIC', 'CLAUDE_CODE', 'claude-sonnet-4-5', 'CLAUDE', 0.85,  4.50, 22.50, '2025-09-29', NULL),
+  ('ANTHROPIC', 'CLAUDE_CODE', 'claude-haiku-4-5',  'CLAUDE', 0.15,  1.50,  7.50, '2025-10-15', NULL),
+  ('OPENAI',    'CODEX',       'gpt-4.1',           'GPT',    0.20,  2.00,  8.00, '2025-05-01', NULL),
+  ('OPENAI',    'CODEX',       'codex-mini',        'GPT',    0.80,  1.50,  6.00, '2025-05-01', '2025-08-06'),
+  ('OPENAI',    'CODEX',       'gpt-5',             'GPT',    0.80,  2.50, 20.00, '2025-08-07', NULL),
+  ('CORTEX',    'CORTEX',      'claude-sonnet-4-5', 'CLAUDE', 0.35,  2.40, 12.00, '2025-11-01', NULL),
+  ('CORTEX',    'CORTEX',      'claude-haiku-4-5',  'CLAUDE', 0.10,  0.80,  4.00, '2025-11-01', NULL),
+  ('CORTEX',    'CORTEX',      'openai-gpt-5',      'GPT',    0.35,  1.60, 12.80, '2025-11-01', NULL),
+  ('CORTEX',    'CORTEX',      'openai-gpt-4.1',    'GPT',    0.10,  1.20,  4.80, '2025-11-01', NULL),
+  ('CORTEX',    'CORTEX',      'llama3.1-70b',      'OPEN',   0.05,  0.90,  0.90, '2025-11-01', NULL),
+  ('CORTEX',    'CORTEX',      'mistral-large2',    'OPEN',   0.05,  1.00,  3.00, '2025-11-01', NULL);
 
 -- Curricula required at each level every fiscal year (spec 2.3). AI_ANY = any one of the three AI curricula.
 CREATE OR REPLACE TABLE ACOCO_DB.OPS.LEVEL_REQUIRED_CURRICULUM (
@@ -96,7 +127,7 @@ SELECT e.EFFECT_ID, l.LEVEL, e.EXPOSURE, e.OUTCOME,
 FROM ACOCO_DB.OPS.LEVEL l
 CROSS JOIN (SELECT $1 EFFECT_ID, $2 EXPOSURE, $3 OUTCOME, $4 C1, $5 C2, $6 C3, $7 C4, $8 C5, $9 UNIT, $10 NOTE FROM VALUES
   ('CORTEX_OE',      'Cortex tokens per delivery hour', 'EFF, SCHED', 0.16, 0.16, 0.09, 0.09, 0.09, 'OE_PROD',
-   'Dose-response with plateau 1 - exp(-6 x); same for Claude and OpenAI model families'),
+   'Dose-response with plateau 1 - exp(-6 x); same for Claude and OpenAI model families; Cortex exists from 2025-11-01'),
   ('CORTEX_OPEN',    'Cortex open-model share',         'EFF, SCHED', 0.30, 0.30, 0.30, 0.30, 0.30, 'SHARE',
    'Open models carry this fraction of the Cortex OE effect (small)'),
   ('CLAUDE_CODE_WIN','Claude Code bid-team usage',      'WIN',        1.50, 1.50, 1.50, 0.00, 0.00, 'LOGIT',

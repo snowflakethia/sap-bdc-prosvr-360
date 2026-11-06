@@ -1,6 +1,7 @@
 # P6 AI Productivity & Learning - Requirement Specification
 
-Version 0.3 (draft for checkpoint CP-P6a) - 2026-11-05
+Version 0.5 - 2026-11-05
+v0.5: product availability windows and date-correct models (4.1); significance floor; independent product usage.
 v0.4: targets reuse OPS.GEN_PARAMS_TIME_TARGET (learning 10 % every level); asset-building hours recorded, not budgeted (2.3).
 v0.3: PD input weights confirmed and made level-dependent (2.4); Cortex model names confirmed against the account (4.1).
 v0.2: learning input added to PD; asset creation/reuse redesigned; small-cell rules; all vendor models;
@@ -167,6 +168,19 @@ R13 (AI-active uplift) and R14 (learning payback) are kept but re-based on WPS.
 ## 4. Simulated data requirements
 
 ### 4.1 AI telemetry (extend `ACOCO_SIM.TELEMETRY.*_USAGE`)
+
+Product availability (decision 2026-11-05, `OPS.AI_PRODUCT`): each vendor channel offers one product at a time.
+
+| Channel | Before | From |
+|---|---|---|
+| OPENAI | ChatGPT Enterprise (chat) from 2023-01-01 | Codex from 2025-05-01 |
+| ANTHROPIC | Claude for Work (chat) from 2023-07-01 | Claude Code from 2025-05-01 |
+| CORTEX | - | Cortex Code / AISQL from 2025-11-01 |
+
+No AI usage before 2023 (chat start dates are a simulation assumption). Models follow approximate public release dates
+(`OPS.AI_MODEL_PRICE.AVAILABLE_FROM / TO`), e.g. gpt-4 -> gpt-4o, claude-3-7-sonnet -> claude-sonnet-4 -> 4.5; chat
+assistants carry no seeded effect. Q4 tests use product-available quarters only: Claude Code / Codex FY25 Q3-FY26,
+Cortex FY26 (pooled).
 
 | Column | Values |
 |---|---|

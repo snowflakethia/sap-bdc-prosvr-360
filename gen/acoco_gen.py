@@ -143,6 +143,7 @@ class Ctx:
     rng2: np.random.Generator = None          # P6 draws (keeps the main stream's order where possible)
     truth: pd.DataFrame = None                # OPS.SIM_TRUTH_EFFECTS
     prices: pd.DataFrame = None               # OPS.AI_MODEL_PRICE
+    ai_products: pd.DataFrame = None          # OPS.AI_PRODUCT
     req_curr: pd.DataFrame = None             # OPS.LEVEL_REQUIRED_CURRICULUM
     out: dict = field(default_factory=dict)
 
@@ -535,11 +536,27 @@ class Staffing:
         self.week_of = {d: i for d, i in zip(wk.week_start, wk.week_idx)}
         self.fy = wk.fiscal_year.values
         self.usage = self._usage_bands()
+        self._product_calendar(wk)
         self._p6_exposures(people)
         self.wstart = list(wk.week_start)
         self.assignments, self.ts_rows, self.bid_rows = [], [], []
         self.pursuits = []                               # (group, w0, w1, internal order, weight)
         self.pursuit_members = {}                        # internal order -> named bid-team people
+
+    def _product_calendar(self, wk):
+        """Which product each vendor channel offers in each week (OPS.AI_PRODUCT; decision 2026-11-05): chat assistants
+        first, Claude Code / Codex from 2025-05-01, Cortex from 2025-11-01. AI use is zero in weeks with no product."""
+        prods = self.ctx.ai_products
+        ws = pd.to_datetime(pd.Series(list(wk.week_start))).dt.date.values
+        self.channel_product = {}                                  # vendor -> array of product (or None) per week
+        for v in VENDORS:
+            arr = np.array([None] * len(ws), dtype=object)
+            for r in prods[prods.VENDOR == v].itertuples():
+                to = r.AVAILABLE_TO if pd.notna(r.AVAILABLE_TO) else dt.date(9999, 12, 31)
+                arr[(ws >= r.AVAILABLE_FROM) & (ws <= to)] = r.PRODUCT
+            self.channel_product[v] = arr
+        self.channel_on = np.column_stack([self.channel_product[v] != None for v in VENDORS])  # noqa: E711  W x 3
+        self.usage[:, ~self.channel_on.any(axis=1)] = 0.0
 
     def _p6_exposures(self, people):
         """P6 (spec 4.1, 4.4): independent product propensities per person (OPENAI, ANTHROPIC, CORTEX; Beta with the
@@ -554,9 +571,12 @@ class Staffing:
         self.open_share = r2.beta(1.0, 9.0, P).astype(np.float32)
         on = self.avail > 0
         n_on = np.maximum(on.sum(axis=0), 1)
-        self.x_cx = self.usage * self.share[:, 0:1]            # Codex exposure
-        self.x_cc = self.usage * self.share[:, 1:2]            # Claude Code exposure
-        self.x_co = self.usage * self.share[:, 2:3]            # Cortex exposure
+        # seeded exposures exist only once the product is live (Codex / Claude Code / Cortex); chat assistants: none
+        live = {p: (self.channel_product[v] == p).astype(np.float32)[None, :]
+                for v, p in (("OPENAI", "CODEX"), ("ANTHROPIC", "CLAUDE_CODE"), ("CORTEX", "CORTEX"))}
+        self.x_cx = self.usage * self.share[:, 0:1] * live["CODEX"]          # Codex exposure
+        self.x_cc = self.usage * self.share[:, 1:2] * live["CLAUDE_CODE"]    # Claude Code exposure
+        self.x_co = self.usage * self.share[:, 2:3] * live["CORTEX"]         # Cortex exposure
         self.x_cx_mean = (self.x_cx * on).sum(axis=0) / n_on
         self.x_cc_mean = (self.x_cc * on).sum(axis=0) / n_on
         c_oe = np.array([ctx.coef("CORTEX_OE", l) for l in lv], dtype=np.float32)
@@ -1359,25 +1379,32 @@ def build_finance(ctx, people, ts, projects, wps, opps, agt):
 
 def build_telemetry_and_agt(ctx, st, people, ts, wk, je_lines_fn=None):
     """Per person x vendor x active day usage; AGT_* allocations from AI cost centres to project WBS.
-    P6 (spec 4.1): each product is used on a day with the person's own propensity (independent across products), model
-    from OPS.AI_MODEL_PRICE (Cortex open models by the person's open-model share), input / output split, use case,
-    cost priced per model."""
+    P6 (spec 4.1): each vendor channel offers the product live that week (OPS.AI_PRODUCT: chat assistants, then
+    Claude Code / Codex from 2025-05-01, Cortex from 2025-11-01); a person uses each live product on a day with their own
+    propensity (independent across products); model from those released by the week (OPS.AI_MODEL_PRICE windows; Cortex
+    open models by the person's open-model share), input / output split, use case, cost priced per model."""
     rng, r2 = ctx.rng, ctx.rng2
     rows = {v: [] for v in VENDORS}
     uid = people.user_id.values
     deliv = ts[ts.CATEGORY == "DELIVERY"][["USER_ID", "WEEK_START", "WBS_ELEMENT"]].drop_duplicates(
         ["USER_ID", "WEEK_START"])
     wbs_of = {(u, w): b for u, w, b in deliv.itertuples(index=False)}
-    pr = ctx.prices.sort_values(["VENDOR", "MODEL"])
-    cat = {}
-    for v in VENDORS:
-        sub = pr[pr.VENDOR == v]
-        for fam_open in (False, True):
-            s = sub[(sub.MODEL_FAMILY == "OPEN") == fam_open] if v == "CORTEX" else sub
-            if len(s):
-                cat[(v, fam_open)] = (s.MODEL.tolist(), s.INPUT_USD_PER_MTOK.astype(float).values,
-                                      s.OUTPUT_USD_PER_MTOK.astype(float).values,
-                                      np.cumsum(s.MIX_SHARE.astype(float) / s.MIX_SHARE.astype(float).sum()).values)
+    pr = ctx.prices.sort_values(["PRODUCT", "MODEL"])
+    far = dt.date(9999, 12, 31)
+    cat_cache = {}
+
+    def catalogue(product, fam_open, wdate):
+        """Models of the product released by the week (OPS.AI_MODEL_PRICE windows), mix renormalised (D-P6-28)."""
+        key = (product, fam_open, wdate)
+        if key not in cat_cache:
+            s = pr[(pr.PRODUCT == product) & (pr.AVAILABLE_FROM <= wdate)
+                   & (pr.AVAILABLE_TO.map(lambda x: x if pd.notna(x) else far) >= wdate)]
+            if product == "CORTEX":
+                s = s[(s.MODEL_FAMILY == "OPEN") == fam_open] if len(s[(s.MODEL_FAMILY == "OPEN") == fam_open]) else s
+            cat_cache[key] = (s.MODEL.tolist(), s.INPUT_USD_PER_MTOK.astype(float).values,
+                              s.OUTPUT_USD_PER_MTOK.astype(float).values,
+                              np.cumsum(s.MIX_SHARE.astype(float) / s.MIX_SHARE.astype(float).sum()).values)
+        return cat_cache[key]
     cases = ["CODE", "DOCUMENT", "ANALYSIS"]
     case_c = {"OPENAI": np.cumsum([0.6, 0.2, 0.2]), "ANTHROPIC": np.cumsum([0.6, 0.2, 0.2]),
               "CORTEX": np.cumsum([0.2, 0.2, 0.6])}
@@ -1393,24 +1420,29 @@ def build_telemetry_and_agt(ctx, st, people, ts, wk, je_lines_fn=None):
         days = int(np.clip(round(u * 5 + rng.normal(0, 0.7)), 1, 5))
         ws = wk.week_start.iloc[w]
         bid_share = float(st.bid[pi, w] / st.avail[pi, w])
+        on = np.where(st.channel_on[w])[0]                 # vendor channels with a live product this week
+        if not len(on):
+            continue
+        wdate = pd.Timestamp(ws).date()
         for d in range(days):
-            used = [vi for vi in range(3) if r2.random() < st.share[pi, vi]]
-            if not used:                       # an active day uses at least the person's main product (keeps use days)
-                used = [int(np.argmax(st.share[pi]))]
+            used = [vi for vi in on if r2.random() < st.share[pi, vi]]
+            if not used:                       # an active day uses at least the person's main live product
+                used = [int(on[np.argmax(st.share[pi, on])])]
             for vi in used:
                 v = VENDORS[vi]
+                product = st.channel_product[v][w]
                 day = ws + dt.timedelta(days=d)
                 mapped = rng.random() < 0.92
                 proj = wbs_of.get((uid[pi], ws)) if rng.random() < 0.93 else None
                 sessions = int(rng.integers(1, 8))
                 tokens = int(sessions * rng.integers(8_000, 60_000))
-                models, p_in, p_out, mix = cat[(v, v == "CORTEX" and r2.random() < st.open_share[pi])]
+                models, p_in, p_out, mix = catalogue(product, v == "CORTEX" and r2.random() < st.open_share[pi], wdate)
                 k = draw(mix)
                 out_t = int(tokens * r2.uniform(0.15, 0.35))
                 in_t = tokens - out_t
                 cost = round((in_t * p_in[k] + out_t * p_out[k]) / 1e6, 4)
                 case = "BID" if r2.random() < min(0.8, 1.5 * bid_share) else cases[draw(case_c[v])]
-                rows[v].append((day, uid[pi] if mapped else None, proj, sessions, tokens, cost, PRODUCT[v], models[k],
+                rows[v].append((day, uid[pi] if mapped else None, proj, sessions, tokens, cost, product, models[k],
                                 in_t, out_t, case))
     out = {}
     for v in VENDORS:

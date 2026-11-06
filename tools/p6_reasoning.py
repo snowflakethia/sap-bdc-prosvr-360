@@ -120,10 +120,16 @@ def scopes(df, by_year=True):
     return out
 
 
-def run_test(df, tests, rng, by_year=True):
-    """tests: list of (labels dict, y, x, controls). Rows per scope x stratum (ALL LEVELS + each level)."""
+def run_test(df, tests, rng, by_year=True, window=None):
+    """tests: list of (labels dict, y, x, controls). Rows per scope x stratum (ALL LEVELS + each level).
+    window = (label, first QIDX): only quarters from the product launch on, pooled (decision 2026-11-05, D-P6-28)."""
     rows = []
-    for scope, fy, sd, strata in scopes(df, by_year):
+    sc = scopes(df, by_year)
+    if window:
+        label, q0 = window
+        sc = [(s, label if s == "FIRM" else label + " pooled", sd[sd.QIDX >= q0], st) for s, fy, sd, st in sc
+              if fy in ("FY24-26", "FY24-26 pooled")]
+    for scope, fy, sd, strata in sc:
         for stratum in ["ALL LEVELS"] + LEVELS:
             cell = sd if stratum == "ALL LEVELS" else sd[sd.LEVEL == stratum]
             st = strata + (["LEVEL"] if stratum == "ALL LEVELS" else [])
@@ -151,7 +157,7 @@ def quintiles(df, x, y, users_only_label="NON_USER"):
 
 
 def summarise(name, rows, keys):
-    firm = [r for r in rows if r["SCOPE"] == "FIRM" and r["FISCAL_YEARS"] == "FY24-26"]
+    firm = [r for r in rows if r["SCOPE"] == "FIRM" and r["FISCAL_YEARS"] in ("FY24-26", "FY25Q3-FY26", "FY26")]
     log_update(name, firm)
     for r in firm:
         lab = " ".join(str(r[k]) for k in keys)
@@ -164,8 +170,12 @@ def with_tokens(w, t):
     t = t.copy()
     t["EXPOSURE"] = np.where(t.PRODUCT == "CORTEX", "CORTEX_" + t.MODEL_FAMILY, t.PRODUCT)
     piv = t.pivot_table(index=["PERSON_ID", "QIDX"], columns="EXPOSURE", values="TOKENS", aggfunc="sum", fill_value=0)
-    piv["CORTEX"] = piv.filter(like="CORTEX_").sum(axis=1)
-    piv["ALL_TOKENS"] = piv[["CODEX", "CLAUDE_CODE", "CORTEX"]].sum(axis=1)
+    for c in ("CODEX", "CLAUDE_CODE", "CHATGPT", "CLAUDE_CHAT", "CORTEX_CLAUDE", "CORTEX_GPT", "CORTEX_OPEN"):
+        if c not in piv.columns:
+            piv[c] = 0
+    piv["CORTEX"] = piv[["CORTEX_CLAUDE", "CORTEX_GPT", "CORTEX_OPEN"]].sum(axis=1)
+    # Q3: all AI tokens, chat assistants included
+    piv["ALL_TOKENS"] = piv[["CODEX", "CLAUDE_CODE", "CORTEX", "CHATGPT", "CLAUDE_CHAT"]].sum(axis=1)
     d = w.merge(piv.reset_index(), on=["PERSON_ID", "QIDX"], how="left")
     for c in piv.columns:
         d[c] = d[c].fillna(0)
@@ -195,7 +205,12 @@ def r16(w, t, rng):
         for f in fams:
             tests.append((dict(EXPOSURE=f, EXPOSURE_KIND="CORTEX_MODEL_FAMILY", OUTCOME=out), OUTCOME_COL[out], "X_" + f,
                           ["X_" + o for o in fams + prods[1:] if o != f]))
-    rows = run_test(d, tests, rng, by_year=False)
+    # product-available quarters only: Claude Code / Codex from FY25 Q3 (May 2025), Cortex from FY26 Q1 (Nov 2025)
+    win = {"CODEX": ("FY25Q3-FY26", 2025 * 4 + 3), "CLAUDE_CODE": ("FY25Q3-FY26", 2025 * 4 + 3)}
+    rows = []
+    for labels, y, x, ctrl in tests:
+        lab, q0 = win.get(labels["EXPOSURE"], ("FY26", 2026 * 4 + 1))
+        rows += run_test(d, [(labels, y, x, ctrl)], rng, by_year=False, window=(lab, q0))
     write_table("VENDOR_WPS_TEST", rows, "R16 (Q4): partial Spearman rho of a product's (or Cortex model family's) "
                 "token intensity with WPS / OE / WIN score, holding the other products constant, within level; "
                 "90 % person-cluster bootstrap CI; association, not causation")
@@ -389,6 +404,7 @@ def truth_report():
     cells = sf.query("""SELECT 'R16' t, STRATUM, EXPOSURE x, OUTCOME o, RHO, CI_LOW, CI_HIGH hi, SIGNIFICANT sig, CELL_STATUS
                         FROM ACOCO_L2.REASONING.VENDOR_WPS_TEST
                         WHERE SCOPE = 'FIRM' AND EXPOSURE_KIND = 'PRODUCT' AND STRATUM <> 'ALL LEVELS'
+                          AND FISCAL_YEARS IN ('FY25Q3-FY26', 'FY26')
                         UNION ALL
                         SELECT 'R18', STRATUM, CURRICULUM, OUTCOME, RHO, CI_LOW, CI_HIGH, SIGNIFICANT, CELL_STATUS
                         FROM ACOCO_L2.REASONING.CURRICULUM_WPS_TEST
